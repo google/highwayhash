@@ -31,9 +31,9 @@ in parallel algorithms and for testing/verification.
 We have verified the bit distribution and avalanche properties of HighwayHash,
 though new cryptanalysis tools may need to be developed to analyze it.
 
-## SipHash
+## SipHash-AVX2
 
-This third-party implementation aims for maximum efficiency while remaining
+Our SipHash implementation aims for maximum efficiency while remaining
 compatible with the reference C code. Outputs are identical for the given
 test cases (messages between 0 and 63 bytes).
 
@@ -72,10 +72,12 @@ limitations of the instruction set, the registers are partitioned into two
 halves that remain independent until the reduce phase. Operations are 64-bit,
 so each register half contains two lanes. To improve distribution, four bits
 of each v0 lane are hardwired to 1. Therefore, the effective size of each state
-half is 248 bits.
+half is 248 bits. The algorithm outputs 64 bit digests, which can easily be
+extended to 256 bits by no longer discarding the remaining bits.
 
-The algorithm is 2-3 times as fast as SipTreeHash, especially for smaller
-inputs, thanks to its efficient data-parallel updates and finalization.
+In addition to high throughput, the algorithm is designed for low finalization
+cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
+inputs.
 
 ## Results
 
