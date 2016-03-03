@@ -23,15 +23,12 @@
 #include <time.h>
 #endif
 
-#include "code_annotation.h"
 #include "highway_tree_hash.h"
 #include "scalar_highway_tree_hash.h"
 #include "scalar_sip_tree_hash.h"
 #include "sip_hash.h"
 #include "sip_tree_hash.h"
-
-//------------------------
-#include "smhasher.h"
+#include "vec2.h"
 
 uint64_t TimerTicks() {
 #ifdef _WIN32
@@ -201,8 +198,6 @@ int main(int argc, char* argv[]) {
   VerifySipHash();
   VerifyEqual("SipTree scalar", SipTreeHash, ScalarSipTreeHash);
   VerifyEqual("HighwayTree scalar", HighwayTreeHash, ScalarHighwayTreeHash);
-
-  RunAllTests(argc, argv);
 
   return 0;
 }

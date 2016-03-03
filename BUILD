@@ -1,10 +1,5 @@
 # SipHash and HighwayHash: cryptographically-strong pseudorandom functions
 
-package(
-    default_hdrs_check = "strict",
-    features = ["-layering_check"],
-)
-
 cc_library(
     name = "vector",
     hdrs = [
@@ -67,11 +62,11 @@ cc_binary(
         "sip_hash_main.cc",
     ],
     deps = [
+        ":vector",
         ":highway_tree_hash",
         ":scalar_highway_tree_hash",
         ":scalar_sip_tree_hash",
         ":sip_hash",
         ":sip_tree_hash",
-        ":smhasher",
     ],
 )
