@@ -19,7 +19,15 @@
 
 #include <cstdint>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint64_t ScalarHighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
                                const uint64_t size);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // HIGHWAYHASH_SCALAR_HIGHWAY_TREE_HASH_H_

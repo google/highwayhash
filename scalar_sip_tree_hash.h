@@ -19,7 +19,15 @@
 
 #include <cstdint>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint64_t ScalarSipTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
                            const uint64_t size);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // #ifndef HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_

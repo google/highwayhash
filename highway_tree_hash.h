@@ -17,6 +17,10 @@
 
 #include <cstdint>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // J-lanes tree hash based upon multiplication and "zipper merges".
 //
 // Robust versus timing attacks because memory accesses are sequential
@@ -29,5 +33,9 @@
 // Returns a 64-bit hash of the given data bytes.
 uint64_t HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
                          const uint64_t size);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // #ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_

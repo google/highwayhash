@@ -17,6 +17,10 @@
 
 #include <cstdint>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Fast, cryptographically strong pseudo-random function. Useful for:
 // . hash tables holding attacker-controlled data. This function is
 //   immune to hash flooding DOS attacks because multi-collisions are
@@ -35,5 +39,9 @@
 // Returns a 64-bit hash of the given data bytes.
 uint64_t SipTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
                      const uint64_t size);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
