@@ -32,9 +32,11 @@
 // "key" is a secret 128-bit key unknown to attackers.
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
 // Returns a 64-bit hash of the given data bytes.
+extern "C"
 uint64_t SipHash(const uint64_t key[2], const uint8_t* bytes,
                  const uint64_t size);
 
+extern "C"
 uint64_t ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]);
 
 #endif  // #ifndef HIGHWAYHASH_SIP_HASH_H_

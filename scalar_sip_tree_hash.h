@@ -19,6 +19,7 @@
 
 #include <cstdint>
 
+extern "C"
 uint64_t ScalarSipTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
                            const uint64_t size);
 
