@@ -18,7 +18,8 @@
 #include <cstring>
 
 #ifdef _WIN32
-#include <Windows.h>
+#define NOMINMAX
+#include <windows.h>
 #else
 #include <time.h>
 #endif
