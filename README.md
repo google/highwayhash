@@ -99,18 +99,21 @@ The software requires AVX-2-capable CPUs (Intel Haswell or upcoming AMD).
 ## Build instructions
 
 To build with Bazel (http://bazel.io/) :
-bazel build :all -c opt --copt=-mavx2
+    bazel build :all -c opt --copt=-mavx2
+
+A simple Makefile is also provided.
+
 
 ## Modules
 
-sip_hash.cc is the compatible implementation of SipHash, and also
+* sip_hash.cc is the compatible implementation of SipHash, and also
   provides the final reduction for sip_tree_hash.
-sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
-highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
-scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
-vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
-vec.h provides a similar class for 128-bit vectors.
-code_annotation.h defines some compiler-dependent language extensions.
+* sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
+* highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
+* scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
+* vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
+* vec.h provides a similar class for 128-bit vectors.
+* code_annotation.h defines some compiler-dependent language extensions.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
 <jyrki.alakuijala@gmail.com>, 2016-03-01
