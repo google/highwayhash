@@ -164,7 +164,7 @@ uint64_t SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
   const uint64_t* packets = reinterpret_cast<const uint64_t*>(bytes);
-  for (int i = 0; i < truncated_size / sizeof(uint64_t); i += kNumLanes) {
+  for (size_t i = 0; i < truncated_size / sizeof(uint64_t); i += kNumLanes) {
     const V4x64U packet = LoadU(packets + i);
     state.Update(packet);
   }

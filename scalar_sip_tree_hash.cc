@@ -111,7 +111,7 @@ uint64_t ScalarSipTreeHash(const Lanes& key,
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
   const uint64_t* packets = reinterpret_cast<const uint64_t*>(bytes);
-  for (int i = 0; i < truncated_size / kPacketSize; ++i) {
+  for (size_t i = 0; i < truncated_size / kPacketSize; ++i) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       const uint64_t packet = *packets++;
       state[lane].Update(packet);
@@ -122,7 +122,7 @@ uint64_t ScalarSipTreeHash(const Lanes& key,
   const size_t remainder_mod4 = remainder & 3;
   uint32_t packet4 = remainder << 24;
   const uint8_t* final_bytes = bytes + size - remainder_mod4;
-  for (int i = 0; i < remainder_mod4; ++i) {
+  for (size_t i = 0; i < remainder_mod4; ++i) {
     packet4 += static_cast<uint32_t>(final_bytes[i]) << (i * 8);
   }
 
