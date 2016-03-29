@@ -20,10 +20,12 @@
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
+#elif __MACH__
+#include <mach/mach.h>
+#include <mach/mach_time.h>
 #else
 #include <time.h>
 #endif
-
 #include "highway_tree_hash.h"
 #include "scalar_highway_tree_hash.h"
 #include "scalar_sip_tree_hash.h"
@@ -36,6 +38,8 @@ uint64_t TimerTicks() {
   LARGE_INTEGER counter;
   (void)QueryPerformanceCounter(&counter);
   return counter.QuadPart;
+#elif __MACH__
+  return mach_absolute_time();
 #else
   timespec t;
   clock_gettime(CLOCK_REALTIME, &t);
@@ -43,13 +47,24 @@ uint64_t TimerTicks() {
 #endif
 }
 
-uint64_t TimerFrequency() {
+
+double ToSeconds(uint64_t elapsed) {
+  double elapsed_d = (double) elapsed;
 #ifdef _WIN32
   LARGE_INTEGER frequency;
   (void)QueryPerformanceFrequency(&frequency);
-  return frequency.QuadPart;
+  return elapsed_d / frequency.QuadPart;
+#elif __MACH__
+  // On OSX/iOS platform the elapsed time is cpu time unit
+  // We have to query the time base information to convert it back
+  // See https://developer.apple.com/library/mac/qa/qa1398/_index.html
+  static mach_timebase_info_data_t    sTimebaseInfo;
+  if (sTimebaseInfo.denom == 0) {
+    (void) mach_timebase_info(&sTimebaseInfo);
+  }
+  return elapsed_d * sTimebaseInfo.numer / sTimebaseInfo.denom / 1000000000;
 #else
-  return 1000000000;  // ns
+  return elapsed_d / 1000000000;  // ns
 #endif
 }
 
@@ -182,7 +197,7 @@ static void Benchmark(const char* caption, const Function& hash_function) {
     COMPILER_FENCE;
     minTicks = std::min(minTicks, t1 - t0);
   }
-  const double minSec = double(minTicks) / TimerFrequency();
+  const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
   const double GBps = kLoops * kSize / minSec * 1E-9;
   printf("%s %d sum=%lu\t\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
