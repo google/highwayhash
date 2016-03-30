@@ -103,6 +103,14 @@ class V2x64U {
     return *this;
   }
 
+  INLINE uint64_t extract64(const int index) {
+    return _mm_extract_epi64(v_, index);
+  }
+
+  INLINE uint32_t extract32(const int index) {
+    return _mm_extract_epi32(v_, index);
+  }
+
  private:
   __m128i v_;
 };

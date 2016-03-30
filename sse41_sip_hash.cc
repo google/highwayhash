@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdio>
-#include "sip_hash.h"
 #include "sse41_sip_hash.h"
 
 #include <cstring>  // memcpy
@@ -28,9 +26,9 @@ namespace {
 // XORing together all state variables yields the final hash.
 
 // 32 bytes. Parameters are hardwired to c=2, d=4 [rounds].
-class SipHashState {
+class SSE41SipHashState {
  public:
-  explicit INLINE SipHashState(const uint64_t keys[2]) {
+  explicit INLINE SSE41SipHashState(const uint64_t keys[2]) {
     const V2x64U key = LoadU(keys);
     const V2x64U init0 =
         key ^ V2x64U(0x646f72616e646f6dull, 0x736f6d6570736575ull);
@@ -60,18 +58,6 @@ class SipHashState {
   }
 
  private:
-  // Independently rotates v3 and v1 by bits3 and bits1.
-  template <uint64_t bits3, uint64_t bits1>
-  static INLINE V2x64U RotateLeft(const V2x64U& v31) {
-    const V2x64U shiftL(bits3, bits1);
-    const V2x64U shiftR(64 - bits3, 64 - bits1);
-    // The new AVX2 variable shift instruction is chiefly responsible for a
-    // 1.5x speedup vs. SSE41, which needs to rotate v3 and v1 independently.
-    const V2x64U left(_mm_sllv_epi64(v31, shiftL));
-    const V2x64U right(_mm_srlv_epi64(v31, shiftR));
-    return left | right;
-  }
-
   // Swaps and rotates v2 and v0 by 32 bits.
   static INLINE V2x64U RotateLeft32(const V2x64U& v20) {
     return V2x64U(_mm_shuffle_epi32(v20, _MM_SHUFFLE(0, 1, 3, 2)));
@@ -81,7 +67,12 @@ class SipHashState {
   template <uint64_t bits3, uint64_t bits1>
   INLINE void HalfRound() {
     v20 += v31;
-    v31 = RotateLeft<bits3, bits1>(v31);
+    uint64_t v3 = v31.extract64(1), v1 = v31.extract64(0);
+    // GCC is smart enough to convert this to rolq
+    // (verified from compiled assembly)
+    v3 = v3 << bits3 | v3 >> (64-bits3);
+    v1 = v1 << bits1 | v1 >> (64-bits1);
+    v31 = V2x64U(v3,v1);
     v31 ^= v20;
   }
 
@@ -127,9 +118,9 @@ static INLINE V2x64U LoadFinalPacket64(const uint8_t* bytes,
 
 }  // namespace
 
-uint64_t AVX2SipHash(const uint64_t key[2], const uint8_t* bytes,
+uint64_t SSE41SipHash(const uint64_t key[2], const uint8_t* bytes,
                  const uint64_t size) {
-  SipHashState state(key);
+  SSE41SipHashState state(key);
 
   size_t offset = 0;
   for (; offset < (size & ~7); offset += 8) {
@@ -143,8 +134,8 @@ uint64_t AVX2SipHash(const uint64_t key[2], const uint8_t* bytes,
   return state.Finalize();
 }
 
-uint64_t AVX2ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]) {
-  SipHashState state(key);
+uint64_t SSE41ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]) {
+  SSE41SipHashState state(key);
 
   for (int i = 0; i < 4; ++i) {
     const V2x64U packet(_mm_cvtsi64_si128(hashes[i]));
@@ -152,50 +143,4 @@ uint64_t AVX2ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]) 
   }
 
   return state.Finalize();
-}
-
-static uint64_t (*siphashFP)(const uint64_t [], const uint8_t*, const uint64_t);
-static uint64_t (*reducesiptreehashFP)(const uint64_t [], const uint64_t []);
-
-uint64_t SipHash(const uint64_t key[2], const uint8_t* bytes,
-                 const uint64_t size) {
-// __builtin_cpu_supports is available in GCC 4.8 and higher
-#if __GNUC__ > 4 || \
-  (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
-  if (!siphashFP) {
-    __builtin_cpu_init();
-    printf("checking SipHash implementation... ");
-    if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
-      siphashFP = &AVX2SipHash;
-    } else {
-      printf("sse4.1\n");
-      siphashFP = &SSE41SipHash;
-    }
-  }
-  return siphashFP(key, bytes, size);
-#else
-  AVX2SipHash(key, bytes, size);
-#endif
-}
-
-uint64_t ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]) {
-// __builtin_cpu_supports is available in GCC 4.8 and higher
-#if __GNUC__ > 4 || \
-  (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
-  if (!reducesiptreehashFP) {
-    __builtin_cpu_init();
-    printf("checking ReduceSipTreeHash implementation... ");
-    if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
-      reducesiptreehashFP = &AVX2ReduceSipTreeHash;
-    } else {
-      printf("sse4.1\n");
-      reducesiptreehashFP = &SSE41ReduceSipTreeHash;
-    }
-  }
-  return reducesiptreehashFP(key, hashes);
-#else
-  AVX2ReduceSipTreeHash(key, hashes);
-#endif
 }
