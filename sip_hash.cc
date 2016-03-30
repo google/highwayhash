@@ -164,14 +164,15 @@ uint64_t SipHash(const uint64_t key[2], const uint8_t* bytes,
   (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
   if (!siphashFP) {
     __builtin_cpu_init();
-    printf("checking SipHash implementation... ");
     if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
       siphashFP = &AVX2SipHash;
     } else {
-      printf("sse4.1\n");
       siphashFP = &SSE41SipHash;
     }
+#ifdef DEBUG
+    printf("checking SipHash implementation... %s\n",
+      __builtin_cpu_supports("avx2")? "avx2": "sse4.1");
+#endif
   }
   return siphashFP(key, bytes, size);
 #else
@@ -185,14 +186,15 @@ uint64_t ReduceSipTreeHash(const uint64_t key[2], const uint64_t hashes[4]) {
   (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
   if (!reducesiptreehashFP) {
     __builtin_cpu_init();
-    printf("checking ReduceSipTreeHash implementation... ");
     if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
       reducesiptreehashFP = &AVX2ReduceSipTreeHash;
     } else {
-      printf("sse4.1\n");
       reducesiptreehashFP = &SSE41ReduceSipTreeHash;
     }
+#ifdef DEBUG
+    printf("checking ReduceSipTreeHash implementation... %s\n",
+      __builtin_cpu_supports("avx2")? "avx2": "sse4.1");
+#endif
   }
   return reducesiptreehashFP(key, hashes);
 #else

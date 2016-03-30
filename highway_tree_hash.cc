@@ -153,7 +153,7 @@ static INLINE V4x64U LoadFinalPacket32(const uint8_t* bytes,
 
 }  // namespace
 
-uint64_t HighwayTreeAVX2(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
+uint64_t AVX2HighwayTree(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
                          const uint64_t size) {
   HighwayTreeHashState state(key);
 
@@ -183,17 +183,18 @@ uint64_t HighwayTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
   if (!highwayTreeFP) {
     __builtin_cpu_init();
-    printf("checking HighwayTreeHash implementation... ");
     if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
-      highwayTreeFP = &HighwayTreeAVX2;
+      highwayTreeFP = &AVX2HighwayTree;
     } else {
-      printf("scalar\n");
       highwayTreeFP = &ScalarHighwayTreeHash;
     }
+#ifdef DEBUG
+    printf("checking HighwayTreeHash implementation... %s\n",
+      __builtin_cpu_supports("avx2")? "avx2": "scalar");
+#endif
   }
   return highwayTreeFP(key, bytes, size);
 #else
-  HighwayTreeAVX2(key, bytes, size);
+  AVX2HighwayTree(key, bytes, size);
 #endif
 }

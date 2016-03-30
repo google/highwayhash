@@ -159,7 +159,7 @@ static INLINE V4x64U LoadFinalPacket32(const uint8_t* bytes,
 
 }  // namespace
 
-uint64_t SipTreeHashAVX2(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
+uint64_t AVX2SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
                      const uint64_t size) {
   SipTreeHashState state(key);
 
@@ -193,17 +193,18 @@ uint64_t SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
   if (!SipTreeFP) {
     __builtin_cpu_init();
-    printf("checking SipTreeHash implementation... ");
     if (__builtin_cpu_supports("avx2")) {
-      printf("AVX2\n");
-      SipTreeFP = &SipTreeHashAVX2;
+      SipTreeFP = &AVX2SipTreeHash;
     } else {
-      printf("scalar\n");
       SipTreeFP = &ScalarSipTreeHash;
     }
+#ifdef DEBUG
+    printf("checking SipTreeHash implementation... %s\n",
+      __builtin_cpu_supports("avx2")? "avx2": "scalar");
+#endif
   }
   return SipTreeFP(key, bytes, size);
 #else
-  SipTreeHashAVX2(key, bytes, size);
+  AVX2SipTreeHash(key, bytes, size);
 #endif
 }
