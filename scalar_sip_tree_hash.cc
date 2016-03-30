@@ -16,7 +16,7 @@
 #include "sip_hash.h"
 
 #include <cstring>  // memcpy
-#include "vec2.h"
+#include "code_annotation.h"
 
 namespace {
 

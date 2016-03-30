@@ -31,7 +31,8 @@
 #include "scalar_sip_tree_hash.h"
 #include "sip_hash.h"
 #include "sip_tree_hash.h"
-#include "vec2.h"
+#include "code_annotation.h"
+//#include "vec2.h"
 
 uint64_t TimerTicks() {
 #ifdef _WIN32
@@ -205,14 +206,14 @@ static void Benchmark(const char* caption, const Function& hash_function) {
 }
 
 int main(int argc, char* argv[]) {
-  Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
+  // Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
   Benchmark("ScalarHighwayTreeHash", ScalarHighwayTreeHash);
-  Benchmark("SipHash", SipHash);
-  Benchmark("SipTreeHash", SipTreeHash);
+  //Benchmark("SipHash", SipHash);
+  //Benchmark("SipTreeHash", SipTreeHash);
   Benchmark("HighwayTreeHash", HighwayTreeHash);
 
-  VerifySipHash();
-  VerifyEqual("SipTree scalar", SipTreeHash, ScalarSipTreeHash);
+  //VerifySipHash();
+  //VerifyEqual("SipTree scalar", SipTreeHash, ScalarSipTreeHash);
   VerifyEqual("HighwayTree scalar", HighwayTreeHash, ScalarHighwayTreeHash);
 
   return 0;
