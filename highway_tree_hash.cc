@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdio>
 #include "highway_tree_hash.h"
+#include "scalar_highway_tree_hash.h"
 
 #include <cstring>  // memcpy
 #include "vec2.h"
@@ -151,7 +153,7 @@ static INLINE V4x64U LoadFinalPacket32(const uint8_t* bytes,
 
 }  // namespace
 
-uint64_t HighwayTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
+uint64_t AVX2HighwayTree(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
                          const uint64_t size) {
   HighwayTreeHashState state(key);
 
@@ -168,4 +170,31 @@ uint64_t HighwayTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   state.Update(final_packet);
 
   return state.Finalize();
+}
+
+static uint64_t(*highwayTreeFP)(const uint64_t (&)[kNumLanes], const uint8_t*,
+                                const uint64_t);
+
+uint64_t HighwayTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
+                         const uint64_t size) {
+
+// __builtin_cpu_supports is available in GCC 4.8 and higher
+#if __GNUC__ > 4 || \
+  (__GNUC__ == 4 && (__GNUC_MINOR__ > 8 || __GNUC_MINOR__ == 8))
+  if (!highwayTreeFP) {
+    __builtin_cpu_init();
+    if (__builtin_cpu_supports("avx2")) {
+      highwayTreeFP = &AVX2HighwayTree;
+    } else {
+      highwayTreeFP = &ScalarHighwayTreeHash;
+    }
+#ifdef DEBUG
+    printf("checking HighwayTreeHash implementation... %s\n",
+      __builtin_cpu_supports("avx2")? "avx2": "scalar");
+#endif
+  }
+  return highwayTreeFP(key, bytes, size);
+#else
+  AVX2HighwayTree(key, bytes, size);
+#endif
 }

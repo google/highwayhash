@@ -30,8 +30,10 @@
 #include "scalar_highway_tree_hash.h"
 #include "scalar_sip_tree_hash.h"
 #include "sip_hash.h"
+#include "sse41_sip_hash.h"
 #include "sip_tree_hash.h"
-#include "vec2.h"
+#include "code_annotation.h"
+//#include "vec2.h"
 
 uint64_t TimerTicks() {
 #ifdef _WIN32
@@ -208,10 +210,12 @@ int main(int argc, char* argv[]) {
   Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
   Benchmark("ScalarHighwayTreeHash", ScalarHighwayTreeHash);
   Benchmark("SipHash", SipHash);
+  Benchmark("SSE41SipHash", SSE41SipHash);
   Benchmark("SipTreeHash", SipTreeHash);
   Benchmark("HighwayTreeHash", HighwayTreeHash);
 
   VerifySipHash();
+  VerifyEqual("SipHash SSE41", SipHash, SSE41SipHash);
   VerifyEqual("SipTree scalar", SipTreeHash, ScalarSipTreeHash);
   VerifyEqual("HighwayTree scalar", HighwayTreeHash, ScalarHighwayTreeHash);
 
