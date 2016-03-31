@@ -1,4 +1,4 @@
-CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall -DDEBUG
+CXXFLAGS := -std=c++11 -O2 -mavx2 -Wall -DDEBUG
 
 OBJS := highway_tree_hash.o \
 	scalar_highway_tree_hash.o \
