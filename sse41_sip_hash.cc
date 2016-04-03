@@ -67,16 +67,7 @@ class SSE41SipHashState {
   template <uint64_t bits3, uint64_t bits1>
   INLINE void HalfRound() {
     v20 += v31;
-    /*
-    uint64_t v3 = v31.extract64(1), v1 = v31.extract64(0);
-    // GCC is smart enough to convert this to rolq
-    // (verified from compiled assembly)
-    v3 = v3 << bits3 | v3 >> (64-bits3);
-    v1 = v1 << bits1 | v1 >> (64-bits1);
-    v31 = V2x64U(v3,v1);
-    */
     v31 = rotateLeft(v31, bits3, bits1);
-
     v31 ^= v20;
   }
 
