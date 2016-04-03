@@ -198,4 +198,14 @@ static INLINE V2x64U operator==(const V2x64U& left, const V2x64U& right) {
   return V2x64U(_mm_cmpeq_epi64(left, right));
 }
 
+static INLINE V2x64U rotateLeft(const V2x64U& v, const int count) {
+  return (v << count) | (v >> (64-count));
+}
+
+static INLINE V2x64U rotateLeft(const V2x64U& v, const int rotateH, const int rotateL) {
+  const V2x64U hi = rotateLeft(v, rotateH);
+  const V2x64U lo = rotateLeft(v, rotateL);
+  return V2x64U(_mm_blend_epi16(hi,lo,0x0F));
+}
+
 #endif  // #ifndef HIGHWAYHASH_VEC_H_
