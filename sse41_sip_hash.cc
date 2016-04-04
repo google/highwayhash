@@ -58,6 +58,12 @@ class SSE41SipHashState {
   }
 
  private:
+  static INLINE V2x64U RotateLeftIndividual(const V2x64U& v, const int rotateH, const int rotateL) {
+    const V2x64U hi = RotateLeft(v, rotateH);
+    const V2x64U lo = RotateLeft(v, rotateL);
+    return V2x64U(_mm_blend_epi16(hi,lo,0x0F));
+  }
+
   // Swaps and rotates v2 and v0 by 32 bits.
   static INLINE V2x64U RotateLeft32(const V2x64U& v20) {
     return V2x64U(_mm_shuffle_epi32(v20, _MM_SHUFFLE(0, 1, 3, 2)));
@@ -67,7 +73,7 @@ class SSE41SipHashState {
   template <uint64_t bits3, uint64_t bits1>
   INLINE void HalfRound() {
     v20 += v31;
-    v31 = rotateLeft(v31, bits3, bits1);
+    v31 = RotateLeftIndividual(v31, bits3, bits1);
     v31 ^= v20;
   }
 
