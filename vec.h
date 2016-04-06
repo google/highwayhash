@@ -198,4 +198,8 @@ static INLINE V2x64U operator==(const V2x64U& left, const V2x64U& right) {
   return V2x64U(_mm_cmpeq_epi64(left, right));
 }
 
+static INLINE V2x64U RotateLeft(const V2x64U& v, const int count) {
+  return (v << count) | (v >> (64-count));
+}
+
 #endif  // #ifndef HIGHWAYHASH_VEC_H_
