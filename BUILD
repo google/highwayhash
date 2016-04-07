@@ -19,6 +19,15 @@ cc_library(
 )
 
 cc_library(
+    name = "sse41_sip_hash",
+    srcs = ["sse41_sip_hash.cc"],
+    hdrs = ["sse41_sip_hash.h"],
+    deps = [
+        ":vector",
+    ],
+)
+
+cc_library(
     name = "sip_tree_hash",
     srcs = ["sip_tree_hash.cc"],
     hdrs = ["sip_tree_hash.h"],
@@ -67,6 +76,7 @@ cc_binary(
         ":scalar_highway_tree_hash",
         ":scalar_sip_tree_hash",
         ":sip_hash",
+        ":sse41_sip_hash",
         ":sip_tree_hash",
     ],
 )
