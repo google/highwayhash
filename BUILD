@@ -71,12 +71,12 @@ cc_binary(
         "sip_hash_main.cc",
     ],
     deps = [
-        ":vector",
         ":highway_tree_hash",
         ":scalar_highway_tree_hash",
         ":scalar_sip_tree_hash",
         ":sip_hash",
-        ":sse41_sip_hash",
         ":sip_tree_hash",
+        ":sse41_sip_hash",
+        ":vector",
     ],
 )

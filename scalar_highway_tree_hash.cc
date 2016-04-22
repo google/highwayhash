@@ -30,30 +30,41 @@ class ScalarHighwayTreeHashState {
                          0x13198a2e03707344ull, 0x243f6a8885a308d3ull};
     const Lanes init1 = {0x3bd39e10cb0ef593ull, 0xc0acf169b5f18a8cull,
                          0xbe5466cf34e90c6cull, 0x452821e638d01377ull};
+    Lanes permuted_keys;
+    Permute(keys, &permuted_keys);
     for (int lane = 0; lane < kNumLanes; ++lane) {
-      const uint64_t key = keys[lane];
-      v0[lane] = init0[lane] ^ key;
-      v1[lane] = init1[lane] ^ key;
+      v0[lane] = init0[lane] ^ keys[lane];
+      v1[lane] = init1[lane] ^ permuted_keys[lane];
+      mul0[lane] = init0[lane];
+      mul1[lane] = init1[lane];
     }
   }
 
   INLINE void Update(const uint64_t* packets) {
-    Lanes mul0, mul1;
+    const uint64_t mask32 = 0xFFFFFFFFULL;
+
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v1[lane] += packets[lane];
-      const uint64_t mask32 = 0xFFFFFFFFULL;
-      v0[lane] |= 0x70000001ULL;
-      const uint64_t mul32 = v0[lane] & mask32;
-      mul0[lane] = mul32 * (v1[lane] & mask32);
-      mul1[lane] = mul32 * (v1[lane] >> 32);
+      v1[lane] += mul0[lane];
+      const uint64_t v0_32 = v0[lane] & mask32;
+      const uint64_t v1_32 = v1[lane] & mask32;
+      mul0[lane] ^= v0_32 * (v1[lane] >> 32);
+      v0[lane] += mul1[lane];
+      mul1[lane] ^= v1_32 * (v0[lane] >> 32);
     }
 
-    Lanes merged;
-    ZipperMerge(reinterpret_cast<const uint8_t*>(&mul0),
-                reinterpret_cast<uint8_t*>(&merged));
+    Lanes merged1;
+    ZipperMerge(reinterpret_cast<const uint8_t*>(&v1),
+                reinterpret_cast<uint8_t*>(&merged1));
     for (int lane = 0; lane < kNumLanes; ++lane) {
-      v0[lane] += merged[lane];
-      v1[lane] += mul1[lane];
+      v0[lane] += merged1[lane];
+    }
+
+    Lanes merged0;
+    ZipperMerge(reinterpret_cast<const uint8_t*>(&v0),
+                reinterpret_cast<uint8_t*>(&merged0));
+    for (int lane = 0; lane < kNumLanes; ++lane) {
+      v1[lane] += merged0[lane];
     }
   }
 
@@ -63,7 +74,7 @@ class ScalarHighwayTreeHashState {
     PermuteAndUpdate();
     PermuteAndUpdate();
 
-    return v0[0] + v1[0];
+    return v0[0] + v1[0] + mul0[0] + mul1[0];
   }
 
  private:
@@ -92,14 +103,23 @@ class ScalarHighwayTreeHashState {
     return (x >> 32) | (x << 32);
   }
 
+  static INLINE void Permute(const Lanes& v, Lanes* permuted) {
+    (*permuted)[0] = Rot32(v[2]);
+    (*permuted)[1] = Rot32(v[3]);
+    (*permuted)[2] = Rot32(v[0]);
+    (*permuted)[3] = Rot32(v[1]);
+  }
+
   INLINE void PermuteAndUpdate() {
-    const Lanes permuted = {Rot32(v0[2]), Rot32(v0[3]), Rot32(v0[0]),
-                            Rot32(v0[1])};
+    Lanes permuted;
+    Permute(v0, &permuted);
     Update(permuted);
   }
 
   uint64_t v0[kNumLanes];
   uint64_t v1[kNumLanes];
+  uint64_t mul0[kNumLanes];
+  uint64_t mul1[kNumLanes];
 };
 
 }  // namespace

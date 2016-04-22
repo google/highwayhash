@@ -50,19 +50,19 @@ def x(a,b,c):
                        0xc0acf169b5f18a8cull, 0x3bd39e10cb0ef593ull);
     const V4x64U key = LoadU(keys);
     v0 = key ^ init0;
-    v1 = key ^ init1;
+    v1 = Permute(key) ^ init1;
+    mul0 = init0;
+    mul1 = init1;
   }
 
   INLINE void Update(const V4x64U& packet) {
     v1 += packet;
-    // Improves the scrambling (otherwise the hash would have difficulty
-    // escaping states with near-zero v0). Adding more bits risks bias.
-    v0 |= V4x64U(0x0000000070000001ULL);
-    V4x64U mul0(_mm256_mul_epu32(v0, v1));
-    V4x64U mul1(_mm256_mul_epu32(v0, v1 >> 32));
-
-    v0 += ZipperMerge(mul0);
-    v1 += mul1;
+    v1 += mul0;
+    mul0 ^= V4x64U(_mm256_mul_epu32(v0, v1 >> 32));
+    v0 += mul1;
+    mul1 ^= V4x64U(_mm256_mul_epu32(v1, v0 >> 32));
+    v0 += ZipperMerge(v1);
+    v1 += ZipperMerge(v0);
   }
 
   INLINE uint64_t Finalize() {
@@ -72,8 +72,9 @@ def x(a,b,c):
     PermuteAndUpdate();
     PermuteAndUpdate();
 
+    const V4x64U sum = v0 + v1 + mul0 + mul1;
     // Much faster than Store(v0 + v1) to uint64_t[].
-    return _mm_cvtsi128_si64(_mm256_extracti128_si256(v0 + v1, 0));
+    return _mm_cvtsi128_si64(_mm256_extracti128_si256(sum, 0));
   }
 
  private:
@@ -93,18 +94,23 @@ def x(a,b,c):
     return V4x64U(_mm256_shuffle_epi8(v, V4x64U(hi, lo, hi, lo)));
   }
 
-  INLINE void PermuteAndUpdate() {
+  static INLINE V4x64U Permute(const V4x64U& v) {
     // For complete mixing, we need to swap the upper and lower 128-bit halves;
     // we also swap all 32-bit halves.
     const V4x64U indices(0x0000000200000003ull, 0x0000000000000001ull,
                          0x0000000600000007ull, 0x0000000400000005ull);
-    // Slightly better to permute v0 than v1; it will be added to v1.
-    const V4x64U permuted(_mm256_permutevar8x32_epi32(v0, indices));
-    Update(permuted);
+    return V4x64U(_mm256_permutevar8x32_epi32(v, indices));
+  }
+
+  INLINE void PermuteAndUpdate() {
+    // It is slightly better to permute v0 than v1; it will be added to v1.
+    Update(Permute(v0));
   }
 
   V4x64U v0;
   V4x64U v1;
+  V4x64U mul0;
+  V4x64U mul1;
 };
 
 // Returns 32-byte packet by loading the remaining 0..31 bytes, storing

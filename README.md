@@ -28,8 +28,9 @@ means it can be used for choosing random subsets (e.g. for A/B experiments).
 Such generators are idempotent (repeatable/deterministic), which is useful
 in parallel algorithms and for testing/verification.
 
-We have verified the bit distribution and avalanche properties of HighwayHash,
-though new cryptanalysis tools may need to be developed to analyze it.
+We have verified the bit distribution and avalanche properties of HighwayHash.
+A formal security analysis is pending publication, though new cryptanalysis
+tools may still need to be developed for further analysis.
 
 ## SipHash-AVX2
 
@@ -67,13 +68,10 @@ We have devised a new way of mixing inputs with AVX-2 multiply and permute
 instructions. The multiplications are 32x32 -> 64 bits and therefore infeasible
 to reverse. Permuting equalizes the distribution of the resulting bytes.
 
-The internal state occupies two 256-bit AVX-2 registers, v0 and v1. Due to
-limitations of the instruction set, the registers are partitioned into two
-halves that remain independent until the reduce phase. Operations are 64-bit,
-so each register half contains two lanes. To improve distribution, four bits
-of each v0 lane are hardwired to 1. Therefore, the effective size of each state
-half is 248 bits. The algorithm outputs 64 bit digests, which can easily be
-extended to 256 bits by no longer discarding the remaining bits.
+The internal state occupies four 256-bit AVX-2 registers. Due to limitations of
+the instruction set, the registers are partitioned into two 512-bit halves that
+remain independent until the reduce phase. The algorithm outputs 64 bit digests
+and can easily be extended to 128 or 256 bits.
 
 In addition to high throughput, the algorithm is designed for low finalization
 cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
@@ -90,7 +88,7 @@ clocked at 3.5 GHz.
 
 SipHash:      1.7 GB/s
 SipTreeHash:  4.8 GB/s
-HighwayHash: 11.3 GB/s
+HighwayHash: 11.5 GB/s
 
 ## Requirements
 
@@ -116,6 +114,6 @@ A simple Makefile is also provided.
 * code_annotation.h defines some compiler-dependent language extensions.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, 2016-03-01
+<jyrki.alakuijala@gmail.com>, updated 2016-04-22
 
 This is not an official Google product.
