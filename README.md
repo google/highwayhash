@@ -77,6 +77,8 @@ In addition to high throughput, the algorithm is designed for low finalization
 cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
 inputs.
 
+For older CPUs, an SSE4.1 version is also provided.
+
 ## Results
 
 Performance is measured as throughput for 1 KiB messages. The benchmark
@@ -88,7 +90,8 @@ clocked at 3.5 GHz.
 
 SipHash:      1.7 GB/s
 SipTreeHash:  4.8 GB/s
-HighwayHash: 11.5 GB/s
+HighwayTreeHash: 11.5 GB/s
+SSE41HighwayTreeHash: 6.3 GB/s
 
 ## Requirements
 

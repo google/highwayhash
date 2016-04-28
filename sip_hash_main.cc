@@ -31,6 +31,7 @@
 #include "scalar_sip_tree_hash.h"
 #include "sip_hash.h"
 #include "sip_tree_hash.h"
+#include "sse41_highway_tree_hash.h"
 #include "sse41_sip_hash.h"
 #include "vec2.h"
 
@@ -212,6 +213,7 @@ int main(int argc, char* argv[]) {
   Benchmark("SipHash", SipHash);
   Benchmark("SipTreeHash", SipTreeHash);
   Benchmark("HighwayTreeHash", HighwayTreeHash);
+  Benchmark("SSE41HighwayTreeHash", SSE41HighwayTreeHash);
 
   VerifySipHash();
   VerifyEqual("SipHash SSE41", SSE41SipHash, SipHash);
