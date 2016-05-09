@@ -104,6 +104,17 @@ To build with Bazel (http://bazel.io/) :
 
 A simple Makefile is also provided.
 
+## Third-party implementations / bindings
+
+Thanks to Damian Gryski for making us aware of these third-party
+implementations or bindings. Please feel free to get in touch or
+raise an issue and we'll add yours as well.
+
+By | Language | URL
+--- | --- | ---
+Damian Gryski | Go | https://github.com/dgryski/go-highway/
+Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
+Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
 ## Modules
 
@@ -112,11 +123,12 @@ A simple Makefile is also provided.
 * sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
 * highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
 * scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
+* sse41_sip_hash and sse41_highway_tree_hash are variants that require only SSE4.1.
 * vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
 * vec.h provides a similar class for 128-bit vectors.
 * code_annotation.h defines some compiler-dependent language extensions.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-04-22
+<jyrki.alakuijala@gmail.com>, updated 2016-05-09
 
 This is not an official Google product.
