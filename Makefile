@@ -3,6 +3,7 @@ CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall
 OBJS := highway_tree_hash.o \
 	sse41_highway_tree_hash.o \
 	scalar_highway_tree_hash.o \
+	scalar_sip_hash.o \
 	scalar_sip_tree_hash.o \
 	sip_hash.o \
 	sip_tree_hash.o \

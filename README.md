@@ -88,10 +88,13 @@ ensure the compiler does not elide anything. The C++ implementations are
 compiled with GCC 4.8.4 and run on a single core of a desktop Xeon E5-1650 v3
 clocked at 3.5 GHz.
 
-SipHash:      1.7 GB/s
-SipTreeHash:  4.8 GB/s
-HighwayTreeHash: 11.5 GB/s
-SSE41HighwayTreeHash: 6.3 GB/s
+Variant | Throughput
+--- | ---
+SipHash | 1.7 GB/s
+ScalarSipHash | 2.2 GB/s
+SipTreeHash | 4.8 GB/s
+SSE41HighwayTreeHash | 6.3 GB/s
+HighwayTreeHash | 11.5 GB/s
 
 ## Requirements
 
@@ -123,7 +126,7 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
 * highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
 * scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
-* sse41_sip_hash and sse41_highway_tree_hash are variants that require only SSE4.1.
+* sse41_sip_hash and sse41_highway_tree_hash are variants that only need SSE4.1.
 * vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
 * vec.h provides a similar class for 128-bit vectors.
 * code_annotation.h defines some compiler-dependent language extensions.

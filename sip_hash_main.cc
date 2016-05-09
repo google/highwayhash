@@ -28,6 +28,7 @@
 #endif
 #include "highway_tree_hash.h"
 #include "scalar_highway_tree_hash.h"
+#include "scalar_sip_hash.h"
 #include "scalar_sip_tree_hash.h"
 #include "sip_hash.h"
 #include "sip_tree_hash.h"
@@ -202,11 +203,12 @@ static void Benchmark(const char* caption, const Function& hash_function) {
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
   const double GBps = kLoops * kSize / minSec * 1E-9;
-  printf("%s %d sum=%lu\t\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%lu\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
 int main(int argc, char* argv[]) {
+  Benchmark("ScalarSipHash", ScalarSipHash);
   Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
   Benchmark("ScalarHighwayTreeHash", ScalarHighwayTreeHash);
   Benchmark("SSE41SipHash",SSE41SipHash);
@@ -216,9 +218,10 @@ int main(int argc, char* argv[]) {
   Benchmark("SSE41HighwayTreeHash", SSE41HighwayTreeHash);
 
   VerifySipHash();
-  VerifyEqual("SipHash SSE41", SSE41SipHash, SipHash);
-  VerifyEqual("SipTree scalar", SipTreeHash, ScalarSipTreeHash);
-  VerifyEqual("HighwayTree scalar", HighwayTreeHash, ScalarHighwayTreeHash);
+  VerifyEqual("ScalarSipHash", ScalarSipHash, SipHash);
+  VerifyEqual("SSE41SipHash", SSE41SipHash, SipHash);
+  VerifyEqual("ScalarSipTreeHash", ScalarSipTreeHash, SipTreeHash);
+  VerifyEqual("ScalarHighwayTreeHash", ScalarHighwayTreeHash, HighwayTreeHash);
 
   return 0;
 }
