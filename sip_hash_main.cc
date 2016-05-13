@@ -207,6 +207,44 @@ static void Benchmark(const char* caption, const Function& hash_function) {
          cyclesPerByte);
 }
 
+template <class State>
+static void BenchmarkUpdate(const char* caption) {
+  const int kSize = 1024;
+  uint8_t in[kSize];
+  for (int i = 0; i < kSize; ++i) {
+    in[i] = static_cast<uint8_t>(i);
+  }
+
+  const uint64_t key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                           0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+
+  uint64_t sum = 1;
+  uint64_t minTicks = 99999999999;
+  const int kLoops = 500;
+  const int kItems = 100;
+  for (int rep = 0; rep < 25; ++rep) {
+    const uint64_t t0 = TimerTicks();
+    COMPILER_FENCE;
+    for (int loop = 0; loop < kLoops; ++loop) {
+      State state(key);
+      for (int item = 0; item < kItems; ++item) {
+        UpdateState(in, kSize, &state);
+      }
+      const uint64_t hash = state.Finalize();
+      sum <<= 1;
+      sum ^= hash;
+    }
+    const uint64_t t1 = TimerTicks();
+    COMPILER_FENCE;
+    minTicks = std::min(minTicks, t1 - t0);
+  }
+  const double minSec = ToSeconds(minTicks);
+  const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kItems * kSize);
+  const double GBps = kLoops * kItems * kSize / minSec * 1E-9;
+  printf("%21s %d sum=%lu\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+         cyclesPerByte);
+}
+
 int main(int argc, char* argv[]) {
   Benchmark("ScalarSipHash", ScalarSipHash);
   Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
@@ -216,6 +254,8 @@ int main(int argc, char* argv[]) {
   Benchmark("SipTreeHash", SipTreeHash);
   Benchmark("HighwayTreeHash", HighwayTreeHash);
   Benchmark("SSE41HighwayTreeHash", SSE41HighwayTreeHash);
+  BenchmarkUpdate<ScalarSipHashState>("Update: ScalarSip");
+  BenchmarkUpdate<HighwayTreeHashState>("Update: HighwayTree");
 
   VerifySipHash();
   VerifyEqual("ScalarSipHash", ScalarSipHash, SipHash);

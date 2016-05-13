@@ -17,9 +17,83 @@
 
 // Scalar (non-vector/SIMD) version for comparison purposes.
 
+#include <cstddef>
 #include <cstdint>
+#include <cstring>  // memcpy
+#include "code_annotation.h"
 
 #ifdef __cplusplus
+
+class ScalarSipHashState {
+ public:
+  static const size_t kPacketSize = sizeof(uint64_t);
+
+  explicit INLINE ScalarSipHashState(const uint64_t key[2]) {
+    v0 = 0x736f6d6570736575ull ^ key[0];
+    v1 = 0x646f72616e646f6dull ^ key[1];
+    v2 = 0x6c7967656e657261ull ^ key[0];
+    v3 = 0x7465646279746573ull ^ key[1];
+  }
+
+  INLINE void Update(const uint8_t* bytes) {
+    uint64_t packet;
+    memcpy(&packet, bytes, sizeof(packet));
+
+    v3 ^= packet;
+
+    Compress<2>();
+
+    v0 ^= packet;
+  }
+
+  INLINE uint64_t Finalize() {
+    // Mix in bits to avoid leaking the key if all packets were zero.
+    v2 ^= 0xFF;
+
+    Compress<4>();
+
+    return (v0 ^ v1) ^ (v2 ^ v3);
+  }
+
+ private:
+  // Rotate a 64-bit value "v" left by N bits.
+  template <uint64_t bits>
+  static INLINE uint64_t RotateLeft(const uint64_t v) {
+    const uint64_t left = v << bits;
+    const uint64_t right = v >> (64 - bits);
+    return left | right;
+  }
+
+  template <size_t rounds>
+  INLINE void Compress() {
+    for (size_t i = 0; i < rounds; ++i) {
+      // ARX network: add, rotate, exclusive-or.
+      v0 += v1;
+      v2 += v3;
+      v1 = RotateLeft<13>(v1);
+      v3 = RotateLeft<16>(v3);
+      v1 ^= v0;
+      v3 ^= v2;
+
+      v0 = RotateLeft<32>(v0);
+
+      v2 += v1;
+      v0 += v3;
+      v1 = RotateLeft<17>(v1);
+      v3 = RotateLeft<21>(v3);
+      v1 ^= v2;
+      v3 ^= v0;
+
+      v2 = RotateLeft<32>(v2);
+    }
+  }
+
+  uint64_t v0;
+  uint64_t v1;
+  uint64_t v2;
+  uint64_t v3;
+};
+
 extern "C" {
 #endif
 

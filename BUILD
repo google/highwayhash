@@ -1,5 +1,9 @@
 # SipHash and HighwayHash: cryptographically-strong pseudorandom functions
 
+licenses(["notice"])  # Apache 2.0
+
+exports_files(["LICENSE"])
+
 cc_library(
     name = "vector",
     hdrs = [
@@ -42,7 +46,8 @@ cc_library(
     srcs = ["scalar_sip_hash.cc"],
     hdrs = [
         "code_annotation.h",
-        "scalar_sip_hash.h"
+        "scalar_sip_hash.h",
+        "state_helpers.h",
     ],
 )
 
@@ -59,7 +64,10 @@ cc_library(
 cc_library(
     name = "highway_tree_hash",
     srcs = ["highway_tree_hash.cc"],
-    hdrs = ["highway_tree_hash.h"],
+    hdrs = [
+        "highway_tree_hash.h",
+        "state_helpers.h",
+    ],
     deps = [
         ":vector",
     ],
