@@ -3,6 +3,9 @@
 
 // Helper functions to split inputs into packets and call State::Update on each.
 
+#include <cstdint>
+#include <memory>
+
 #include "code_annotation.h"
 
 // Copies the remaining bytes to a zero-padded buffer, sets the upper byte to
@@ -39,12 +42,40 @@ INLINE void UpdateState(const uint8_t* bytes, const uint64_t size,
   PaddedUpdate(size, bytes + truncated_size, remainder, state);
 }
 
-// Convenience function for hashing strings.
+// Convenience function for updating with the bytes of a string.
 template <class String, class State>
 INLINE void UpdateState(const String& s, State* state) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(s.data());
   const size_t size = s.length() * sizeof(typename String::value_type);
   UpdateState(bytes, size, state);
 }
+
+// Computes a hash of a byte array using the given hash State class.
+// This avoids duplicating Update/Finalize in every call site.
+//
+// Callers wanting to combine multiple hashes should repeatedly UpdateState()
+// and only call State::Finalize once.
+template <class State>
+uint64_t ComputeHash(const typename State::Key& key, const uint8_t* bytes,
+                     const uint64_t size) {
+  State state(key);
+  UpdateState(bytes, size, &state);
+  return state.Finalize();
+}
+
+// Computes a hash of a string's bytes using the given hash State class.
+//
+// Struct with nested function template enables deduction of the String type.
+// Example: const uint64_t key[2] = { 1, 2 };
+// StringHasher<ScalarSipHashState>()(key, std::u16string(u"abc"));
+template <class State>
+struct StringHasher {
+  template <class String>
+  uint64_t operator()(const typename State::Key& key, const String& s) {
+    State state(key);
+    UpdateState(s, &state);
+    return state.Finalize();
+  }
+};
 
 #endif  // HIGHWAYHASH_STATE_H_

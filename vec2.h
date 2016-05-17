@@ -15,6 +15,8 @@
 #ifndef HIGHWAYHASH_VEC2_H_
 #define HIGHWAYHASH_VEC2_H_
 
+#ifdef __AVX2__
+
 // Defines SIMD vector classes ("V4x64U") with overloaded arithmetic operators:
 // const V4x64U masked_sum = (a + b) & m;
 // This is shorter and more readable than compiler intrinsics:
@@ -198,4 +200,5 @@ static INLINE V4x64U operator==(const V4x64U& left, const V4x64U& right) {
   return V4x64U(_mm256_cmpeq_epi64(left, right));
 }
 
+#endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_VEC2_H_

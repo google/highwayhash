@@ -14,6 +14,7 @@
 
 #ifndef HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
 #define HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
+#ifdef __SSE4_1__
 
 #include <cstdint>
 
@@ -38,4 +39,5 @@ uint64_t SSE41HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
 }  // extern "C"
 #endif
 
+#endif  // #ifdef __SSE4_1__
 #endif  // #ifndef HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_

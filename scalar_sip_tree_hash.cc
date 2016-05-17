@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "scalar_sip_tree_hash.h"
-#include "sip_hash.h"
+#include "scalar_sip_hash.h"
 
 #include <cstring>  // memcpy
 #include "vec2.h"
@@ -140,5 +140,7 @@ uint64_t ScalarSipTreeHash(const Lanes& key,
     hashes[lane] = state[lane].Finalize();
   }
 
-  return ReduceSipTreeHash(key, hashes);
+  ScalarSipHashState::Key reduce_key;
+  memcpy(&reduce_key, &key, sizeof(reduce_key));
+  return ReduceSipTreeHash(reduce_key, hashes);
 }

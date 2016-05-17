@@ -21,14 +21,15 @@
 #include <cstdint>
 #include <cstring>  // memcpy
 #include "code_annotation.h"
+#include "state_helpers.h"
 
-#ifdef __cplusplus
-
+// Paper: https://www.131002.net/siphash/siphash.pdf
 class ScalarSipHashState {
  public:
+  using Key = uint64_t[2];
   static const size_t kPacketSize = sizeof(uint64_t);
 
-  explicit INLINE ScalarSipHashState(const uint64_t key[2]) {
+  explicit INLINE ScalarSipHashState(const Key& key) {
     v0 = 0x736f6d6570736575ull ^ key[0];
     v1 = 0x646f72616e646f6dull ^ key[1];
     v2 = 0x6c7967656e657261ull ^ key[0];
@@ -94,14 +95,36 @@ class ScalarSipHashState {
   uint64_t v3;
 };
 
-extern "C" {
-#endif
+// Fast, cryptographically strong pseudo-random function. Useful for:
+// . hash tables holding attacker-controlled data. This function is
+//   immune to hash flooding DOS attacks because multi-collisions are
+//   infeasible to compute, provided the key remains secret.
+// . deterministic/idempotent 'random' number generation, e.g. for
+//   choosing a subset of items based on their contents.
+//
+// Robust versus timing attacks because memory accesses are sequential
+// and the algorithm is branch-free. Compute time is proportional to the
+// number of 8-byte packets and about twice as fast as an sse41 implementation.
+//
+// "key" is a secret 128-bit key unknown to attackers.
+// "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
+// Returns a 64-bit hash of the given data bytes.
+static INLINE uint64_t ScalarSipHash(const ScalarSipHashState::Key& key,
+                                     const uint8_t* bytes,
+                                     const uint64_t size) {
+  return ComputeHash<ScalarSipHashState>(key, bytes, size);
+}
 
-uint64_t ScalarSipHash(const uint64_t key[2], const uint8_t* bytes,
-                       const uint64_t size);
+template <int kNumLanes>
+static INLINE uint64_t ReduceSipTreeHash(const ScalarSipHashState::Key& key,
+                                         const uint64_t (&hashes)[kNumLanes]) {
+  ScalarSipHashState state(key);
 
-#ifdef __cplusplus
-}  // extern "C"
-#endif
+  for (int i = 0; i < kNumLanes; ++i) {
+    state.Update(reinterpret_cast<const uint8_t*>(&hashes[i]));
+  }
+
+  return state.Finalize();
+}
 
 #endif  // #ifndef HIGHWAYHASH_SCALAR_SIP_HASH_H_

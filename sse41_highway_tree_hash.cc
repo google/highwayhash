@@ -14,6 +14,7 @@
 
 #include "sse41_highway_tree_hash.h"
 
+#ifdef __SSE4_1__
 #include <cstring>  // memcpy
 #include "vec.h"
 
@@ -143,3 +144,5 @@ uint64_t SSE41HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
 
   return state.Finalize();
 }
+
+#endif  // #ifdef __SSE4_1__

@@ -13,12 +13,3 @@
 // limitations under the License.
 
 #include "scalar_sip_hash.h"
-#include "state_helpers.h"
-
-// Paper: https://www.131002.net/siphash/siphash.pdf
-uint64_t ScalarSipHash(const uint64_t key[2], const uint8_t* bytes,
-                       const uint64_t size) {
-  ScalarSipHashState state(key);
-  UpdateState(bytes, size, &state);
-  return state.Finalize();
-}

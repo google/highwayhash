@@ -14,8 +14,9 @@
 
 #include "sip_tree_hash.h"
 
+#ifdef __AVX2__
 #include <cstring>  // memcpy
-#include "sip_hash.h"
+#include "scalar_sip_hash.h"
 #include "vec2.h"
 
 namespace {
@@ -178,5 +179,9 @@ uint64_t SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   ALIGNED(uint64_t, 64) hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
-  return ReduceSipTreeHash(key, hashes);
+  ScalarSipHashState::Key reduce_key;
+  memcpy(&reduce_key, &key, sizeof(reduce_key));
+  return ReduceSipTreeHash(reduce_key, hashes);
 }
+
+#endif  // #ifdef __AVX2__

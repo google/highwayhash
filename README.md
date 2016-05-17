@@ -32,19 +32,15 @@ We have verified the bit distribution and avalanche properties of HighwayHash.
 A formal security analysis is pending publication, though new cryptanalysis
 tools may still need to be developed for further analysis.
 
-## SipHash-AVX2
+## ScalarSipHash
 
-Our SipHash implementation aims for maximum efficiency while remaining
-compatible with the reference C code. Outputs are identical for the given
-test cases (messages between 0 and 63 bytes).
+Our ScalarSipHash implementation is a fast and portable drop-in replacement for
+the reference C code. Outputs are identical for the given test cases (messages
+between 0 and 63 bytes).
 
-Compared to Bernstein's SSE4.1 implementation (https://goo.gl/80GBSD),
-it is about 1.5x faster on the same machine. About 10% of that is tuning
-and the rest is achieved with AVX-2 independent-shift instructions.
-
-The implementation uses custom vector classes with overloaded operators
-(e.g. const V2x64U a = b + c) for type-safety and improved readability
-vs. compiler intrinsics (e.g. const __m128i a = _mm_add_epi64(b, c)).
+Interestingly, it is about twice as fast as a SIMD implementation using SSE4.1
+(https://goo.gl/80GBSD). This is presumably due to the lack of SIMD bit rotate
+instructions.
 
 ## SipTreeHash
 
@@ -59,8 +55,11 @@ A0, A1, A2, A3 via four-way SIMD; update each of these with the second qwords
 B0, B1, B2, B3. Each independent hash result H_i includes A_i and B_i. Finally,
 combine the H_i into a single digest via SipHash.
 
-By making full use of AVX-2 vectors, this leads to a 3x speedup vs. our
-compatible implementation. However, the output no longer matches SipHash.
+This is about twice as fast as ScalarSipHash, but the outputs differ.
+
+The implementation uses custom AVX-2 vector classes with overloaded operators
+(e.g. const V4x64U a = b + c) for type-safety and improved readability
+vs. compiler intrinsics (e.g. const __m256i a = _mm256_add_epi64(b, c)).
 
 ## HighwayHash
 
@@ -90,15 +89,15 @@ clocked at 3.5 GHz.
 
 Variant | Throughput
 --- | ---
-SipHash | 1.7 GB/s
 ScalarSipHash | 2.2 GB/s
-SipTreeHash | 4.8 GB/s
-SSE41HighwayTreeHash | 6.3 GB/s
-HighwayTreeHash | 11.5 GB/s
+SipTreeHash | 5.1 GB/s
+SSE41HighwayTreeHash | 6.5 GB/s
+HighwayTreeHash | 12.3 GB/s
 
 ## Requirements
 
-The software requires AVX-2-capable CPUs (Intel Haswell or upcoming AMD).
+SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
+ScalarSipHash has no particular CPU requirement.
 
 ## Build instructions
 
@@ -121,17 +120,18 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
 ## Modules
 
-* sip_hash.cc is the compatible implementation of SipHash, and also
+* scalar_sip_hash.cc is the compatible implementation of SipHash, and also
   provides the final reduction for sip_tree_hash.
 * sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
 * highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
 * scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
-* sse41_sip_hash and sse41_highway_tree_hash are variants that only need SSE4.1.
+* sse41_highway_tree_hash is a variant that only needs SSE4.1.
 * vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
 * vec.h provides a similar class for 128-bit vectors.
 * code_annotation.h defines some compiler-dependent language extensions.
+* state_helpers.h simplifies the implementation of each hash.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-05-09
+<jyrki.alakuijala@gmail.com>, updated 2016-05-17
 
 This is not an official Google product.

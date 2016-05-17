@@ -14,6 +14,7 @@
 
 #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
 #define HIGHWAYHASH_SIP_TREE_HASH_H_
+#ifdef __AVX2__
 
 #include <cstdint>
 
@@ -44,4 +45,5 @@ uint64_t SipTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
 }  // extern "C"
 #endif
 
+#endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_

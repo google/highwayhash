@@ -14,23 +14,23 @@
 
 #ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
 #define HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
+#ifdef __AVX2__
 
 #include <cstddef>
 #include <cstdint>
 #include "state_helpers.h"
 #include "vec2.h"
 
-#ifdef __cplusplus
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
 class HighwayTreeHashState {
  public:
   // Four (2 x 64-bit) hash states are updated in parallel by injecting
   // four 64-bit packets per Update(). Finalize() combines the four states into
   // one final 64-bit digest.
-  static const int kNumLanes = 4;
-  static const int kPacketSize = kNumLanes * sizeof(uint64_t);
+  using Key = uint64_t[4];
+  static const int kPacketSize = sizeof(Key);
 
-  explicit INLINE HighwayTreeHashState(const uint64_t (&keys)[kNumLanes]) {
+  explicit INLINE HighwayTreeHashState(const Key& key_lanes) {
     // "Nothing up my sleeve" numbers, concatenated hex digits of Pi from
     // http://www.numberworld.org/digits/Pi/, retrieved Feb 22, 2016.
     //
@@ -49,7 +49,7 @@ def x(a,b,c):
                        0xa4093822299f31d0ull, 0xdbe6d5d5fe4cce2full);
     const V4x64U init1(0x452821e638d01377ull, 0xbe5466cf34e90c6cull,
                        0xc0acf169b5f18a8cull, 0x3bd39e10cb0ef593ull);
-    const V4x64U key = LoadU(keys);
+    const V4x64U key = LoadU(key_lanes);
     v0 = key ^ init0;
     v1 = Permute(key) ^ init1;
     mul0 = init0;
@@ -159,9 +159,6 @@ INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64_t size,
   state->Update(packet);
 }
 
-extern "C" {
-#endif
-
 // J-lanes tree hash based upon multiplication and "zipper merges".
 //
 // Robust versus timing attacks because memory accesses are sequential
@@ -172,11 +169,11 @@ extern "C" {
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 //
 // Returns a 64-bit hash of the given data bytes.
-uint64_t HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
-                         const uint64_t size);
+static INLINE uint64_t HighwayTreeHash(const HighwayTreeHashState::Key& key,
+                                       const uint8_t* bytes,
+                                       const uint64_t size) {
+  return ComputeHash<HighwayTreeHashState>(key, bytes, size);
+}
 
-#ifdef __cplusplus
-}  // extern "C"
-#endif
-
+#endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_

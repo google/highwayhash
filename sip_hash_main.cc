@@ -30,10 +30,8 @@
 #include "scalar_highway_tree_hash.h"
 #include "scalar_sip_hash.h"
 #include "scalar_sip_tree_hash.h"
-#include "sip_hash.h"
 #include "sip_tree_hash.h"
 #include "sse41_highway_tree_hash.h"
-#include "sse41_sip_hash.h"
 #include "vec2.h"
 
 uint64_t TimerTicks() {
@@ -136,7 +134,7 @@ static void VerifySipHash() {
 
   for (int size = 0; size < kMaxSize; ++size) {
     in[size] = static_cast<uint8_t>(size);
-    const uint64_t hash = SipHash(key, in, size);
+    const uint64_t hash = ScalarSipHash(key, in, size);
 
     uint8_t out[8];
     memcpy(out, &hash, sizeof(hash));
@@ -175,13 +173,14 @@ static void VerifyEqual(const char* caption, const Function1& hash_function1,
 }
 
 template <class Function>
-static void Benchmark(const char* caption, const Function& hash_function) {
+static void BenchmarkFunc(const char* caption, const Function& hash_function) {
   const int kSize = 1024;
   uint8_t in[kSize];
   for (int i = 0; i < kSize; ++i) {
     in[i] = static_cast<uint8_t>(i);
   }
 
+  // hash_function accepts a decayed pointer.
   const uint64_t key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
                            0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
 
@@ -203,7 +202,42 @@ static void Benchmark(const char* caption, const Function& hash_function) {
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
   const double GBps = kLoops * kSize / minSec * 1E-9;
-  printf("%21s %d sum=%lu\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+         cyclesPerByte);
+}
+
+template <class State>
+static void BenchmarkState(const char* caption) {
+  const int kSize = 1024;
+  uint8_t in[kSize];
+  for (int i = 0; i < kSize; ++i) {
+    in[i] = static_cast<uint8_t>(i);
+  }
+
+  const uint64_t all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                                0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  typename State::Key key;
+  memcpy(&key, all_keys, sizeof(key));
+
+  uint64_t sum = 1;
+  uint64_t minTicks = 99999999999;
+  const int kLoops = 50000;
+  for (int rep = 0; rep < 25; ++rep) {
+    const uint64_t t0 = TimerTicks();
+    COMPILER_FENCE;
+    for (int loop = 0; loop < kLoops; ++loop) {
+      const uint64_t hash = ComputeHash<State>(key, in, kSize);
+      sum <<= 1;
+      sum ^= hash;
+    }
+    const uint64_t t1 = TimerTicks();
+    COMPILER_FENCE;
+    minTicks = std::min(minTicks, t1 - t0);
+  }
+  const double minSec = ToSeconds(minTicks);
+  const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
+  const double GBps = kLoops * kSize / minSec * 1E-9;
+  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
@@ -215,8 +249,10 @@ static void BenchmarkUpdate(const char* caption) {
     in[i] = static_cast<uint8_t>(i);
   }
 
-  const uint64_t key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                           0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  const uint64_t all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                                0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  typename State::Key key;
+  memcpy(&key, all_keys, sizeof(key));
 
   uint64_t sum = 1;
   uint64_t minTicks = 99999999999;
@@ -241,27 +277,33 @@ static void BenchmarkUpdate(const char* caption) {
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kItems * kSize);
   const double GBps = kLoops * kItems * kSize / minSec * 1E-9;
-  printf("%21s %d sum=%lu\tGBps=%.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
 int main(int argc, char* argv[]) {
-  Benchmark("ScalarSipHash", ScalarSipHash);
-  Benchmark("ScalarSipTreeHash", ScalarSipTreeHash);
-  Benchmark("ScalarHighwayTreeHash", ScalarHighwayTreeHash);
-  Benchmark("SSE41SipHash",SSE41SipHash);
-  Benchmark("SipHash", SipHash);
-  Benchmark("SipTreeHash", SipTreeHash);
-  Benchmark("HighwayTreeHash", HighwayTreeHash);
-  Benchmark("SSE41HighwayTreeHash", SSE41HighwayTreeHash);
+  BenchmarkState<ScalarSipHashState>("ScalarSipHash");
   BenchmarkUpdate<ScalarSipHashState>("Update: ScalarSip");
+  printf("\n");
+  BenchmarkFunc("ScalarSipTreeHash", ScalarSipTreeHash);
+#ifdef __AVX2__
+  BenchmarkFunc("SipTreeHash", SipTreeHash);
+#endif
+  printf("\n");
+  BenchmarkFunc("ScalarHighwayTreeHash", ScalarHighwayTreeHash);
+#ifdef __SSE4_1__
+  BenchmarkFunc("SSE41HighwayTreeHash", SSE41HighwayTreeHash);
+#endif
+#ifdef __AVX2__
+  BenchmarkState<HighwayTreeHashState>("HighwayTreeHash");
   BenchmarkUpdate<HighwayTreeHashState>("Update: HighwayTree");
-
+#endif
+  printf("\n");
   VerifySipHash();
-  VerifyEqual("ScalarSipHash", ScalarSipHash, SipHash);
-  VerifyEqual("SSE41SipHash", SSE41SipHash, SipHash);
+#ifdef __AVX2__
   VerifyEqual("ScalarSipTreeHash", ScalarSipTreeHash, SipTreeHash);
   VerifyEqual("ScalarHighwayTreeHash", ScalarHighwayTreeHash, HighwayTreeHash);
+#endif
 
   return 0;
 }

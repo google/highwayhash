@@ -13,10 +13,3 @@
 // limitations under the License.
 
 #include "highway_tree_hash.h"
-
-uint64_t HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
-                         const uint64_t size) {
-  HighwayTreeHashState state(key);
-  UpdateState(bytes, size, &state);
-  return state.Finalize();
-}
