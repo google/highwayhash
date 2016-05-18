@@ -52,8 +52,11 @@ INLINE void UpdateState(const String& s, State* state) {
 }
 
 // Computes a hash of a byte array using the given hash State class.
-// This avoids duplicating Update/Finalize in every call site.
 //
+// Example: const SipHashState::Key key = { 1, 2 }; char data[4];
+// ComputeHash<SipHashState>(key, data, sizeof(data));
+//
+// This function avoids duplicating Update/Finalize in every call site.
 // Callers wanting to combine multiple hashes should repeatedly UpdateState()
 // and only call State::Finalize once.
 template <class State>
@@ -66,9 +69,10 @@ uint64 ComputeHash(const typename State::Key& key, const char* bytes,
 
 // Computes a hash of a string's bytes using the given hash State class.
 //
-// Struct with nested function template enables deduction of the String type.
-// Example: const uint64 key[2] = { 1, 2 };
-// StringHasher<ScalarSipHashState>()(key, std::u16string(u"abc"));
+// Example: const SipHashState::Key key = { 1, 2 };
+// StringHasher<SipHashState>()(key, std::u16string(u"abc"));
+//
+// A struct with nested function template enables deduction of the String type.
 template <class State>
 struct StringHasher {
   template <class String>

@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "scalar_sip_hash.h"
+#include "sip_hash.h"

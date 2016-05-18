@@ -15,11 +15,11 @@ cc_library(
 )
 
 cc_library(
-    name = "scalar_sip_hash",
-    srcs = ["scalar_sip_hash.cc"],
+    name = "sip_hash",
+    srcs = ["sip_hash.cc"],
     hdrs = [
         "code_annotation.h",
-        "scalar_sip_hash.h",
+        "sip_hash.h",
         "state_helpers.h",
         "types.h",
     ],
@@ -32,7 +32,7 @@ cc_library(
     hdrs = ["sip_tree_hash.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":scalar_sip_hash",
+        ":sip_hash",
         ":vector",
     ],
 )
@@ -42,7 +42,7 @@ cc_library(
     srcs = ["scalar_sip_tree_hash.cc"],
     hdrs = ["scalar_sip_tree_hash.h"],
     deps = [
-        ":scalar_sip_hash",
+        ":sip_hash",
         ":vector",
     ],
 )
@@ -86,8 +86,8 @@ cc_binary(
     deps = [
         ":highway_tree_hash",
         ":scalar_highway_tree_hash",
-        ":scalar_sip_hash",
         ":scalar_sip_tree_hash",
+        ":sip_hash",
         ":sip_tree_hash",
         ":sse41_highway_tree_hash",
         ":vector",

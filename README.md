@@ -32,9 +32,9 @@ We have verified the bit distribution and avalanche properties of HighwayHash.
 A formal security analysis is pending publication, though new cryptanalysis
 tools may still need to be developed for further analysis.
 
-## ScalarSipHash
+## SipHash
 
-Our ScalarSipHash implementation is a fast and portable drop-in replacement for
+Our SipHash implementation is a fast and portable drop-in replacement for
 the reference C code. Outputs are identical for the given test cases (messages
 between 0 and 63 bytes).
 
@@ -55,7 +55,7 @@ A0, A1, A2, A3 via four-way SIMD; update each of these with the second qwords
 B0, B1, B2, B3. Each independent hash result H_i includes A_i and B_i. Finally,
 combine the H_i into a single digest via SipHash.
 
-This is about twice as fast as ScalarSipHash, but the outputs differ.
+This is about twice as fast as SipHash, but the outputs differ.
 
 The implementation uses custom AVX-2 vector classes with overloaded operators
 (e.g. const V4x64U a = b + c) for type-safety and improved readability
@@ -89,7 +89,7 @@ clocked at 3.5 GHz.
 
 Variant | Throughput
 --- | ---
-ScalarSipHash | 2.2 GB/s
+SipHash | 2.2 GB/s
 SipTreeHash | 5.1 GB/s
 SSE41HighwayTreeHash | 6.5 GB/s
 HighwayTreeHash | 12.3 GB/s
@@ -97,7 +97,7 @@ HighwayTreeHash | 12.3 GB/s
 ## Requirements
 
 SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
-ScalarSipHash has no particular CPU requirement.
+SipHash has no particular CPU requirement.
 
 ## Build instructions
 
@@ -120,8 +120,8 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
 ## Modules
 
-* scalar_sip_hash.cc is the compatible implementation of SipHash, and also
-  provides the final reduction for sip_tree_hash.
+* sip_hash.cc is the compatible implementation of SipHash, and also provides the
+  final reduction for sip_tree_hash.
 * sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
 * highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
 * scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_SCALAR_SIP_HASH_H_
-#define HIGHWAYHASH_SCALAR_SIP_HASH_H_
+#ifndef HIGHWAYHASH_SIP_HASH_H_
+#define HIGHWAYHASH_SIP_HASH_H_
 
-// Scalar (non-vector/SIMD) version for comparison purposes.
+// Portable but fast SipHash implementation.
 
 #include <cstddef>
 #include <cstring>  // memcpy
@@ -26,12 +26,12 @@
 namespace highwayhash {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
-class ScalarSipHashState {
+class SipHashState {
  public:
   using Key = uint64[2];
   static const size_t kPacketSize = sizeof(uint64);
 
-  explicit INLINE ScalarSipHashState(const Key& key) {
+  explicit INLINE SipHashState(const Key& key) {
     v0 = 0x736f6d6570736575ull ^ key[0];
     v1 = 0x646f72616e646f6dull ^ key[1];
     v2 = 0x6c7967656e657261ull ^ key[0];
@@ -111,15 +111,15 @@ class ScalarSipHashState {
 // "key" is a secret 128-bit key unknown to attackers.
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
 // Returns a 64-bit hash of the given data bytes.
-static INLINE uint64 ScalarSipHash(const ScalarSipHashState::Key& key,
-                                   const char* bytes, const uint64 size) {
-  return ComputeHash<ScalarSipHashState>(key, bytes, size);
+static INLINE uint64 SipHash(const SipHashState::Key& key, const char* bytes,
+                             const uint64 size) {
+  return ComputeHash<SipHashState>(key, bytes, size);
 }
 
 template <int kNumLanes>
-static INLINE uint64 ReduceSipTreeHash(const ScalarSipHashState::Key& key,
+static INLINE uint64 ReduceSipTreeHash(const SipHashState::Key& key,
                                        const uint64 (&hashes)[kNumLanes]) {
-  ScalarSipHashState state(key);
+  SipHashState state(key);
 
   for (int i = 0; i < kNumLanes; ++i) {
     state.Update(reinterpret_cast<const char*>(&hashes[i]));
@@ -130,4 +130,4 @@ static INLINE uint64 ReduceSipTreeHash(const ScalarSipHashState::Key& key,
 
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_SCALAR_SIP_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_SIP_HASH_H_

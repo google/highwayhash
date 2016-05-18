@@ -16,7 +16,7 @@
 
 #ifdef __AVX2__
 #include <cstring>  // memcpy
-#include "scalar_sip_hash.h"
+#include "sip_hash.h"
 #include "vec2.h"
 
 namespace highwayhash {
@@ -179,7 +179,7 @@ uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
   ALIGNED(uint64, 64) hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
-  ScalarSipHashState::Key reduce_key;
+  SipHashState::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
   return ReduceSipTreeHash(reduce_key, hashes);
 }

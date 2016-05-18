@@ -27,8 +27,8 @@
 #endif
 #include "highway_tree_hash.h"
 #include "scalar_highway_tree_hash.h"
-#include "scalar_sip_hash.h"
 #include "scalar_sip_tree_hash.h"
+#include "sip_hash.h"
 #include "sip_tree_hash.h"
 #include "sse41_highway_tree_hash.h"
 #include "vec2.h"
@@ -135,7 +135,7 @@ static void VerifySipHash() {
 
   for (int size = 0; size < kMaxSize; ++size) {
     in[size] = static_cast<char>(size);
-    const uint64 hash = highwayhash::ScalarSipHash(key, in, size);
+    const uint64 hash = highwayhash::SipHash(key, in, size);
 
     char out[8];
     memcpy(out, &hash, sizeof(hash));
@@ -283,8 +283,8 @@ static void BenchmarkUpdate(const char* caption) {
 }
 
 void RunTests() {
-  BenchmarkState<ScalarSipHashState>("ScalarSipHash");
-  BenchmarkUpdate<ScalarSipHashState>("Update: ScalarSip");
+  BenchmarkState<SipHashState>("SipHash");
+  BenchmarkUpdate<SipHashState>("Update: SipHash");
   printf("\n");
   BenchmarkFunc("ScalarSipTreeHash", ScalarSipTreeHash);
 #ifdef __AVX2__
