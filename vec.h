@@ -29,13 +29,15 @@
 // Requires reasonable C++11 support (VC2015) and an SSE4.1-capable CPU.
 
 #include <immintrin.h>
-#include <cstdint>
 #include "code_annotation.h"
+#include "types.h"
 
-// 128-bit AVX-2 vector with 2 uint64_t lanes.
+namespace highwayhash {
+
+// 128-bit AVX-2 vector with 2 uint64 lanes.
 class V2x64U {
  public:
-  using T = uint64_t;
+  using T = uint64;
   static constexpr size_t kNumLanes = sizeof(__m128i) / sizeof(T);
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -158,26 +160,26 @@ static INLINE V2x64U operator^(const V2x64U& left, const V2x64U& right) {
 // Load/Store.
 
 // "from" must be vector-aligned.
-static INLINE V2x64U Load(const uint64_t* RESTRICT const from) {
+static INLINE V2x64U Load(const uint64* RESTRICT const from) {
   return V2x64U(_mm_load_si128(reinterpret_cast<const __m128i*>(from)));
 }
 
-static INLINE V2x64U LoadU(const uint64_t* RESTRICT const from) {
+static INLINE V2x64U LoadU(const uint64* RESTRICT const from) {
   return V2x64U(_mm_loadu_si128(reinterpret_cast<const __m128i*>(from)));
 }
 
 // "to" must be vector-aligned.
-static INLINE void Store(const V2x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void Store(const V2x64U& v, uint64* RESTRICT const to) {
   _mm_store_si128(reinterpret_cast<__m128i*>(to), v);
 }
 
-static INLINE void StoreU(const V2x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void StoreU(const V2x64U& v, uint64* RESTRICT const to) {
   _mm_storeu_si128(reinterpret_cast<__m128i*>(to), v);
 }
 
 // Writes directly to (aligned) memory, bypassing the cache. This is useful for
 // data that will not be read again in the near future.
-static INLINE void Stream(const V2x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void Stream(const V2x64U& v, uint64* RESTRICT const to) {
   _mm_stream_si128(reinterpret_cast<__m128i*>(to), v);
 }
 
@@ -202,6 +204,8 @@ static INLINE V2x64U operator==(const V2x64U& left, const V2x64U& right) {
 static INLINE V2x64U RotateLeft(const V2x64U& v, const int count) {
   return (v << count) | (v >> (64-count));
 }
+
+}  // namespace highwayhash
 
 #endif  // #ifdef __SSE4_1__
 #endif  // #ifndef HIGHWAYHASH_VEC_H_

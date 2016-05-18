@@ -18,10 +18,11 @@
 #include "code_annotation.h"
 #include "vec2.h"
 
+namespace highwayhash {
 namespace {
 
 const int kNumLanes = 4;
-using Lanes = uint64_t[kNumLanes];
+using Lanes = uint64[kNumLanes];
 const int kPacketSize = sizeof(Lanes);
 
 class ScalarHighwayTreeHashState {
@@ -41,35 +42,35 @@ class ScalarHighwayTreeHashState {
     }
   }
 
-  INLINE void Update(const uint64_t* packets) {
-    const uint64_t mask32 = 0xFFFFFFFFULL;
+  INLINE void Update(const uint64* packets) {
+    const uint64 mask32 = 0xFFFFFFFFULL;
 
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v1[lane] += packets[lane];
       v1[lane] += mul0[lane];
-      const uint64_t v0_32 = v0[lane] & mask32;
-      const uint64_t v1_32 = v1[lane] & mask32;
+      const uint64 v0_32 = v0[lane] & mask32;
+      const uint64 v1_32 = v1[lane] & mask32;
       mul0[lane] ^= v0_32 * (v1[lane] >> 32);
       v0[lane] += mul1[lane];
       mul1[lane] ^= v1_32 * (v0[lane] >> 32);
     }
 
     Lanes merged1;
-    ZipperMerge(reinterpret_cast<const uint8_t*>(&v1),
-                reinterpret_cast<uint8_t*>(&merged1));
+    ZipperMerge(reinterpret_cast<const char*>(&v1),
+                reinterpret_cast<char*>(&merged1));
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v0[lane] += merged1[lane];
     }
 
     Lanes merged0;
-    ZipperMerge(reinterpret_cast<const uint8_t*>(&v0),
-                reinterpret_cast<uint8_t*>(&merged0));
+    ZipperMerge(reinterpret_cast<const char*>(&v0),
+                reinterpret_cast<char*>(&merged0));
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v1[lane] += merged0[lane];
     }
   }
 
-  INLINE uint64_t Finalize() {
+  INLINE uint64 Finalize() {
     PermuteAndUpdate();
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -79,7 +80,7 @@ class ScalarHighwayTreeHashState {
   }
 
  private:
-  static INLINE void ZipperMerge(const uint8_t* mul0, uint8_t* v0) {
+  static INLINE void ZipperMerge(const char* mul0, char* v0) {
     for (int half = 0; half < kPacketSize; half += kPacketSize / 2) {
       v0[half + 0] = mul0[half + 3];
       v0[half + 1] = mul0[half + 12];
@@ -100,9 +101,7 @@ class ScalarHighwayTreeHashState {
     }
   }
 
-  static INLINE uint64_t Rot32(const uint64_t x) {
-    return (x >> 32) | (x << 32);
-  }
+  static INLINE uint64 Rot32(const uint64 x) { return (x >> 32) | (x << 32); }
 
   static INLINE void Permute(const Lanes& v, Lanes* permuted) {
     (*permuted)[0] = Rot32(v[2]);
@@ -117,40 +116,43 @@ class ScalarHighwayTreeHashState {
     Update(permuted);
   }
 
-  uint64_t v0[kNumLanes];
-  uint64_t v1[kNumLanes];
-  uint64_t mul0[kNumLanes];
-  uint64_t mul1[kNumLanes];
+  uint64 v0[kNumLanes];
+  uint64 v1[kNumLanes];
+  uint64 mul0[kNumLanes];
+  uint64 mul1[kNumLanes];
 };
 
 }  // namespace
 
-uint64_t ScalarHighwayTreeHash(const Lanes& key, const uint8_t* bytes,
-                               const uint64_t size) {
+uint64 ScalarHighwayTreeHash(const Lanes& key, const char* bytes,
+                             const uint64 size) {
   // "j-lanes" tree hashing interleaves 8-byte input packets.
   ScalarHighwayTreeHashState state(key);
 
   // Hash entire 32-byte packets.
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
-  const uint64_t* packets = reinterpret_cast<const uint64_t*>(bytes);
-  for (size_t i = 0; i < truncated_size / sizeof(uint64_t); i += kNumLanes) {
+  const uint64* packets = reinterpret_cast<const uint64*>(bytes);
+  for (size_t i = 0; i < truncated_size / sizeof(uint64); i += kNumLanes) {
     state.Update(packets + i);
   }
 
   // Update with final 32-byte packet.
   const size_t remainder_mod4 = remainder & 3;
-  uint32_t packet4 = static_cast<uint32_t>(size) << 24;
-  const uint8_t* final_bytes = bytes + size - remainder_mod4;
+  uint32 packet4 = static_cast<uint32>(size) << 24;
+  const char* final_bytes = bytes + size - remainder_mod4;
   for (size_t i = 0; i < remainder_mod4; ++i) {
-    packet4 += static_cast<uint32_t>(final_bytes[i]) << (i * 8);
+    const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
+    packet4 += byte << (i * 8);
   }
 
-  uint8_t final_packet[kPacketSize] = {0};
+  char final_packet[kPacketSize] = {0};
   memcpy(final_packet, bytes + truncated_size, remainder - remainder_mod4);
   memcpy(final_packet + kPacketSize - 4, &packet4, sizeof(packet4));
-  packets = reinterpret_cast<const uint64_t*>(final_packet);
+  packets = reinterpret_cast<const uint64*>(final_packet);
   state.Update(packets);
 
   return state.Finalize();
 }
+
+}  // namespace highwayhash

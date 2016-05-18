@@ -3,10 +3,12 @@
 
 // Helper functions to split inputs into packets and call State::Update on each.
 
-#include <cstdint>
 #include <memory>
 
 #include "code_annotation.h"
+#include "types.h"
+
+namespace highwayhash {
 
 // Copies the remaining bytes to a zero-padded buffer, sets the upper byte to
 // size % 256 (always possible because this should only be called if the
@@ -16,20 +18,19 @@
 // Primary template; the specialization for AVX-2 is faster. Intended as an
 // implementation detail, do not call directly.
 template <class State>
-INLINE void PaddedUpdate(const uint64_t size, const uint8_t* remaining_bytes,
-                         const uint64_t remaining_size, State* state) {
+INLINE void PaddedUpdate(const uint64 size, const char* remaining_bytes,
+                         const uint64 remaining_size, State* state) {
   // Copy to avoid overrunning the input buffer.
-  uint8_t final_packet[State::kPacketSize] = {0};
+  char final_packet[State::kPacketSize] = {0};
   memcpy(final_packet, remaining_bytes, remaining_size);
-  final_packet[State::kPacketSize - 1] = static_cast<uint8_t>(size & 0xFF);
+  final_packet[State::kPacketSize - 1] = static_cast<char>(size & 0xFF);
   state->Update(final_packet);
 }
 
 // Updates hash state for every whole packet, and once more for the final
 // padded packet.
 template <class State>
-INLINE void UpdateState(const uint8_t* bytes, const uint64_t size,
-                        State* state) {
+INLINE void UpdateState(const char* bytes, const uint64 size, State* state) {
   // Feed entire packets.
   const int kPacketSize = State::kPacketSize;
   static_assert((kPacketSize & (kPacketSize - 1)) == 0, "Size must be 2^i.");
@@ -45,7 +46,7 @@ INLINE void UpdateState(const uint8_t* bytes, const uint64_t size,
 // Convenience function for updating with the bytes of a string.
 template <class String, class State>
 INLINE void UpdateState(const String& s, State* state) {
-  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(s.data());
+  const char* bytes = reinterpret_cast<const char*>(s.data());
   const size_t size = s.length() * sizeof(typename String::value_type);
   UpdateState(bytes, size, state);
 }
@@ -56,8 +57,8 @@ INLINE void UpdateState(const String& s, State* state) {
 // Callers wanting to combine multiple hashes should repeatedly UpdateState()
 // and only call State::Finalize once.
 template <class State>
-uint64_t ComputeHash(const typename State::Key& key, const uint8_t* bytes,
-                     const uint64_t size) {
+uint64 ComputeHash(const typename State::Key& key, const char* bytes,
+                   const uint64 size) {
   State state(key);
   UpdateState(bytes, size, &state);
   return state.Finalize();
@@ -66,16 +67,18 @@ uint64_t ComputeHash(const typename State::Key& key, const uint8_t* bytes,
 // Computes a hash of a string's bytes using the given hash State class.
 //
 // Struct with nested function template enables deduction of the String type.
-// Example: const uint64_t key[2] = { 1, 2 };
+// Example: const uint64 key[2] = { 1, 2 };
 // StringHasher<ScalarSipHashState>()(key, std::u16string(u"abc"));
 template <class State>
 struct StringHasher {
   template <class String>
-  uint64_t operator()(const typename State::Key& key, const String& s) {
+  uint64 operator()(const typename State::Key& key, const String& s) {
     State state(key);
     UpdateState(s, &state);
     return state.Finalize();
   }
 };
+
+}  // namespace highwayhash
 
 #endif  // HIGHWAYHASH_STATE_H_

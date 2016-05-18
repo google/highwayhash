@@ -30,13 +30,15 @@
 // Requires reasonable C++11 support (VC2015) and an AVX2-capable CPU.
 
 #include <immintrin.h>
-#include <cstdint>
 #include "code_annotation.h"
+#include "types.h"
 
-// 256-bit AVX-2 vector with 4 uint64_t lanes.
+namespace highwayhash {
+
+// 256-bit AVX-2 vector with 4 uint64 lanes.
 class V4x64U {
  public:
-  using T = uint64_t;
+  using T = uint64;
   static constexpr size_t kNumLanes = sizeof(__m256i) / sizeof(T);
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -159,26 +161,26 @@ static INLINE V4x64U operator^(const V4x64U& left, const V4x64U& right) {
 // Load/Store.
 
 // "from" must be vector-aligned.
-static INLINE V4x64U Load(const uint64_t* RESTRICT const from) {
+static INLINE V4x64U Load(const uint64* RESTRICT const from) {
   return V4x64U(_mm256_load_si256(reinterpret_cast<const __m256i*>(from)));
 }
 
-static INLINE V4x64U LoadU(const uint64_t* RESTRICT const from) {
+static INLINE V4x64U LoadU(const uint64* RESTRICT const from) {
   return V4x64U(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(from)));
 }
 
 // "to" must be vector-aligned.
-static INLINE void Store(const V4x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void Store(const V4x64U& v, uint64* RESTRICT const to) {
   _mm256_store_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
-static INLINE void StoreU(const V4x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void StoreU(const V4x64U& v, uint64* RESTRICT const to) {
   _mm256_storeu_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
 // Writes directly to (aligned) memory, bypassing the cache. This is useful for
 // data that will not be read again in the near future.
-static INLINE void Stream(const V4x64U& v, uint64_t* RESTRICT const to) {
+static INLINE void Stream(const V4x64U& v, uint64* RESTRICT const to) {
   _mm256_stream_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
@@ -199,6 +201,8 @@ static INLINE V4x64U UnpackHigh(const V4x64U& low, const V4x64U& high) {
 static INLINE V4x64U operator==(const V4x64U& left, const V4x64U& right) {
   return V4x64U(_mm256_cmpeq_epi64(left, right));
 }
+
+}  // namespace highwayhash
 
 #endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_VEC2_H_

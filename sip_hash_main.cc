@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
@@ -34,7 +33,10 @@
 #include "sse41_highway_tree_hash.h"
 #include "vec2.h"
 
-uint64_t TimerTicks() {
+namespace highwayhash {
+namespace {
+
+uint64 TimerTicks() {
 #ifdef _WIN32
   LARGE_INTEGER counter;
   (void)QueryPerformanceCounter(&counter);
@@ -44,12 +46,11 @@ uint64_t TimerTicks() {
 #else
   timespec t;
   clock_gettime(CLOCK_REALTIME, &t);
-  return static_cast<uint64_t>(t.tv_sec) * 1000000000 + t.tv_nsec;
+  return static_cast<uint64>(t.tv_sec) * 1000000000 + t.tv_nsec;
 #endif
 }
 
-
-double ToSeconds(uint64_t elapsed) {
+double ToSeconds(uint64 elapsed) {
   double elapsed_d = (double) elapsed;
 #ifdef _WIN32
   LARGE_INTEGER frequency;
@@ -80,7 +81,7 @@ in = 00 01 02 (3 bytes)
 ...
 in = 00 01 02 ... 3e (63 bytes)
 */
-static const uint8_t vectors[64 * 8] = {
+static const unsigned char vectors[64 * 8] = {
     0x31, 0x0E, 0x0E, 0xDD, 0x47, 0xDB, 0x6F, 0x72, 0xFD, 0x67, 0xDC, 0x93,
     0xC5, 0x39, 0xF8, 0x74, 0x5A, 0x4F, 0xA9, 0xD9, 0x09, 0x80, 0x6C, 0x0D,
     0x2D, 0x7E, 0xFB, 0xD7, 0x96, 0x66, 0x67, 0x85, 0xB7, 0x87, 0x71, 0x27,
@@ -127,16 +128,16 @@ static const uint8_t vectors[64 * 8] = {
 
 static void VerifySipHash() {
   const int kMaxSize = 64;
-  uint8_t in[kMaxSize];
+  char in[kMaxSize];
   bool ok = true;
 
-  const uint64_t key[2] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL};
+  const uint64 key[2] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL};
 
   for (int size = 0; size < kMaxSize; ++size) {
-    in[size] = static_cast<uint8_t>(size);
-    const uint64_t hash = ScalarSipHash(key, in, size);
+    in[size] = static_cast<char>(size);
+    const uint64 hash = highwayhash::ScalarSipHash(key, in, size);
 
-    uint8_t out[8];
+    char out[8];
     memcpy(out, &hash, sizeof(hash));
 
     if (memcmp(out, vectors + size * 8, 8)) {
@@ -155,17 +156,17 @@ template <class Function1, class Function2>
 static void VerifyEqual(const char* caption, const Function1& hash_function1,
                         const Function2& hash_function2) {
   const int kMaxSize = 128;
-  uint8_t in[kMaxSize] = {0};
+  char in[kMaxSize] = {0};
 
-  const uint64_t key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                           0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  const uint64 key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                         0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
 
   for (int size = 0; size < kMaxSize; ++size) {
-    in[size] = static_cast<uint8_t>(size);
-    const uint64_t hash = hash_function1(key, in, size);
-    const uint64_t hash2 = hash_function2(key, in, size);
+    in[size] = static_cast<char>(size);
+    const uint64 hash = hash_function1(key, in, size);
+    const uint64 hash2 = hash_function2(key, in, size);
     if (hash != hash2) {
-      printf("Failed for length %d %lx %lx\n", size, hash, hash2);
+      printf("Failed for length %d %llx %llx\n", size, hash, hash2);
       exit(1);
     }
   }
@@ -175,113 +176,113 @@ static void VerifyEqual(const char* caption, const Function1& hash_function1,
 template <class Function>
 static void BenchmarkFunc(const char* caption, const Function& hash_function) {
   const int kSize = 1024;
-  uint8_t in[kSize];
+  char in[kSize];
   for (int i = 0; i < kSize; ++i) {
-    in[i] = static_cast<uint8_t>(i);
+    in[i] = static_cast<char>(i);
   }
 
   // hash_function accepts a decayed pointer.
-  const uint64_t key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                           0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  const uint64 key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                         0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
 
-  uint64_t sum = 1;
-  uint64_t minTicks = 99999999999;
+  uint64 sum = 1;
+  uint64 minTicks = 99999999999;
   const int kLoops = 50000;
   for (int rep = 0; rep < 25; ++rep) {
-    const uint64_t t0 = TimerTicks();
+    const uint64 t0 = TimerTicks();
     COMPILER_FENCE;
     for (int loop = 0; loop < kLoops; ++loop) {
       sum <<= 1;
-      const uint64_t hash = hash_function(key, in, kSize);
+      const uint64 hash = hash_function(key, in, kSize);
       sum ^= hash;
     }
-    const uint64_t t1 = TimerTicks();
+    const uint64 t1 = TimerTicks();
     COMPILER_FENCE;
     minTicks = std::min(minTicks, t1 - t0);
   }
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
   const double GBps = kLoops * kSize / minSec * 1E-9;
-  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%llu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
 template <class State>
 static void BenchmarkState(const char* caption) {
   const int kSize = 1024;
-  uint8_t in[kSize];
+  char in[kSize];
   for (int i = 0; i < kSize; ++i) {
-    in[i] = static_cast<uint8_t>(i);
+    in[i] = static_cast<char>(i);
   }
 
-  const uint64_t all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                                0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  const uint64 all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                              0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
   typename State::Key key;
   memcpy(&key, all_keys, sizeof(key));
 
-  uint64_t sum = 1;
-  uint64_t minTicks = 99999999999;
+  uint64 sum = 1;
+  uint64 minTicks = 99999999999;
   const int kLoops = 50000;
   for (int rep = 0; rep < 25; ++rep) {
-    const uint64_t t0 = TimerTicks();
+    const uint64 t0 = TimerTicks();
     COMPILER_FENCE;
     for (int loop = 0; loop < kLoops; ++loop) {
-      const uint64_t hash = ComputeHash<State>(key, in, kSize);
+      const uint64 hash = highwayhash::ComputeHash<State>(key, in, kSize);
       sum <<= 1;
       sum ^= hash;
     }
-    const uint64_t t1 = TimerTicks();
+    const uint64 t1 = TimerTicks();
     COMPILER_FENCE;
     minTicks = std::min(minTicks, t1 - t0);
   }
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kSize);
   const double GBps = kLoops * kSize / minSec * 1E-9;
-  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%llu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
 template <class State>
 static void BenchmarkUpdate(const char* caption) {
   const int kSize = 1024;
-  uint8_t in[kSize];
+  char in[kSize];
   for (int i = 0; i < kSize; ++i) {
-    in[i] = static_cast<uint8_t>(i);
+    in[i] = static_cast<char>(i);
   }
 
-  const uint64_t all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                                0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  const uint64 all_keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                              0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
   typename State::Key key;
   memcpy(&key, all_keys, sizeof(key));
 
-  uint64_t sum = 1;
-  uint64_t minTicks = 99999999999;
+  uint64 sum = 1;
+  uint64 minTicks = 99999999999;
   const int kLoops = 500;
   const int kItems = 100;
   for (int rep = 0; rep < 25; ++rep) {
-    const uint64_t t0 = TimerTicks();
+    const uint64 t0 = TimerTicks();
     COMPILER_FENCE;
     for (int loop = 0; loop < kLoops; ++loop) {
       State state(key);
       for (int item = 0; item < kItems; ++item) {
-        UpdateState(in, kSize, &state);
+        highwayhash::UpdateState(in, kSize, &state);
       }
-      const uint64_t hash = state.Finalize();
+      const uint64 hash = state.Finalize();
       sum <<= 1;
       sum ^= hash;
     }
-    const uint64_t t1 = TimerTicks();
+    const uint64 t1 = TimerTicks();
     COMPILER_FENCE;
     minTicks = std::min(minTicks, t1 - t0);
   }
   const double minSec = ToSeconds(minTicks);
   const double cyclesPerByte = 3.5E9 * minSec / (kLoops * kItems * kSize);
   const double GBps = kLoops * kItems * kSize / minSec * 1E-9;
-  printf("%21s %d sum=%lu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
+  printf("%21s %d sum=%llu\tGBps=%5.2f  c/b=%.2f\n", caption, kSize, sum, GBps,
          cyclesPerByte);
 }
 
-int main(int argc, char* argv[]) {
+void RunTests() {
   BenchmarkState<ScalarSipHashState>("ScalarSipHash");
   BenchmarkUpdate<ScalarSipHashState>("Update: ScalarSip");
   printf("\n");
@@ -304,6 +305,12 @@ int main(int argc, char* argv[]) {
   VerifyEqual("ScalarSipTreeHash", ScalarSipTreeHash, SipTreeHash);
   VerifyEqual("ScalarHighwayTreeHash", ScalarHighwayTreeHash, HighwayTreeHash);
 #endif
+}
 
+}  // namespace
+}  // namespace highwayhash
+
+int main(int argc, char* argv[]) {
+  highwayhash::RunTests();
   return 0;
 }

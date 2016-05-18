@@ -17,9 +17,10 @@
 #ifdef __AVX2__
 
 #include <cstddef>
-#include <cstdint>
 #include "state_helpers.h"
 #include "vec2.h"
+
+namespace highwayhash {
 
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
 class HighwayTreeHashState {
@@ -27,7 +28,7 @@ class HighwayTreeHashState {
   // Four (2 x 64-bit) hash states are updated in parallel by injecting
   // four 64-bit packets per Update(). Finalize() combines the four states into
   // one final 64-bit digest.
-  using Key = uint64_t[4];
+  using Key = uint64[4];
   static const int kPacketSize = sizeof(Key);
 
   explicit INLINE HighwayTreeHashState(const Key& key_lanes) {
@@ -56,8 +57,8 @@ def x(a,b,c):
     mul1 = init1;
   }
 
-  INLINE void Update(const uint8_t* packet_ptr) {
-    const V4x64U packet = LoadU(reinterpret_cast<const uint64_t*>(packet_ptr));
+  INLINE void Update(const char* packet_ptr) {
+    const V4x64U packet = LoadU(reinterpret_cast<const uint64*>(packet_ptr));
     Update(packet);
   }
 
@@ -71,7 +72,7 @@ def x(a,b,c):
     v1 += ZipperMerge(v0);
   }
 
-  INLINE uint64_t Finalize() {
+  INLINE uint64 Finalize() {
     // Mix together all lanes.
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -79,7 +80,7 @@ def x(a,b,c):
     PermuteAndUpdate();
 
     const V4x64U sum = v0 + v1 + mul0 + mul1;
-    // Much faster than Store(v0 + v1) to uint64_t[].
+    // Much faster than Store(v0 + v1) to uint64[].
     return _mm_cvtsi128_si64(_mm256_extracti128_si256(sum, 0));
   }
 
@@ -95,8 +96,8 @@ def x(a,b,c):
     //    to cross the 128-bit wall, but PermuteAndUpdate takes care of that);
     // 3) placing the worst bytes in the upper 32 bits because those will not
     //    be used in the next 32x32 multiplication.
-    const uint64_t hi = 0x070806090D0A040Bull;
-    const uint64_t lo = 0x000F010E05020C03ull;
+    const uint64 hi = 0x070806090D0A040Bull;
+    const uint64 lo = 0x000F010E05020C03ull;
     return V4x64U(_mm256_shuffle_epi8(v, V4x64U(hi, lo, hi, lo)));
   }
 
@@ -121,35 +122,35 @@ def x(a,b,c):
 
 // AVX-2 specialization for 1.1x higher hash throughput at 1KB.
 template <>
-INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64_t size,
-                                               const uint8_t* remaining_bytes,
-                                               const uint64_t remaining_size,
+INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
+                                               const char* remaining_bytes,
+                                               const uint64 remaining_size,
                                                HighwayTreeHashState* state) {
   // Copying into an aligned buffer incurs a store-to-load-forwarding stall.
-  // Instead, we use masked loads to read any remaining whole uint32_t
+  // Instead, we use masked loads to read any remaining whole uint32
   // without incurring page faults for the others.
   const size_t remaining_32 = remaining_size >> 2;  // 0..7
 
-  // mask[32*i+31] := uint32_t #i valid/accessible ? 1 : 0.
-  // To avoid large lookup tables, we pack uint32_t lanes to uint8_t,
+  // mask[32*i+31] := uint32 #i valid/accessible ? 1 : 0.
+  // To avoid large lookup tables, we pack uint32 lanes into bytes,
   // compute the packed mask by shifting, and then sign-extend 0xFF to
   // 0xFFFFFFFF (although only the MSB needs to be set).
   // remaining_32 = 0 => mask = 00000000; remaining_32 = 7 => mask = 01111111.
-  const uint64_t packed_mask =
-      0x00FFFFFFFFFFFFFFULL >> ((7 - remaining_32) * 8);
+  const uint64 packed_mask = 0x00FFFFFFFFFFFFFFULL >> ((7 - remaining_32) * 8);
   const V4x64U mask(_mm256_cvtepi8_epi32(_mm_cvtsi64_si128(packed_mask)));
-  // Load 0..7 remaining (potentially unaligned) uint32_t.
+  // Load 0..7 remaining (potentially unaligned) uint32.
   const V4x64U packet28(_mm256_maskload_epi32(
       reinterpret_cast<const int*>(remaining_bytes), mask));
 
-  // Load any remaining bytes individually and combine into a uint32_t.
+  // Load any remaining bytes individually and combine into a uint32.
   const int remainder_mod4 = remaining_size & 3;
   // Length padding ensures that zero-valued buffers of different lengths
   // result in different hashes.
-  uint32_t packet4 = static_cast<uint32_t>(size) << 24;
-  const uint8_t* final_bytes = remaining_bytes + (remaining_32 * 4);
+  uint32 packet4 = static_cast<uint32>(size) << 24;
+  const char* final_bytes = remaining_bytes + (remaining_32 * 4);
   for (int i = 0; i < remainder_mod4; ++i) {
-    packet4 += static_cast<uint32_t>(final_bytes[i]) << (i * 8);
+    const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
+    packet4 += byte << (i * 8);
   }
 
   // The upper 4 bytes of packet28 are zero; replace with packet4 to
@@ -169,11 +170,11 @@ INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64_t size,
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 //
 // Returns a 64-bit hash of the given data bytes.
-static INLINE uint64_t HighwayTreeHash(const HighwayTreeHashState::Key& key,
-                                       const uint8_t* bytes,
-                                       const uint64_t size) {
+static INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
+                                     const char* bytes, const uint64 size) {
   return ComputeHash<HighwayTreeHashState>(key, bytes, size);
 }
 
+}  // namespace highwayhash
 #endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_

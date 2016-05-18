@@ -16,9 +16,10 @@
 #define HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
 #ifdef __SSE4_1__
 
-#include <cstdint>
+#include "types.h"
 
 #ifdef __cplusplus
+namespace highwayhash {
 extern "C" {
 #endif
 
@@ -32,11 +33,12 @@ extern "C" {
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 //
 // Returns a 64-bit hash of the given data bytes.
-uint64_t SSE41HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
-                              const uint64_t size);
+uint64 SSE41HighwayTreeHash(const uint64 (&key)[4], const char* bytes,
+                            const uint64 size);
 
 #ifdef __cplusplus
 }  // extern "C"
+}  // namespace highwayhash
 #endif
 
 #endif  // #ifdef __SSE4_1__

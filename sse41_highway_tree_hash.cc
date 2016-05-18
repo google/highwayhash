@@ -18,6 +18,7 @@
 #include <cstring>  // memcpy
 #include "vec.h"
 
+namespace highwayhash {
 namespace {
 
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
@@ -26,11 +27,11 @@ namespace {
 // two 64-bit packets per Update(). Finalize() combines the states into
 // one final 64-bit digest.
 const int kNumLanes = 2;
-const int kPacketSize = kNumLanes * sizeof(uint64_t);
+const int kPacketSize = kNumLanes * sizeof(uint64);
 
 class SSE41HighwayTreeHashState {
  public:
-  explicit INLINE SSE41HighwayTreeHashState(const uint64_t (&keys)[4]) {
+  explicit INLINE SSE41HighwayTreeHashState(const uint64 (&keys)[4]) {
     // "Nothing up my sleeve" numbers, concatenated hex digits of Pi from
     // http://www.numberworld.org/digits/Pi/, retrieved Feb 22, 2016.
     //
@@ -64,7 +65,7 @@ def x(a,b,c):
     v1 += ZipperMerge(v0);
   }
 
-  INLINE uint64_t Finalize() {
+  INLINE uint64 Finalize() {
     // Mix together all lanes.
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -72,7 +73,7 @@ def x(a,b,c):
     PermuteAndUpdate();
 
     const V2x64U sum = v0 + v1 + mul0 + mul1;
-    // Much faster than Store(v0 + v1) to uint64_t[].
+    // Much faster than Store(v0 + v1) to uint64[].
     return _mm_cvtsi128_si64(sum);
   }
 
@@ -87,8 +88,8 @@ def x(a,b,c):
     // 2) mixing with bytes from the neighboring lane;
     // 3) placing the worst bytes in the upper 32 bits because those will not
     //    be used in the next 32x32 multiplication.
-    const uint64_t hi = 0x070806090D0A040Bull;
-    const uint64_t lo = 0x000F010E05020C03ull;
+    const uint64 hi = 0x070806090D0A040Bull;
+    const uint64 lo = 0x000F010E05020C03ull;
     return V2x64U(_mm_shuffle_epi8(v, V2x64U(hi, lo)));
   }
 
@@ -113,27 +114,26 @@ def x(a,b,c):
 // "remainder" is the number of accessible/remaining bytes (size % 16).
 // Loading past the end of the input risks page fault exceptions which even
 // LDDQU cannot prevent.
-static INLINE V2x64U LoadFinalPacket16(const uint8_t* bytes,
-                                       const uint64_t size,
-                                       const uint64_t remainder) {
+static INLINE V2x64U LoadFinalPacket16(const char* bytes, const uint64 size,
+                                       const uint64 remainder) {
   // Copying into an aligned buffer incurs a store-to-load-forwarding stall,
   // but SSE4.1 lacks masked loads.
-  ALIGNED(uint8_t, 16) buffer[16] = {0};
+  ALIGNED(char, 16) buffer[16] = {0};
   memcpy(buffer, bytes, remainder);
-  buffer[15] = size;
-  return Load(reinterpret_cast<const uint64_t*>(buffer));
+  buffer[15] = static_cast<char>(size);
+  return Load(reinterpret_cast<const uint64*>(buffer));
 }
 
 }  // namespace
 
-uint64_t SSE41HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
-                              const uint64_t size) {
+uint64 SSE41HighwayTreeHash(const uint64 (&key)[4], const char* bytes,
+                            const uint64 size) {
   SSE41HighwayTreeHashState state(key);
 
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
-  const uint64_t* packets = reinterpret_cast<const uint64_t*>(bytes);
-  for (size_t i = 0; i < truncated_size / sizeof(uint64_t); i += kNumLanes) {
+  const uint64* packets = reinterpret_cast<const uint64*>(bytes);
+  for (size_t i = 0; i < truncated_size / sizeof(uint64); i += kNumLanes) {
     const V2x64U packet = LoadU(packets + i);
     state.Update(packet);
   }
@@ -144,5 +144,7 @@ uint64_t SSE41HighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
 
   return state.Finalize();
 }
+
+}  // namespace highwayhash
 
 #endif  // #ifdef __SSE4_1__

@@ -8,6 +8,7 @@ cc_library(
     name = "vector",
     hdrs = [
         "code_annotation.h",
+        "types.h",
         "vec.h",
         "vec2.h",
     ],
@@ -20,6 +21,7 @@ cc_library(
         "code_annotation.h",
         "scalar_sip_hash.h",
         "state_helpers.h",
+        "types.h",
     ],
     visibility = ["//visibility:public"],
 )

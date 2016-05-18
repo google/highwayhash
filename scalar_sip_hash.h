@@ -18,16 +18,18 @@
 // Scalar (non-vector/SIMD) version for comparison purposes.
 
 #include <cstddef>
-#include <cstdint>
 #include <cstring>  // memcpy
 #include "code_annotation.h"
 #include "state_helpers.h"
+#include "types.h"
+
+namespace highwayhash {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
 class ScalarSipHashState {
  public:
-  using Key = uint64_t[2];
-  static const size_t kPacketSize = sizeof(uint64_t);
+  using Key = uint64[2];
+  static const size_t kPacketSize = sizeof(uint64);
 
   explicit INLINE ScalarSipHashState(const Key& key) {
     v0 = 0x736f6d6570736575ull ^ key[0];
@@ -36,8 +38,8 @@ class ScalarSipHashState {
     v3 = 0x7465646279746573ull ^ key[1];
   }
 
-  INLINE void Update(const uint8_t* bytes) {
-    uint64_t packet;
+  INLINE void Update(const char* bytes) {
+    uint64 packet;
     memcpy(&packet, bytes, sizeof(packet));
 
     v3 ^= packet;
@@ -47,7 +49,7 @@ class ScalarSipHashState {
     v0 ^= packet;
   }
 
-  INLINE uint64_t Finalize() {
+  INLINE uint64 Finalize() {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
@@ -58,10 +60,10 @@ class ScalarSipHashState {
 
  private:
   // Rotate a 64-bit value "v" left by N bits.
-  template <uint64_t bits>
-  static INLINE uint64_t RotateLeft(const uint64_t v) {
-    const uint64_t left = v << bits;
-    const uint64_t right = v >> (64 - bits);
+  template <uint64 bits>
+  static INLINE uint64 RotateLeft(const uint64 v) {
+    const uint64 left = v << bits;
+    const uint64 right = v >> (64 - bits);
     return left | right;
   }
 
@@ -89,10 +91,10 @@ class ScalarSipHashState {
     }
   }
 
-  uint64_t v0;
-  uint64_t v1;
-  uint64_t v2;
-  uint64_t v3;
+  uint64 v0;
+  uint64 v1;
+  uint64 v2;
+  uint64 v3;
 };
 
 // Fast, cryptographically strong pseudo-random function. Useful for:
@@ -109,22 +111,23 @@ class ScalarSipHashState {
 // "key" is a secret 128-bit key unknown to attackers.
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
 // Returns a 64-bit hash of the given data bytes.
-static INLINE uint64_t ScalarSipHash(const ScalarSipHashState::Key& key,
-                                     const uint8_t* bytes,
-                                     const uint64_t size) {
+static INLINE uint64 ScalarSipHash(const ScalarSipHashState::Key& key,
+                                   const char* bytes, const uint64 size) {
   return ComputeHash<ScalarSipHashState>(key, bytes, size);
 }
 
 template <int kNumLanes>
-static INLINE uint64_t ReduceSipTreeHash(const ScalarSipHashState::Key& key,
-                                         const uint64_t (&hashes)[kNumLanes]) {
+static INLINE uint64 ReduceSipTreeHash(const ScalarSipHashState::Key& key,
+                                       const uint64 (&hashes)[kNumLanes]) {
   ScalarSipHashState state(key);
 
   for (int i = 0; i < kNumLanes; ++i) {
-    state.Update(reinterpret_cast<const uint8_t*>(&hashes[i]));
+    state.Update(reinterpret_cast<const char*>(&hashes[i]));
   }
 
   return state.Finalize();
 }
+
+}  // namespace highwayhash
 
 #endif  // #ifndef HIGHWAYHASH_SCALAR_SIP_HASH_H_

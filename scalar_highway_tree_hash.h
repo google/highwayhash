@@ -17,17 +17,19 @@
 
 // Scalar (non-vector/SIMD) version for comparison purposes.
 
-#include <cstdint>
+#include "types.h"
 
 #ifdef __cplusplus
+namespace highwayhash {
 extern "C" {
 #endif
 
-uint64_t ScalarHighwayTreeHash(const uint64_t (&key)[4], const uint8_t* bytes,
-                               const uint64_t size);
+uint64 ScalarHighwayTreeHash(const uint64 (&key)[4], const char* bytes,
+                             const uint64 size);
 
 #ifdef __cplusplus
 }  // extern "C"
+}  // namespace highwayhash
 #endif
 
 #endif  // HIGHWAYHASH_SCALAR_HIGHWAY_TREE_HASH_H_

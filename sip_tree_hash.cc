@@ -19,6 +19,7 @@
 #include "scalar_sip_hash.h"
 #include "vec2.h"
 
+namespace highwayhash {
 namespace {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
@@ -30,12 +31,12 @@ namespace {
 // reduced to 64 bits via 8-byte SipHash.
 
 const int kPacketSize = 32;
-const int kNumLanes = kPacketSize / sizeof(uint64_t);
+const int kNumLanes = kPacketSize / sizeof(uint64);
 
 // 32 bytes key. Parameters are hardwired to c=2, d=4 [rounds].
 class SipTreeHashState {
  public:
-  explicit INLINE SipTreeHashState(const uint64_t (&keys)[kNumLanes]) {
+  explicit INLINE SipTreeHashState(const uint64 (&keys)[kNumLanes]) {
     const V4x64U init(0x7465646279746573ull, 0x6c7967656e657261ull,
                       0x646f72616e646f6dull, 0x736f6d6570736575ull);
     const V4x64U lanes(kNumLanes | 3, kNumLanes | 2, kNumLanes | 1,
@@ -72,7 +73,7 @@ class SipTreeHashState {
   }
 
   // Rotates each 64-bit element of "v" left by N bits.
-  template <uint64_t bits>
+  template <uint64 bits>
   static INLINE V4x64U RotateLeft(const V4x64U& v) {
     const V4x64U left = v << bits;
     const V4x64U right = v >> (64 - bits);
@@ -119,34 +120,33 @@ class SipTreeHashState {
 // "remainder" is the number of accessible/remaining bytes (size % 32).
 // Loading past the end of the input risks page fault exceptions which even
 // LDDQU cannot prevent.
-static INLINE V4x64U LoadFinalPacket32(const uint8_t* bytes,
-                                       const uint64_t size,
-                                       const uint64_t remainder) {
+static INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
+                                       const uint64 remainder) {
   // Copying into an aligned buffer incurs a store-to-load-forwarding stall.
-  // Instead, we use masked loads to read any remaining whole uint32_t
+  // Instead, we use masked loads to read any remaining whole uint32
   // without incurring page faults for the others.
   const size_t remaining_32 = remainder >> 2;  // 0..7
 
-  // mask[32*i+31] := uint32_t #i valid/accessible ? 1 : 0.
-  // To avoid large lookup tables, we pack uint32_t lanes to uint8_t,
+  // mask[32*i+31] := uint32 #i valid/accessible ? 1 : 0.
+  // To avoid large lookup tables, we pack uint32 lanes into bytes,
   // compute the packed mask by shifting, and then sign-extend 0xFF to
   // 0xFFFFFFFF (although only the MSB needs to be set).
   // remaining_32 = 0 => mask = 00000000; remaining_32 = 7 => mask = 01111111.
-  const uint64_t packed_mask =
-      0x00FFFFFFFFFFFFFFULL >> ((7 - remaining_32) * 8);
+  const uint64 packed_mask = 0x00FFFFFFFFFFFFFFULL >> ((7 - remaining_32) * 8);
   const V4x64U mask(_mm256_cvtepi8_epi32(_mm_cvtsi64_si128(packed_mask)));
-  // Load 0..7 remaining (potentially unaligned) uint32_t.
+  // Load 0..7 remaining (potentially unaligned) uint32.
   const V4x64U packet28(
       _mm256_maskload_epi32(reinterpret_cast<const int*>(bytes), mask));
 
-  // Load any remaining bytes individually and combine into a uint32_t.
+  // Load any remaining bytes individually and combine into a uint32.
   const int remainder_mod4 = remainder & 3;
   // Length padding ensures that zero-valued buffers of different lengths
   // result in different hashes.
-  uint32_t packet4 = remainder << 24;
-  const uint8_t* final_bytes = bytes + (remaining_32 * 4);
+  uint32 packet4 = remainder << 24;
+  const char* final_bytes = bytes + (remaining_32 * 4);
   for (int i = 0; i < remainder_mod4; ++i) {
-    packet4 += static_cast<uint32_t>(final_bytes[i]) << (i * 8);
+    const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
+    packet4 += byte << (i * 8);
   }
 
   // The upper 4 bytes of packet28 are zero; replace with packet4 to
@@ -158,14 +158,14 @@ static INLINE V4x64U LoadFinalPacket32(const uint8_t* bytes,
 
 }  // namespace
 
-uint64_t SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
-                     const uint64_t size) {
+uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
+                   const uint64 size) {
   SipTreeHashState state(key);
 
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
-  const uint64_t* packets = reinterpret_cast<const uint64_t*>(bytes);
-  for (size_t i = 0; i < truncated_size / sizeof(uint64_t); i += kNumLanes) {
+  const uint64* packets = reinterpret_cast<const uint64*>(bytes);
+  for (size_t i = 0; i < truncated_size / sizeof(uint64); i += kNumLanes) {
     const V4x64U packet = LoadU(packets + i);
     state.Update(packet);
   }
@@ -176,12 +176,14 @@ uint64_t SipTreeHash(const uint64_t (&key)[kNumLanes], const uint8_t* bytes,
   state.Update(final_packet);
 
   // Faster than passing __m256i and extracting.
-  ALIGNED(uint64_t, 64) hashes[kNumLanes];
+  ALIGNED(uint64, 64) hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
   ScalarSipHashState::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
   return ReduceSipTreeHash(reduce_key, hashes);
 }
+
+}  // namespace highwayhash
 
 #endif  // #ifdef __AVX2__
