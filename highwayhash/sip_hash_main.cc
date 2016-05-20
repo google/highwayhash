@@ -25,13 +25,13 @@
 #else
 #include <time.h>
 #endif
-#include "highway_tree_hash.h"
-#include "scalar_highway_tree_hash.h"
-#include "scalar_sip_tree_hash.h"
-#include "sip_hash.h"
-#include "sip_tree_hash.h"
-#include "sse41_highway_tree_hash.h"
-#include "vec2.h"
+#include "highwayhash/highway_tree_hash.h"
+#include "highwayhash/scalar_highway_tree_hash.h"
+#include "highwayhash/scalar_sip_tree_hash.h"
+#include "highwayhash/sip_hash.h"
+#include "highwayhash/sip_tree_hash.h"
+#include "highwayhash/sse41_highway_tree_hash.h"
+#include "highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {

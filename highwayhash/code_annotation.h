@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_CODE_ANNOTATION_H_
-#define HIGHWAYHASH_CODE_ANNOTATION_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
+#define HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
 
 // Compiler/OS detection
 
@@ -127,4 +127,4 @@ char (*ArraySizeDeducer(T (&)[n]))[n];
 #define UNIQUE(prefix) CONCAT(prefix, __LINE__)
 #endif
 
-#endif  // #ifndef HIGHWAYHASH_CODE_ANNOTATION_H_
+#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_

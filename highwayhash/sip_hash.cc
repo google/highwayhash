@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_SCALAR_HIGHWAY_TREE_HASH_H_
-#define HIGHWAYHASH_SCALAR_HIGHWAY_TREE_HASH_H_
-
-// Scalar (non-vector/SIMD) version for comparison purposes.
-
-#include "types.h"
-
-#ifdef __cplusplus
-namespace highwayhash {
-extern "C" {
-#endif
-
-uint64 ScalarHighwayTreeHash(const uint64 (&key)[4], const char* bytes,
-                             const uint64 size);
-
-#ifdef __cplusplus
-}  // extern "C"
-}  // namespace highwayhash
-#endif
-
-#endif  // HIGHWAYHASH_SCALAR_HIGHWAY_TREE_HASH_H_
+#include "highwayhash/sip_hash.h"

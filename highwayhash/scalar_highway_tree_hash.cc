@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "scalar_highway_tree_hash.h"
+#include "highwayhash/scalar_highway_tree_hash.h"
 
 #include <cstring>  // memcpy
-#include "code_annotation.h"
-#include "vec2.h"
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {

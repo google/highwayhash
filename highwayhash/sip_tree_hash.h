@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
-#define HIGHWAYHASH_SIP_TREE_HASH_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
+#define HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
 #ifdef __AVX2__
 
-#include "types.h"
+#include "highwayhash/types.h"
 
 #ifdef __cplusplus
 namespace highwayhash {
@@ -48,4 +48,4 @@ uint64 SipTreeHash(const uint64 (&key)[4], const char* bytes,
 #endif
 
 #endif  // #ifdef __AVX2__
-#endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_

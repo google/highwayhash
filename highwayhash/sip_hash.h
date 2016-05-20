@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_SIP_HASH_H_
-#define HIGHWAYHASH_SIP_HASH_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_
+#define HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_
 
 // Portable but fast SipHash implementation.
 
 #include <cstddef>
 #include <cstring>  // memcpy
-#include "code_annotation.h"
-#include "state_helpers.h"
-#include "types.h"
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/state_helpers.h"
+#include "highwayhash/types.h"
 
 namespace highwayhash {
 
@@ -130,4 +130,4 @@ static INLINE uint64 ReduceSipTreeHash(const SipHashState::Key& key,
 
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_SIP_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_

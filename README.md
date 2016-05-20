@@ -101,10 +101,14 @@ SipHash has no particular CPU requirement.
 
 ## Build instructions
 
-To build with Bazel (http://bazel.io/) :
-    bazel build :all -c opt --copt=-mavx2
+To build with Bazel (http://bazel.io/) : `bazel build :all -c opt --copt=-mavx2`
+To build with Make : `make`
 
-A simple Makefile is also provided.
+Note on project structure: the highwayhash/ subdirectory allows users to
+#include "highwayhash/sip_hash.h" rather than just "sip_hash.h". Keeping BUILD
+in the project root directory shortens the Bazel build command line.
+This requires "highwayhash/" prefixes in all Bazel and Makefile rules.
+Adding "." to the include path enables highwayhash/ prefixes in our cc files.
 
 ## Third-party implementations / bindings
 

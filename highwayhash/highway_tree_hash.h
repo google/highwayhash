@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
-#define HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
+#define HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
 #ifdef __AVX2__
 
 #include <cstddef>
@@ -177,4 +177,4 @@ static INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
 
 }  // namespace highwayhash
 #endif  // #ifdef __AVX2__
-#endif  // #ifndef HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_

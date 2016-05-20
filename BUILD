@@ -7,29 +7,31 @@ exports_files(["LICENSE"])
 cc_library(
     name = "vector",
     hdrs = [
-        "code_annotation.h",
-        "types.h",
-        "vec.h",
-        "vec2.h",
+        "highwayhash/code_annotation.h",
+        "highwayhash/types.h",
+        "highwayhash/vec.h",
+        "highwayhash/vec2.h",
     ],
 )
 
 cc_library(
     name = "sip_hash",
-    srcs = ["sip_hash.cc"],
+    srcs = ["highwayhash/sip_hash.cc"],
     hdrs = [
-        "code_annotation.h",
-        "sip_hash.h",
-        "state_helpers.h",
-        "types.h",
+        "highwayhash/code_annotation.h",
+        "highwayhash/sip_hash.h",
+        "highwayhash/state_helpers.h",
+        "highwayhash/types.h",
     ],
+    includes = ["."],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "sip_tree_hash",
-    srcs = ["sip_tree_hash.cc"],
-    hdrs = ["sip_tree_hash.h"],
+    srcs = ["highwayhash/sip_tree_hash.cc"],
+    hdrs = ["highwayhash/sip_tree_hash.h"],
+    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":sip_hash",
@@ -39,8 +41,9 @@ cc_library(
 
 cc_library(
     name = "scalar_sip_tree_hash",
-    srcs = ["scalar_sip_tree_hash.cc"],
-    hdrs = ["scalar_sip_tree_hash.h"],
+    srcs = ["highwayhash/scalar_sip_tree_hash.cc"],
+    hdrs = ["highwayhash/scalar_sip_tree_hash.h"],
+    includes = ["."],
     deps = [
         ":sip_hash",
         ":vector",
@@ -49,11 +52,12 @@ cc_library(
 
 cc_library(
     name = "highway_tree_hash",
-    srcs = ["highway_tree_hash.cc"],
+    srcs = ["highwayhash/highway_tree_hash.cc"],
     hdrs = [
-        "highway_tree_hash.h",
-        "state_helpers.h",
+        "highwayhash/highway_tree_hash.h",
+        "highwayhash/state_helpers.h",
     ],
+    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":vector",
@@ -62,8 +66,9 @@ cc_library(
 
 cc_library(
     name = "sse41_highway_tree_hash",
-    srcs = ["sse41_highway_tree_hash.cc"],
-    hdrs = ["sse41_highway_tree_hash.h"],
+    srcs = ["highwayhash/sse41_highway_tree_hash.cc"],
+    hdrs = ["highwayhash/sse41_highway_tree_hash.h"],
+    includes = ["."],
     deps = [
         ":vector",
     ],
@@ -71,8 +76,9 @@ cc_library(
 
 cc_library(
     name = "scalar_highway_tree_hash",
-    srcs = ["scalar_highway_tree_hash.cc"],
-    hdrs = ["scalar_highway_tree_hash.h"],
+    srcs = ["highwayhash/scalar_highway_tree_hash.cc"],
+    hdrs = ["highwayhash/scalar_highway_tree_hash.h"],
+    includes = ["."],
     deps = [
         ":vector",
     ],
@@ -81,8 +87,9 @@ cc_library(
 cc_binary(
     name = "sip_hash_main",
     srcs = [
-        "sip_hash_main.cc",
+        "highwayhash/sip_hash_main.cc",
     ],
+    includes = ["."],
     deps = [
         ":highway_tree_hash",
         ":scalar_highway_tree_hash",

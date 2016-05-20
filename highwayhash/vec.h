@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_VEC_H_
-#define HIGHWAYHASH_VEC_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_VEC_H_
+#define HIGHWAYHASH_HIGHWAYHASH_VEC_H_
 #ifdef __SSE4_1__
 
 // Defines SIMD vector classes ("V2x64U") with overloaded arithmetic operators:
@@ -29,8 +29,8 @@
 // Requires reasonable C++11 support (VC2015) and an SSE4.1-capable CPU.
 
 #include <immintrin.h>
-#include "code_annotation.h"
-#include "types.h"
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/types.h"
 
 namespace highwayhash {
 
@@ -208,4 +208,4 @@ static INLINE V2x64U RotateLeft(const V2x64U& v, const int count) {
 }  // namespace highwayhash
 
 #endif  // #ifdef __SSE4_1__
-#endif  // #ifndef HIGHWAYHASH_VEC_H_
+#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_VEC_H_

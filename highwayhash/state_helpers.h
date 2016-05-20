@@ -1,12 +1,12 @@
-#ifndef HIGHWAYHASH_STATE_H_
-#define HIGHWAYHASH_STATE_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_STATE_H_
+#define HIGHWAYHASH_HIGHWAYHASH_STATE_H_
 
 // Helper functions to split inputs into packets and call State::Update on each.
 
 #include <memory>
 
-#include "code_annotation.h"
-#include "types.h"
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/types.h"
 
 namespace highwayhash {
 
@@ -85,4 +85,4 @@ struct StringHasher {
 
 }  // namespace highwayhash
 
-#endif  // HIGHWAYHASH_STATE_H_
+#endif  // HIGHWAYHASH_HIGHWAYHASH_STATE_H_

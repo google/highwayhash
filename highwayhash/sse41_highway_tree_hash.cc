@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sse41_highway_tree_hash.h"
+#include "highwayhash/sse41_highway_tree_hash.h"
 
 #ifdef __SSE4_1__
 #include <cstring>  // memcpy
-#include "vec.h"
+#include "highwayhash/vec.h"
 
 namespace highwayhash {
 namespace {

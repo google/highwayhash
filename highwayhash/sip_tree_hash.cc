@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sip_tree_hash.h"
+#include "highwayhash/sip_tree_hash.h"
 
 #ifdef __AVX2__
 #include <cstring>  // memcpy
-#include "sip_hash.h"
-#include "vec2.h"
+#include "highwayhash/sip_hash.h"
+#include "highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {
