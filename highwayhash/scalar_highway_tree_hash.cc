@@ -80,24 +80,24 @@ class ScalarHighwayTreeHashState {
   }
 
  private:
-  static INLINE void ZipperMerge(const char* mul0, char* v0) {
+  static INLINE void ZipperMerge(const char* v, char* merged) {
     for (int half = 0; half < kPacketSize; half += kPacketSize / 2) {
-      v0[half + 0] = mul0[half + 3];
-      v0[half + 1] = mul0[half + 12];
-      v0[half + 2] = mul0[half + 2];
-      v0[half + 3] = mul0[half + 5];
-      v0[half + 4] = mul0[half + 14];
-      v0[half + 5] = mul0[half + 1];
-      v0[half + 6] = mul0[half + 15];
-      v0[half + 7] = mul0[half + 0];
-      v0[half + 8] = mul0[half + 11];
-      v0[half + 9] = mul0[half + 4];
-      v0[half + 10] = mul0[half + 10];
-      v0[half + 11] = mul0[half + 13];
-      v0[half + 12] = mul0[half + 9];
-      v0[half + 13] = mul0[half + 6];
-      v0[half + 14] = mul0[half + 8];
-      v0[half + 15] = mul0[half + 7];
+      merged[half + 0] = v[half + 3];
+      merged[half + 1] = v[half + 12];
+      merged[half + 2] = v[half + 2];
+      merged[half + 3] = v[half + 5];
+      merged[half + 4] = v[half + 14];
+      merged[half + 5] = v[half + 1];
+      merged[half + 6] = v[half + 15];
+      merged[half + 7] = v[half + 0];
+      merged[half + 8] = v[half + 11];
+      merged[half + 9] = v[half + 4];
+      merged[half + 10] = v[half + 10];
+      merged[half + 11] = v[half + 13];
+      merged[half + 12] = v[half + 9];
+      merged[half + 13] = v[half + 6];
+      merged[half + 14] = v[half + 8];
+      merged[half + 15] = v[half + 7];
     }
   }
 

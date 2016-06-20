@@ -57,8 +57,8 @@ def x(a,b,c):
     mul1 = init1;
   }
 
-  INLINE void Update(const char* packet_ptr) {
-    const V4x64U packet = LoadU(reinterpret_cast<const uint64*>(packet_ptr));
+  INLINE void Update(const char* bytes) {
+    const V4x64U packet = LoadU(reinterpret_cast<const uint64*>(bytes));
     Update(packet);
   }
 
@@ -72,7 +72,8 @@ def x(a,b,c):
     v1 += ZipperMerge(v0);
   }
 
-  INLINE uint64 Finalize() {
+  // Returns 256 pseudo-random bits that pass the smhasher tests.
+  INLINE V4x64U Finalize256() {
     // Mix together all lanes.
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -80,7 +81,14 @@ def x(a,b,c):
     PermuteAndUpdate();
 
     const V4x64U sum = v0 + v1 + mul0 + mul1;
-    // Much faster than Store(v0 + v1) to uint64[].
+    return sum;
+  }
+
+  // Returns 64 pseudo-random bits that pass the smhasher tests.
+  INLINE uint64 Finalize() {
+    const V4x64U sum = Finalize256();
+    // Each lane is already sufficiently mixed. Extracting the lowest is faster
+    // than Store(sum) to uint64[].
     return _mm_cvtsi128_si64(_mm256_extracti128_si256(sum, 0));
   }
 
@@ -170,9 +178,30 @@ INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 //
 // Returns a 64-bit hash of the given data bytes.
+//
+// Throughput: 11 GB/s for 1 KB inputs.
 static INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
                                      const char* bytes, const uint64 size) {
   return ComputeHash<HighwayTreeHashState>(key, bytes, size);
+}
+
+// J-lanes tree hash based upon multiplication and "zipper merges".
+//
+// Robust versus timing attacks because memory accesses are sequential
+// and the algorithm is branch-free. Requires an AVX-2 capable CPU.
+//
+// "key" is a secret 256-bit key unknown to attackers.
+// "bytes" is the data to hash (possibly unaligned).
+// "size" is the number of bytes to hash; exactly that many bytes are read.
+//
+// Returns a 256-bit hash of the given data bytes. These bits are well
+// distributed, but the function's resistance to differential attacks may be
+// lower (about 64 bits).
+static INLINE V4x64U HighwayTreeHash256(const HighwayTreeHashState::Key& key,
+                                        const char* bytes, const uint64 size) {
+  HighwayTreeHashState state(key);
+  UpdateState(bytes, size, &state);
+  return state.Finalize256();
 }
 
 }  // namespace highwayhash
