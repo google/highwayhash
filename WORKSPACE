@@ -1,1 +1,1 @@
- 
+workspace(name = "highwayhash")

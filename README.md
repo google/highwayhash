@@ -13,7 +13,7 @@ parallel, which is faster when processing at least 96 bytes.
 HighwayHash is a new way of mixing inputs which may inspire new
 cryptographically strong hashes. Large inputs are processed at a rate of
 0.3 cycles per byte, and latency remains low even for small inputs.
-HighwayHash is faster than SipHash for all input sizes, with about 7 times
+HighwayHash is faster than SipHash for all input sizes, with about 5 times
 higher throughput at 1 KiB.
 
 ## Applications

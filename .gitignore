@@ -1,2 +1,3 @@
-*.o
-sip_hash_main
+OWNERS
+README.google
+README.security
