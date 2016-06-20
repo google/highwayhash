@@ -32,7 +32,10 @@ extern "C" {
 // "bytes" is the data to hash (possibly unaligned).
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 //
-// Returns a 64-bit hash of the given data bytes.
+// Returns a 64-bit hash of the given data bytes, the same value that
+// HighwayTreeHash would return (drop-in compatible).
+//
+// Throughput: 8.2 GB/s for 1 KB inputs (about 75% of the AVX-2 version).
 uint64 SSE41HighwayTreeHash(const uint64 (&key)[4], const char* bytes,
                             const uint64 size);
 
