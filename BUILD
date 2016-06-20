@@ -12,6 +12,7 @@ cc_library(
         "highwayhash/vec.h",
         "highwayhash/vec2.h",
     ],
+    includes = ["."],
 )
 
 cc_library(
@@ -81,6 +82,16 @@ cc_library(
     includes = ["."],
     deps = [
         ":vector",
+    ],
+)
+
+cc_test(
+    name = "sip_hash_test",
+    size = "small",
+    srcs = ["highwayhash/sip_hash_test.cc"],
+    deps = [
+        ":sip_hash",
+        "//testing/base/public:gunit_main_no_google3",
     ],
 )
 
