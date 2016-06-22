@@ -145,8 +145,9 @@ class ScalarHighwayTreeHashState {
 // HighwayTreeHash would return (drop-in compatible).
 //
 // Throughput: 1.1 GB/s for 1 KB inputs (about 10% of the AVX-2 version).
-uint64 ScalarHighwayTreeHash(const uint64 (&key)[4], const char* bytes,
-                             const uint64 size) {
+static INLINE uint64 ScalarHighwayTreeHash(const uint64 (&key)[4],
+                                           const char* bytes,
+                                           const uint64 size) {
   return ComputeHash<ScalarHighwayTreeHashState>(key, bytes, size);
 }
 

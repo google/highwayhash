@@ -13,3 +13,20 @@
 // limitations under the License.
 
 #include "highwayhash/sse41_highway_tree_hash.h"
+
+#ifdef __SSE4_1__
+
+using highwayhash::uint64;
+using highwayhash::SSE41HighwayTreeHash;
+using Key = highwayhash::SSE41HighwayTreeHashState::Key;
+
+extern "C" {
+
+uint64 SSE41HighwayTreeHashC(const uint64* key, const char* bytes,
+                             const uint64 size) {
+  return SSE41HighwayTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"
+
+#endif

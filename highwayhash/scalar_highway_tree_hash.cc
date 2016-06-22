@@ -13,3 +13,16 @@
 // limitations under the License.
 
 #include "highwayhash/scalar_highway_tree_hash.h"
+
+using highwayhash::uint64;
+using highwayhash::ScalarHighwayTreeHash;
+using Key = highwayhash::ScalarHighwayTreeHashState::Key;
+
+extern "C" {
+
+uint64 ScalarHighwayTreeHashC(const uint64* key, const char* bytes,
+                              const uint64 size) {
+  return ScalarHighwayTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"

@@ -13,3 +13,20 @@
 // limitations under the License.
 
 #include "highwayhash/highway_tree_hash.h"
+
+#ifdef __AVX2__
+
+using highwayhash::uint64;
+using highwayhash::HighwayTreeHash;
+using Key = highwayhash::HighwayTreeHashState::Key;
+
+extern "C" {
+
+uint64 HighwayTreeHashC(const uint64* key, const char* bytes,
+                        const uint64 size) {
+  return HighwayTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"
+
+#endif

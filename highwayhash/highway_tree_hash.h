@@ -14,6 +14,7 @@
 
 #ifndef HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
 #define HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_
+
 #ifdef __AVX2__
 
 #include <cstddef>
@@ -205,5 +206,7 @@ static INLINE V4x64U HighwayTreeHash256(const HighwayTreeHashState::Key& key,
 }
 
 }  // namespace highwayhash
+
 #endif  // #ifdef __AVX2__
+
 #endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_HIGHWAY_TREE_HASH_H_

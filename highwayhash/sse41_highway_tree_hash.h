@@ -14,6 +14,7 @@
 
 #ifndef HIGHWAYHASH_HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
 #define HIGHWAYHASH_HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
+
 #ifdef __SSE4_1__
 
 #include <cstdio>
@@ -146,12 +147,14 @@ class SSE41HighwayTreeHashState {
 // HighwayTreeHash would return (drop-in compatible).
 //
 // Throughput: 8.2 GB/s for 1 KB inputs (about 75% of the AVX-2 version).
-uint64 SSE41HighwayTreeHash(const uint64 (&key)[4], const char* bytes,
-                            const uint64 size) {
+static INLINE uint64 SSE41HighwayTreeHash(const uint64 (&key)[4],
+                                          const char* bytes,
+                                          const uint64 size) {
   return ComputeHash<SSE41HighwayTreeHashState>(key, bytes, size);
 }
 
 }  // namespace highwayhash
 
 #endif  // #ifdef __SSE4_1__
+
 #endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SSE41_HIGHWAY_TREE_HASH_H_
