@@ -68,7 +68,10 @@ cc_library(
 cc_library(
     name = "sse41_highway_tree_hash",
     srcs = ["highwayhash/sse41_highway_tree_hash.cc"],
-    hdrs = ["highwayhash/sse41_highway_tree_hash.h"],
+    hdrs = [
+        "highwayhash/sse41_highway_tree_hash.h",
+        "highwayhash/state_helpers.h",
+    ],
     includes = ["."],
     deps = [
         ":vector",
@@ -78,7 +81,10 @@ cc_library(
 cc_library(
     name = "scalar_highway_tree_hash",
     srcs = ["highwayhash/scalar_highway_tree_hash.cc"],
-    hdrs = ["highwayhash/scalar_highway_tree_hash.h"],
+    hdrs = [
+        "highwayhash/scalar_highway_tree_hash.h",
+        "highwayhash/state_helpers.h",
+    ],
     includes = ["."],
     deps = [
         ":vector",

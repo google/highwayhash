@@ -97,6 +97,20 @@ class SipHashState {
   uint64 v3;
 };
 
+// Override the HighwayTreeHash padding scheme with that of SipHash so that
+// the hash output matches the known-good values in sip_hash_test.
+template <>
+INLINE void PaddedUpdate<SipHashState>(const uint64 size,
+                                       const char* remaining_bytes,
+                                       const uint64 remaining_size,
+                                       SipHashState* state) {
+  // Copy to avoid overrunning the input buffer.
+  char final_packet[SipHashState::kPacketSize] = {0};
+  memcpy(final_packet, remaining_bytes, remaining_size);
+  final_packet[SipHashState::kPacketSize - 1] = static_cast<char>(size & 0xFF);
+  state->Update(final_packet);
+}
+
 // Fast, cryptographically strong pseudo-random function. Useful for:
 // . hash tables holding attacker-controlled data. This function is
 //   immune to hash flooding DOS attacks because multi-collisions are

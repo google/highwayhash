@@ -160,11 +160,11 @@ static INLINE V2x64U operator^(const V2x64U& left, const V2x64U& right) {
 // Load/Store.
 
 // "from" must be vector-aligned.
-static INLINE V2x64U Load(const uint64* RESTRICT const from) {
+static INLINE V2x64U Load2(const uint64* RESTRICT const from) {
   return V2x64U(_mm_load_si128(reinterpret_cast<const __m128i*>(from)));
 }
 
-static INLINE V2x64U LoadU(const uint64* RESTRICT const from) {
+static INLINE V2x64U Load2U(const uint64* RESTRICT const from) {
   return V2x64U(_mm_loadu_si128(reinterpret_cast<const __m128i*>(from)));
 }
 
