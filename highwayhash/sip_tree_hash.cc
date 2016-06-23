@@ -186,4 +186,17 @@ uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
 
 }  // namespace highwayhash
 
+using highwayhash::uint64;
+using highwayhash::SipTreeHash;
+using Key = uint64[4];
+
+extern "C" {
+
+uint64 SipTreeHashC(const uint64* key, const char* bytes,
+                        const uint64 size) {
+  return SipTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"
+
 #endif  // #ifdef __AVX2__

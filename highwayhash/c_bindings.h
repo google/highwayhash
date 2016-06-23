@@ -5,6 +5,11 @@
 
 #include "highwayhash/types.h"
 
+uint64 ScalarSipTreeHashC(const uint64* key, const char* bytes,
+                          const uint64 size);
+
+uint64 SipTreeHashC(const uint64* key, const char* bytes, const uint64 size);
+
 uint64 ScalarHighwayTreeHashC(const uint64* key, const char* bytes,
                               const uint64 size);
 

@@ -148,3 +148,16 @@ uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
 }
 
 }  // namespace highwayhash
+
+using highwayhash::uint64;
+using highwayhash::ScalarSipTreeHash;
+using Key = uint64[4];
+
+extern "C" {
+
+uint64 ScalarSipTreeHashC(const uint64* key, const char* bytes,
+                          const uint64 size) {
+  return ScalarSipTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"

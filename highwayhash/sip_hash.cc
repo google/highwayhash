@@ -13,3 +13,15 @@
 // limitations under the License.
 
 #include "highwayhash/sip_hash.h"
+
+using highwayhash::uint64;
+using highwayhash::SipHash;
+using Key = highwayhash::SipHashState::Key;
+
+extern "C" {
+
+uint64 SipHashC(const uint64* key, const char* bytes, const uint64 size) {
+  return SipHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+}  // extern "C"
