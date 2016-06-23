@@ -18,7 +18,7 @@ higher throughput at 1 KiB.
 
 ## Applications
 
-Expected applications include DOS-proof hash tables and random generators.
+Expected applications include DoS-proof hash tables and random generators.
 
 SipHash is immune to hash flooding because multi-collisions are infeasible to
 compute. This makes it suitable for hash tables storing user-controlled data.
@@ -58,8 +58,8 @@ combine the H_i into a single digest via SipHash.
 This is about twice as fast as SipHash, but the outputs differ.
 
 The implementation uses custom AVX-2 vector classes with overloaded operators
-(e.g. const V4x64U a = b + c) for type-safety and improved readability
-vs. compiler intrinsics (e.g. const __m256i a = _mm256_add_epi64(b, c)).
+(e.g. `const V4x64U a = b + c`) for type-safety and improved readability
+vs. compiler intrinsics (e.g. `const __m256i a = _mm256_add_epi64(b, c)`).
 
 ## HighwayHash
 
@@ -70,13 +70,14 @@ to reverse. Permuting equalizes the distribution of the resulting bytes.
 The internal state occupies four 256-bit AVX-2 registers. Due to limitations of
 the instruction set, the registers are partitioned into two 512-bit halves that
 remain independent until the reduce phase. The algorithm outputs 64 bit digests
-and can easily be extended to 128 or 256 bits.
+or up to 256 bits at no extra cost.
 
 In addition to high throughput, the algorithm is designed for low finalization
 cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
 inputs.
 
-For older CPUs, an SSE4.1 version is also provided.
+For older CPUs, we also provide an SSE4.1 version (about 75% the speed) and
+portable fall-back (about 10% as fast).
 
 ## Results
 
@@ -91,22 +92,25 @@ Variant | Throughput
 --- | ---
 SipHash | 2.2 GB/s
 SipTreeHash | 5.1 GB/s
-SSE41HighwayTreeHash | 6.5 GB/s
+SSE41HighwayTreeHash | 8.1 GB/s
 HighwayTreeHash | 12.3 GB/s
 
 ## Requirements
 
 SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
-SipHash has no particular CPU requirement.
+SipHash and ScalarHighwayTreeHash have no particular CPU requirements.
 
 ## Build instructions
 
-To build with Bazel (http://bazel.io/) : `bazel build :all -c opt --copt=-mavx2`
+`sip_hash_test` uses [GTest](https://github.com/google/googletest).
+You can avoid the dependency in [Bazel](http://bazel.io/) builds with
+`bazel build -c opt --copt=-mavx2 -- :all -:sip_hash_test`
+
 To build with Make : `make`
 
 Note on project structure: the highwayhash/ subdirectory allows users to
-#include "highwayhash/sip_hash.h" rather than just "sip_hash.h". Keeping BUILD
-in the project root directory shortens the Bazel build command line.
+`#include "highwayhash/sip_hash.h"` rather than just `"sip_hash.h"`. Keeping
+BUILD in the project root directory shortens the Bazel build command line.
 This requires "highwayhash/" prefixes in all Bazel and Makefile rules.
 Adding "." to the include path enables highwayhash/ prefixes in our cc files.
 
@@ -134,8 +138,9 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 * code_annotation.h defines some compiler-dependent language extensions.
 * state_helpers.h simplifies the implementation of each hash.
+* c_bindings.h provides C-callable functions.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-05-17
+<jyrki.alakuijala@gmail.com>, updated 2016-06-23
 
 This is not an official Google product.
