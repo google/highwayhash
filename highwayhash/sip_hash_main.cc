@@ -149,7 +149,7 @@ class Measurements {
     }
     printf("\n");
 
-    for (int i = 0; i < num_sizes; ++i) {
+    for (int i = 0; i < static_cast<int>(num_sizes); ++i) {
       printf("%d ", i);
       for (auto& it : iterators) {
         printf("%5.2f ", *it);
