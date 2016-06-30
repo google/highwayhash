@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <string>
 #include <vector>
 
 #ifdef _WIN32
