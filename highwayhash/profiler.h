@@ -4,8 +4,7 @@
 // High precision, low overhead time measurements. Returns exact call counts and
 // total elapsed time for user-defined 'zones' (code regions, i.e. C++ scopes).
 //
-// Usage: add this header to BUILD srcs; add PROFILER_STATIC_INIT at namespace
-// scope in a source file; then instrument regions of interest:
+// Usage: add this header to BUILD srcs; instrument regions of interest:
 // { PROFILER_ZONE("name"); /*code*/ } or
 // void FuncToMeasure() { PROFILER_FUNC; /*code*/ }.
 // After all threads have exited any zones, invoke PROFILER_PRINT_RESULTS() to

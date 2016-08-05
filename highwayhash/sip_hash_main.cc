@@ -13,9 +13,11 @@
 // limitations under the License.
 
 // Benchmark and verification for hashing algorithms. Output (cycles per byte):
-// Algo \   3       4       7       8       9      10  [byte inputs]
-// Hwy & 20.05 & 15.09 &  8.73 &  7.62 &  6.81 &  6.02
-// Sip & 21.45 & 13.31 &  7.63 &  9.29 &  9.36 &  8.46
+// Algo \              3       4       7       8       9      10  [bytes]
+// SSE41HighwayTreeHash & 40.40 & 33.34 & 18.09 & 16.84 & 14.42 & 12.93 &  0.39
+//      HighwayTreeHash & 40.75 & 31.59 & 17.48 & 15.80 & 13.76 & 12.41 &  0.38
+//          SipTreeHash & 55.43 & 42.83 & 23.99 & 21.46 & 18.82 & 16.92 &  0.61
+//              SipHash & 36.57 & 25.82 & 14.69 & 15.20 & 14.49 & 13.16 &  1.32
 
 #include <algorithm>
 #include <cassert>
@@ -179,30 +181,40 @@ void RunTests(int argc, char* argv[]) {
   const std::vector<size_t> in_sizes = {3, 3, 4, 4, 7, 7, 8, 8, 9, 10, 1023};
   Measurements measurements;
 
-  SipHashState::Key key2 = {0, 1};
-  HighwayTreeHashState::Key key4 = {0, 1, 2, 3};
-  AddMeasurements(in_sizes, "Sip", &measurements, [key2](const size_t size) {
-    char in[1024] = {static_cast<char>(size)};
-    return SipHash(key2, in, size);
-  });
-
-  AddMeasurements(in_sizes, "SipTree", &measurements,
-                  [key4](const size_t size) {
+  uint64 key2[2] = {0, 1};
+  AddMeasurements(in_sizes, "SipHash", &measurements,
+                  [key2](const size_t size) {
                     char in[1024] = {static_cast<char>(size)};
-                    return SipTreeHash(key4, in, size);
+                    return SipHash(key2, in, size);
                   });
 
-  AddMeasurements(in_sizes, "HighwayTreeAVX2", &measurements,
-                  [key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
-                    return HighwayTreeHash(key4, in, size);
-                  });
+#ifdef __AVX2__
+  {
+    uint64 key4[4] = {0, 1, 2, 3};
+    AddMeasurements(in_sizes, "SipTreeHash", &measurements,
+                    [key4](const size_t size) {
+                      char in[1024] = {static_cast<char>(size)};
+                      return SipTreeHash(key4, in, size);
+                    });
 
-  AddMeasurements(in_sizes, "HighwayTreeSSE4", &measurements,
-                  [key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
-                    return SSE41HighwayTreeHash(key4, in, size);
-                  });
+    AddMeasurements(in_sizes, "HighwayTreeHash", &measurements,
+                    [key4](const size_t size) {
+                      char in[1024] = {static_cast<char>(size)};
+                      return HighwayTreeHash(key4, in, size);
+                    });
+  }
+#endif
+
+#ifdef __SSE4_1__
+  {
+    uint64 key4[4] = {0, 1, 2, 3};
+    AddMeasurements(in_sizes, "SSE41HighwayTreeHash", &measurements,
+                    [key4](const size_t size) {
+                      char in[1024] = {static_cast<char>(size)};
+                      return SSE41HighwayTreeHash(key4, in, size);
+                    });
+  }
+#endif
 
   measurements.PrintTable(in_sizes);
 

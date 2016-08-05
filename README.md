@@ -76,7 +76,7 @@ In addition to high throughput, the algorithm is designed for low finalization
 cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
 inputs.
 
-For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and
+For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and a
 portable fall-back (about 10% as fast).
 
 ## Performance measurements
@@ -103,10 +103,10 @@ for various input sizes:
 
 Algorithm | 3 | 4 | 7 | 8 | 9 | 10 | 1023
 --- | --- | --- | --- | --- | --- |--- |--- |
-HighwayTreeAVX2 | 40.75 | 31.59 | 17.48 | 15.80 | 13.76 | 12.41 |  0.38
-HighwayTreeSSE4 | 40.40 | 33.34 | 18.09 | 16.84 | 14.42 | 12.93 |  0.39
-SipTree | 55.43 | 42.83 | 23.99 | 21.46 | 18.82 | 16.92 |  0.61
-Sip | 36.57 | 25.82 | 14.69 | 15.20 | 14.49 | 13.16 |  1.32
+HighwayTreeHash (AVX-2) | 40.75 | 31.59 | 17.48 | 15.80 | 13.76 | 12.41 |  0.38
+SSE41HighwayTreeHash | 40.40 | 33.34 | 18.09 | 16.84 | 14.42 | 12.93 |  0.39
+SipTreeHash | 55.43 | 42.83 | 23.99 | 21.46 | 18.82 | 16.92 |  0.61
+SipHash | 36.57 | 25.82 | 14.69 | 15.20 | 14.49 | 13.16 |  1.32
 
 The tree hashes are slightly slower for <= 8 byte inputs, but up to 3.5 times
 as fast for large inputs. The SSE4.1 variant is nearly as fast as the AVX-2
@@ -120,9 +120,9 @@ no particular CPU requirements.
 
 ## Build instructions
 
-`sip_hash_test` uses [GTest](https://github.com/google/googletest).
+`sip_hash_test` and `data_parallel_test` use [GTest](https://github.com/google/googletest).
 You can avoid the dependency in [Bazel](http://bazel.io/) builds with
-`bazel build -c opt --copt=-mavx2 -- :all -:sip_hash_test`
+`bazel build -c opt --copt=-mavx2 -- :all -:sip_hash_test -:data_parallel_test`
 
 To build with Make : `make`
 
