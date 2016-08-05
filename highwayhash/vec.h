@@ -34,7 +34,7 @@
 
 namespace highwayhash {
 
-// 128-bit AVX-2 vector with 2 uint64 lanes.
+// 128-bit SSE4.1 vector with 2 uint64 lanes.
 class V2x64U {
  public:
   using T = uint64;

@@ -1,4 +1,10 @@
 #include "highwayhash/sip_hash.h"
+#include "highwayhash/highway_tree_hash.h"
+#include "highwayhash/scalar_highway_tree_hash.h"
+#include "highwayhash/scalar_sip_tree_hash.h"
+#include "highwayhash/sip_tree_hash.h"
+#include "highwayhash/sse41_highway_tree_hash.h"
+#include "testing/base/public/benchmark.h"
 #include "testing/base/public/gunit.h"
 
 namespace highwayhash {
@@ -52,5 +58,73 @@ TEST(HighwayHashTest, VerifySipHash) {
   }
 }
 
+namespace bm {
+// Run with:
+//   blaze run -c opt --cpu=haswell third_party/highwayhash:sip_hash_test -- \
+//     --benchmarks=all --benchmark_min_iters=1 --benchmark_min_time=0.25
+//
+// Return a pointer to memory of at least size bytes long to be used as hashing
+// input.
+char* GetInput(size_t size) {
+  static constexpr size_t kMaxSize = 100 << 20;
+  assert(size <= kMaxSize);
+  static auto* res = []() {
+    auto* res = new char[kMaxSize];
+    std::iota(res, res + kMaxSize, 0);
+    return res;
+  }();
+  return res;
+}
+
+template <class Hasher>
+void BM(int iters, int size) {
+  StopBenchmarkTiming();
+  auto* input = GetInput(size);
+  const uint64 keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
+                          0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
+  Hasher hasher(keys);
+  StartBenchmarkTiming();
+  for (int i = 0; i < iters; ++i) {
+    testing::DoNotOptimize(hasher(input, size));
+  }
+  StopBenchmarkTiming();
+  SetBenchmarkBytesProcessed(static_cast<int64>(iters) * size);
+}
+
+void Args(::testing::Benchmark* bm) {
+  bm->DenseRange(1, 16)->Range(32, 100 << 20);
+}
+
+#define DEFINE_HASHER(hashfn, num_keys) \
+struct hashfn##er { \
+  hashfn##er(const uint64* k) { memcpy(keys, k, sizeof(keys)); } \
+  uint64 operator()(const char* input, size_t size) { \
+    return highwayhash::hashfn(keys, input, size); \
+  } \
+  uint64 keys[num_keys]; \
+}
+
+DEFINE_HASHER(SipHash, 2);
+BENCHMARK(BM<SipHasher>)->Apply(Args);
+
+DEFINE_HASHER(ScalarSipTreeHash, 4);
+BENCHMARK(BM<ScalarSipTreeHasher>)->Apply(Args);
+
+DEFINE_HASHER(ScalarHighwayTreeHash, 4);
+BENCHMARK(BM<ScalarHighwayTreeHasher>)->Apply(Args);
+
+#ifdef __SSE4_1__
+DEFINE_HASHER(SSE41HighwayTreeHash, 4);
+BENCHMARK(BM<SSE41HighwayTreeHasher>)->Apply(Args);
+#endif
+#ifdef __AVX2__
+DEFINE_HASHER(HighwayTreeHash, 4);
+BENCHMARK(BM<HighwayTreeHasher>)->Apply(Args);
+
+DEFINE_HASHER(SipTreeHash, 4);
+BENCHMARK(BM<SipTreeHasher>)->Apply(Args);
+#endif
+
+}  // namespace bm
 }  // namespace
 }  // namespace highwayhash

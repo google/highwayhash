@@ -26,7 +26,7 @@ namespace highwayhash {
 template <class State>
 INLINE void PaddedUpdate(const uint64 size, const char* remaining_bytes,
                          const uint64 remaining_size, State* state) {
-  ALIGNED(char, 32) final_packet[State::kPacketSize] = {0};
+  alignas(32) char final_packet[State::kPacketSize] = {0};
 
   // Unusual layout matches the AVX-2 specialization in highway_tree_hash.h.
   const size_t remainder_mod4 = remaining_size & 3;

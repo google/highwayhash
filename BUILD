@@ -16,6 +16,81 @@ cc_library(
 )
 
 cc_library(
+    name = "tsc_timer",
+    hdrs = [
+        "highwayhash/code_annotation.h",
+        "highwayhash/tsc_timer.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "profiler",
+    hdrs = [
+        "highwayhash/profiler.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":tsc_timer",
+    ],
+)
+
+cc_binary(
+    name = "profiler_example",
+    srcs = ["highwayhash/profiler_example.cc"],
+    deps = [
+        ":profiler",
+    ],
+)
+
+cc_library(
+    name = "nanobenchmark",
+    hdrs = [
+        "highwayhash/nanobenchmark.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":tsc_timer",
+    ],
+)
+
+cc_binary(
+    name = "nanobenchmark_example",
+    srcs = [
+        "highwayhash/nanobenchmark_example.cc",
+    ],
+    includes = ["."],
+    deps = [
+        ":nanobenchmark",
+    ],
+)
+
+cc_library(
+    name = "data_parallel",
+    hdrs = [
+        "highwayhash/data_parallel.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "data_parallel_test",
+    size = "small",
+    srcs = ["highwayhash/data_parallel_test.cc"],
+    deps = [
+        ":data_parallel",
+        "//base",
+        "//testing/base/public:gunit_main_no_google3",
+        "//thread",
+    ],
+)
+
+
+cc_library(
     name = "sip_hash",
     srcs = ["highwayhash/sip_hash.cc"],
     hdrs = [
@@ -96,7 +171,13 @@ cc_test(
     size = "small",
     srcs = ["highwayhash/sip_hash_test.cc"],
     deps = [
+        ":highway_tree_hash",
+        ":scalar_highway_tree_hash",
+        ":scalar_sip_tree_hash",
         ":sip_hash",
+        ":sip_tree_hash",
+        ":sse41_highway_tree_hash",
+        "//testing/base/public:gunit_main",
         "//testing/base/public:gunit_main_no_google3",
     ],
 )
@@ -109,6 +190,7 @@ cc_binary(
     includes = ["."],
     deps = [
         ":highway_tree_hash",
+        ":nanobenchmark",
         ":scalar_highway_tree_hash",
         ":scalar_sip_tree_hash",
         ":sip_hash",

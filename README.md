@@ -76,29 +76,47 @@ In addition to high throughput, the algorithm is designed for low finalization
 cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
 inputs.
 
-For older CPUs, we also provide an SSE4.1 version (about 75% the speed) and
+For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and
 portable fall-back (about 10% as fast).
+
+## Performance measurements
+
+To measure the CPU cost of a hash function, we can either create an artificial
+'microbenchmark' (easier to control, but probably not representative of the
+actual runtime), or insert instrumentation directly into an application (risks
+influencing the results through observer overead). We provide novel variants of
+both approaches that mitigate their respective disadvantages.
+
+profiler.h uses software write-combining to stream program traces to memory
+with minimal overhead. These can be analyzed offline, or when memory is full,
+to learn how much time was spent in each (possibly nested) zone.
+
+nanobenchmark.h enables cycle-accurate measurements of very short functions.
+It uses CPU fences and robust statistics to minimize variability, and also
+avoids unrealistic branch prediction effects.
 
 ## Results
 
-Performance is measured as throughput for 1 KiB messages. The benchmark
-measures the minimum elapsed time among many repetitions (thus ensuring
-the inputs are cache-resident) but also updates an output variable to
-ensure the compiler does not elide anything. The C++ implementations are
-compiled with GCC 4.8.4 and run on a single core of a desktop Xeon E5-1650 v3
-clocked at 3.5 GHz.
+We compile the C++ implementations with GCC 4.8.4 and run on a single core of
+a Xeon E5-2690 v3 clocked at 2.6 GHz. CPU cost is measured as cycles per byte
+for various input sizes:
 
-Variant | Throughput
---- | ---
-SipHash | 2.2 GB/s
-SipTreeHash | 5.1 GB/s
-SSE41HighwayTreeHash | 8.1 GB/s
-HighwayTreeHash | 12.3 GB/s
+Algorithm | 3 | 4 | 7 | 8 | 9 | 10 | 1023
+--- | --- | --- | --- | --- | --- |--- |--- |
+HighwayTreeAVX2 | 40.75 | 31.59 | 17.48 | 15.80 | 13.76 | 12.41 |  0.38
+HighwayTreeSSE4 | 40.40 | 33.34 | 18.09 | 16.84 | 14.42 | 12.93 |  0.39
+SipTree | 55.43 | 42.83 | 23.99 | 21.46 | 18.82 | 16.92 |  0.61
+Sip | 36.57 | 25.82 | 14.69 | 15.20 | 14.49 | 13.16 |  1.32
+
+The tree hashes are slightly slower for <= 8 byte inputs, but up to 3.5 times
+as fast for large inputs. The SSE4.1 variant is nearly as fast as the AVX-2
+version because it also processes 32 bytes at a time.
 
 ## Requirements
 
 SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
-SipHash and ScalarHighwayTreeHash have no particular CPU requirements.
+SSE41HighwayTreeHash requires SSE4.1. SipHash and ScalarHighwayTreeHash have
+no particular CPU requirements.
 
 ## Build instructions
 
@@ -128,19 +146,27 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
 ## Modules
 
+### Hashes
+
 * sip_hash.cc is the compatible implementation of SipHash, and also provides the
   final reduction for sip_tree_hash.
 * sip_tree_hash.cc is the faster but incompatible SIMD j-lanes tree hash.
 * highway_tree_hash.cc is our new, fast AVX-2 mixing algorithm.
 * scalar_sip_tree_hash.cc and scalar_highway_tree_hash.cc are non-SIMD versions.
 * sse41_highway_tree_hash is a variant that only needs SSE4.1.
+* c_bindings.h provides C-callable functions.
+* state_helpers.h simplifies the implementation of each hash.
+
+### Infrastructure
+* code_annotation.h defines some compiler-dependent language extensions.
+* data_parallel.h provides a C++11 ThreadPool and PerThread (similar to OpenMP).
+* nanobenchmark.h measures elapsed times with < 1 cycle variability.
+* profiler.h is a low-overhead, deterministic hierarchical profiler.
+* tsc_timer.h obtains high-resolution timestamps without CPU reordering.
 * vec2.h contains a wrapper class for 256-bit AVX-2 vectors with 64-bit lanes.
 * vec.h provides a similar class for 128-bit vectors.
-* code_annotation.h defines some compiler-dependent language extensions.
-* state_helpers.h simplifies the implementation of each hash.
-* c_bindings.h provides C-callable functions.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-06-23
+<jyrki.alakuijala@gmail.com>, updated 2016-08-05
 
 This is not an official Google product.

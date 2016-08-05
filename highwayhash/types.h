@@ -1,15 +1,35 @@
 #ifndef HIGHWAYHASH_HIGHWAYHASH_TYPES_H_
 #define HIGHWAYHASH_HIGHWAYHASH_TYPES_H_
 
+#if defined(_MSC_VER)
+#define HIGHWAYHASH_RESTRICT __restrict
+#else
+#define HIGHWAYHASH_RESTRICT __restrict__
+#endif
+
 #ifdef __cplusplus
 namespace highwayhash {
 #endif
+
+typedef unsigned __int128 uint128;
 
 // cstdint's uint64_t is unsigned long on Linux; we need 'unsigned long long'
 // for interoperability with other software.
 typedef unsigned long long uint64;  // NOLINT
 
 typedef unsigned int uint32;
+
+typedef unsigned char uint8;
+
+// Pointer to const
+typedef const uint8* const HIGHWAYHASH_RESTRICT crpcU8;
+typedef const uint32* const HIGHWAYHASH_RESTRICT crpcU32;
+typedef const uint64* const HIGHWAYHASH_RESTRICT crpcU64;
+
+// Pointer to non-const
+typedef uint8* const HIGHWAYHASH_RESTRICT crpU8;
+typedef uint32* const HIGHWAYHASH_RESTRICT crpU32;
+typedef uint64* const HIGHWAYHASH_RESTRICT crpU64;
 
 #ifdef __cplusplus
 }  // namespace highwayhash

@@ -176,7 +176,7 @@ uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
   state.Update(final_packet);
 
   // Faster than passing __m256i and extracting.
-  ALIGNED(uint64, 64) hashes[kNumLanes];
+  alignas(64) uint64 hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
   SipHashState::Key reduce_key;

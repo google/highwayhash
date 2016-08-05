@@ -32,6 +32,12 @@
 #define GCC_VERSION 0
 #endif
 
+#ifdef __clang__
+#define CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
+#else
+#define CLANG_VERSION 0
+#endif
+
 //-----------------------------------------------------------------------------
 
 // Marks a function parameter as unused and avoids
@@ -91,16 +97,6 @@
 #define FORMAT_STRING(s) _Printf_format_string_ s
 #else
 #define FORMAT_STRING(s) s
-#endif
-
-// Defines a variable such that its address is a multiple of "multiple".
-// Example: ALIGNED(int, 8) aligned = 0;
-#if MSC_VERSION
-#define ALIGNED(type, multiple) __declspec(align(multiple)) type
-#elif GCC_VERSION
-#define ALIGNED(type, multiple) type __attribute__((aligned(multiple)))
-#else
-#define ALIGNED(type, multiple) type
 #endif
 
 // Function taking a reference to an array and returning a pointer to

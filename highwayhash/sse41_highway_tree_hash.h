@@ -90,8 +90,8 @@ class SSE41HighwayTreeHashState {
 
  private:
   void Print(const V2x64U& L, const V2x64U& H) {
-    ALIGNED(uint64, 16) lanesL[2] = {0};
-    ALIGNED(uint64, 16) lanesH[2] = {0};
+    alignas(16) uint64 lanesL[2] = {0};
+    alignas(16) uint64 lanesH[2] = {0};
     Store(L, lanesL);
     Store(H, lanesH);
     printf("%016llX %016llX %016llX %016llX\n", lanesH[1], lanesH[0], lanesL[1],
