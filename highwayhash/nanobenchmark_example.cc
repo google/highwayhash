@@ -25,7 +25,7 @@ void TestMemcpy() {
     auto& samples = size_samples.second;
     const float median = Median(&samples);
     const float variability = MedianAbsoluteDeviation(samples, median);
-    printf("%2lu: median=%5.1f cycles; median abs. deviation=%4.1f cycles\n",
+    printf("%2zu: median=%5.1f cycles; median abs. deviation=%4.1f cycles\n",
            size, median, variability);
   }
 }

@@ -1,6 +1,14 @@
-#include "profiler.h"
+#include "highwayhash/profiler.h"
 
-#include <sys/time.h>
+#if OS_WIN
+#define NOMINMAX
+#include <windows.h>
+#elif OS_MAC
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#else
+#include <time.h>
+#endif
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -8,12 +16,27 @@
 #include <cstring>
 
 double Now() {
-  timeval tv;
-  const int ret = gettimeofday(&tv, nullptr);
-  if (ret != 0) {
-    abort();
+#if OS_WIN
+  LARGE_INTEGER counter;
+  (void)QueryPerformanceCounter(&counter);
+  LARGE_INTEGER freq;
+  (void)QueryPerformanceFrequency(&freq);
+  return double(counter.QuadPart) / freq.QuadPart;
+#elif OS_MAC
+  const auto t = mach_absolute_time();
+  // On OSX/iOS platform the elapsed time is cpu time unit
+  // We have to query the time base information to convert it back
+  // See https://developer.apple.com/library/mac/qa/qa1398/_index.html
+  static mach_timebase_info_data_t timebase;
+  if (timebase.denom == 0) {
+    (void)mach_timebase_info(&timebase);
   }
-  return tv.tv_sec + tv.tv_usec * 1E-6;
+  return double(t) * timebase.numer / timebase.denom * 1E-9;
+#else
+  timespec t;
+  clock_gettime(CLOCK_REALTIME, &t);
+  return t.tv_sec + t.tv_nsec * 1E-9;
+#endif
 }
 
 void Spin(const double min_time) {

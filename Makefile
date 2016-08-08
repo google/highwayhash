@@ -9,13 +9,17 @@ OBJS := $(addprefix highwayhash/, \
 	sse41_highway_tree_hash.o \
 	sip_hash_main.o)
 
-MAIN := sip_hash_main
+all: sip_hash_main profiler_example nanobenchmark_example
 
-all: $(MAIN)
+sip_hash_main: $(OBJS)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(MAIN): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(MAIN)
+profiler_example: highwayhash/profiler_example.o
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-.PHONY: clean
+nanobenchmark_example: highwayhash/nanobenchmark.o highwayhash/nanobenchmark_example.o
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+.PHONY: clean all
 clean:
-	$(RM) $(OBJS) $(MAIN)
+	$(RM) $(OBJS) sip_hash_main profiler_example nanobenchmark_example

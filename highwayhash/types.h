@@ -7,8 +7,6 @@
 namespace highwayhash {
 #endif
 
-typedef unsigned __int128 uint128;
-
 // cstdint's uint64_t is unsigned long on Linux; we need 'unsigned long long'
 // for interoperability with other software.
 typedef unsigned long long uint64;  // NOLINT

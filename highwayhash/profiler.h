@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <cstring>  // memcpy
 
+#include "highwayhash/code_annotation.h"
 #include "highwayhash/tsc_timer.h"
 
 // Non-portable aspects:
@@ -43,31 +44,12 @@
 // - RDTSCP timestamps (serializing, high-resolution)
 // - assumes string literals are stored within an 8 MiB range
 // - compiler-specific annotations (restrict, alignment, fences)
-#ifdef _MSC_VER
+#if COMPILER_MSVC
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
 #include <emmintrin.h>
-
-#ifdef _MSC_VER
-#define PROFILER_RESTRICT __restrict
-#else
-#define PROFILER_RESTRICT __restrict__
-#endif
-
-#ifdef _MSC_VER
-#define PROFILER_CACHE_ALIGNED_RETURN /* not supported */
-#else
-#define PROFILER_CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
-#endif
-
-#ifdef _MSC_VER
-#pragma intrinsic(_ReadWriteBarrier)
-#define PROFILER_COMPILER_FENCE _ReadWriteBarrier()
-#else
-#define PROFILER_COMPILER_FENCE asm volatile("" : : : "memory")
-#endif
 
 namespace profiler {
 
@@ -90,7 +72,7 @@ class CacheAligned {
   static constexpr size_t kPointerSize = sizeof(void*);
   static constexpr size_t kCacheLineSize = 64;
 
-  static void* Allocate(const size_t bytes) PROFILER_CACHE_ALIGNED_RETURN {
+  static void* Allocate(const size_t bytes) CACHE_ALIGNED_RETURN {
     char* const allocated = static_cast<char*>(malloc(bytes + kCacheLineSize));
     if (allocated == nullptr) {
       return nullptr;
@@ -124,23 +106,23 @@ class CacheAligned {
     static_assert(sizeof(__m128i) % sizeof(T) == 0, "Cannot divide");
     const size_t kLanes = sizeof(__m128i) / sizeof(T);
     const __m128i v0 = LoadVector(from + 0 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     const __m128i v1 = LoadVector(from + 1 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     const __m128i v2 = LoadVector(from + 2 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     const __m128i v3 = LoadVector(from + 3 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     // Fences prevent the compiler from reordering loads/stores, which may
     // interfere with write-combining.
     StreamVector(v0, to + 0 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     StreamVector(v1, to + 1 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     StreamVector(v2, to + 2 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
     StreamVector(v3, to + 3 * kLanes);
-    PROFILER_COMPILER_FENCE;
+    COMPILER_FENCE;
   }
 
  private:
@@ -179,9 +161,7 @@ class Packet {
     return packet;
   }
 
-  uint64_t Timestamp() const {
-    return bits_ & kTimestampMask;
-  }
+  uint64_t Timestamp() const { return bits_ & kTimestampMask; }
 
   size_t BiasedOffset() const { return (bits_ >> kTimestampBits); }
 
@@ -211,8 +191,8 @@ struct Node {
 struct Accumulator {
   static constexpr size_t kNumCallBits = 64 - Packet::kOffsetBits;
 
-  size_t BiasedOffset() const { return num_calls >> kNumCallBits; }
-  size_t NumCalls() const { return num_calls & ((1ULL << kNumCallBits) - 1); }
+  uint64_t BiasedOffset() const { return num_calls >> kNumCallBits; }
+  uint64_t NumCalls() const { return num_calls & ((1ULL << kNumCallBits) - 1); }
 
   // UpdateOrAdd relies upon this layout.
   uint64_t num_calls = 0;  // upper bits = biased_offset.
@@ -294,14 +274,14 @@ class Results {
     const char* string_origin = StringOrigin();
     for (size_t i = 0; i < num_zones_; ++i) {
       const Accumulator& r = zones_[i];
-      const size_t num_calls = r.NumCalls();
-      printf("%40s: %10lux %15lu\n", string_origin + r.BiasedOffset(),
+      const uint64_t num_calls = r.NumCalls();
+      printf("%40s: %10zu x %15zu\n", string_origin + r.BiasedOffset(),
              num_calls, r.total_duration / num_calls);
     }
 
     const uint64_t t1 = tsc_timer::Stop64();
     analyze_elapsed_ += t1 - t0;
-    printf("Total clocks during analysis: %lu\n", analyze_elapsed_);
+    printf("Total clocks during analysis: %zu\n", analyze_elapsed_);
   }
 
  private:
@@ -322,7 +302,7 @@ class Results {
     const __m128i duration_64 = _mm_cvtsi64_si128(duration);
     const __m128i add_duration_call = _mm_unpacklo_epi64(one_64, duration_64);
 
-    __m128i* const PROFILER_RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
+    __m128i* const RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
 
     // Special case for first zone: (maybe) update, without swapping.
     __m128i prev = _mm_load_si128(zones);
@@ -407,7 +387,7 @@ class Results {
         min_difference = std::min(min_difference, difference);
       }
     }
-    printf("Overhead %lu\n", min_difference);
+    printf("Overhead %zu\n", min_difference);
     return min_difference;
   }
 
@@ -467,7 +447,7 @@ class ThreadSpecific {
       results_.AnalyzePackets(begin_, end_);
       end_ = begin_;
     }
-    std::copy(buffer_, buffer_pos_, end_);
+    memcpy(end_, buffer_, num_buffered * sizeof(Packet));
     end_ += num_buffered;
     results_.AnalyzePackets(begin_, end_);
     end_ = begin_;

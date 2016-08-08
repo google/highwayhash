@@ -8,6 +8,11 @@
 
 #include "highwayhash/code_annotation.h"
 
+#if COMPILER_MSVC
+#include <emmintrin.h>  // _mm_lfence
+#include <intrin.h>
+#endif
+
 namespace tsc_timer {
 
 // [Start/Stop][32/64] return absolute timestamps and must be placed
@@ -63,8 +68,15 @@ namespace tsc_timer {
 // Start64. Only suitable for measuring very short regions because the
 // timestamp overflows about once a second.
 static inline uint32_t Start32() {
+#if COMPILER_MSVC
+  _mm_lfence();
+  COMPILER_FENCE;
+  const uint32_t t = static_cast<uint32_t>(__rdtsc());
+  _mm_lfence();
+  COMPILER_FENCE;
+  return t;
+#elif COMPILER_CLANG || COMPILER_GCC
   uint32_t t;
-#if CLANG_VERSION || GCC_VERSION
   asm volatile(
       "lfence\n\t"
       "rdtsc\n\t"
@@ -73,13 +85,20 @@ static inline uint32_t Start32() {
       :
       // "memory" avoids reordering. rdx = TSC >> 32.
       : "rdx", "memory");
-#endif
   return t;
+#endif
 }
 
 static inline uint32_t Stop32() {
+#if COMPILER_MSVC
+  COMPILER_FENCE;
+  unsigned aux;
+  const uint32_t t = static_cast<uint32_t>(__rdtscp(&aux));
+  _mm_lfence();
+  COMPILER_FENCE;
+  return t;
+#elif COMPILER_CLANG || COMPILER_GCC
   uint32_t t;
-#if CLANG_VERSION || GCC_VERSION
   // Use inline asm because __rdtscp generates code to store TSC_AUX (ecx).
   asm volatile(
       "rdtscp\n\t"
@@ -88,13 +107,20 @@ static inline uint32_t Stop32() {
       :
       // "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
       : "rcx", "rdx", "memory");
-#endif
   return t;
+#endif
 }
 
 static inline uint64_t Start64() {
+#if COMPILER_MSVC
+  _mm_lfence();
+  COMPILER_FENCE;
+  const uint64_t t = __rdtsc();
+  _mm_lfence();
+  COMPILER_FENCE;
+  return t;
+#elif COMPILER_CLANG || COMPILER_GCC
   uint64_t t;
-#if CLANG_VERSION || GCC_VERSION
   asm volatile(
       "lfence\n\t"
       "rdtsc\n\t"
@@ -106,13 +132,20 @@ static inline uint64_t Start64() {
       // "memory" avoids reordering. rdx = TSC >> 32.
       // "cc" = flags modified by SHL.
       : "rdx", "memory", "cc");
-#endif
   return t;
+#endif
 }
 
 static inline uint64_t Stop64() {
+#if COMPILER_MSVC
+  COMPILER_FENCE;
+  unsigned aux;
+  const uint64_t t = __rdtscp(&aux);
+  _mm_lfence();
+  COMPILER_FENCE;
+  return t;
+#elif COMPILER_CLANG || COMPILER_GCC
   uint64_t t;
-#if CLANG_VERSION || GCC_VERSION
   // Use inline asm because __rdtscp generates code to store TSC_AUX (ecx).
   asm volatile(
       "rdtscp\n\t"
@@ -124,8 +157,8 @@ static inline uint64_t Stop64() {
       // "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
       // "cc" = flags modified by SHL.
       : "rcx", "rdx", "memory", "cc");
-#endif
   return t;
+#endif
 }
 
 }  // namespace tsc_timer

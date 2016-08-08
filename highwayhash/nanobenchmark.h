@@ -51,17 +51,22 @@
 // which is more robust to outliers and skewed data than the mean or median.
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <map>
 #include <type_traits>
 #include <vector>
 
-#ifdef __linux__
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/tsc_timer.h"
+
+#if OS_WIN
+#define NOMINMAX
+#include <windows.h>
+#elif OS_LINUX
 #include <sched.h>
 #endif
-
-#include "highwayhash/tsc_timer.h"
 
 // Enables sanity checks that verify correct operation at the cost of
 // longer benchmark runs.
@@ -135,6 +140,20 @@ T Mode(crpc<T> sorted, const size_t num_values) {
   return average;
 }
 
+#if COMPILER_MSVC
+
+// MSVC does not support inline assembly anymore (and never supported GCC's
+// RTL constraints used below), so we instead pass the address to another
+// translation unit and assume that link-time code generation is disabled.
+void UseCharPointer(volatile const char*);
+
+template <class T>
+inline void PreventElision(T&& output) {
+  UseCharPointer(reinterpret_cast<volatile const char*>(&output));
+}
+
+#else
+
 // Convenience function similar to std::enable_if_t (C++14).
 // "Condition" provides a bool value, like std::integral_constant.
 // Evaluates to a void return type if Condition is true, otherwise removes from
@@ -143,7 +162,7 @@ template <typename Condition>
 using EnableIf = typename std::enable_if<Condition::value>::type;
 
 // Simplifies the predicates below; we only special-case floats on x86.
-#if defined(__x86_64__) || defined(_M_X64)
+#if ARCH_X64
 #define NANOBENCHMARK_IS_FLOAT(T) std::is_floating_point<T>::value
 #else
 #define NANOBENCHMARK_IS_FLOAT(T) false
@@ -196,6 +215,8 @@ inline EnableIf<IsMemory<T>> PreventElision(T&& output) {
   // (register, memory or immediate).
   asm volatile("" : "+m"(output) : : "memory");
 }
+
+#endif
 
 // Input parameter for the function being measured.
 using Input = size_t;
@@ -290,12 +311,14 @@ class Inputs {
                                   input_to_remove) != unique_.end());
 
     std::vector<Input> copy = replicas_;
-    const auto pos = std::partition(copy.begin(), copy.end(),
-                                    [input_to_remove](const Input input) {
-                                      return input_to_remove != input;
-                                    });
+    auto pos = std::partition(copy.begin(), copy.end(),
+                              [input_to_remove](const Input input) {
+                                return input_to_remove != input;
+                              });
     // Must occur at least num_replicas_ times.
     NANOBENCHMARK_CHECK(copy.end() - pos >= num_replicas_);
+    // (Avoids unused-variable warning.)
+    PreventElision(pos);
     copy.resize(copy.size() - num_replicas_);
     return copy;
   }
@@ -496,7 +519,8 @@ std::map<Input, std::vector<float>> RepeatedMeasureWithArguments(
     // Scatter each input's duration into the sample arrays.
     samples.Reduce([&samples_for_input, per_call](const Input input,
                                                   const Duration duration) {
-      samples_for_input[input].push_back(duration * per_call);
+      const float sample = static_cast<float>(duration * per_call);
+      samples_for_input[input].push_back(sample);
     });
   }
   return samples_for_input;
@@ -534,7 +558,12 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
 // Sets this thread's priority to the maximum. This should not be called on
 // single-core systems.
 static inline void RaiseThreadPriority() {
-#ifdef __linux__
+#if OS_WIN
+  BOOL ok = SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+  NANOBENCHMARK_CHECK_ALWAYS(ok);
+  SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+  NANOBENCHMARK_CHECK_ALWAYS(ok);
+#elif OS_LINUX
   const pid_t pid = 0;  // current thread
   const int policy = SCHED_RR;
   int err;
@@ -546,12 +575,49 @@ static inline void RaiseThreadPriority() {
   param.sched_priority = sched_get_priority_max(policy);
 
   err = sched_setscheduler(pid, policy, &param);
-  NANOBENCHMARK_CHECK_ALWAYS(err == 0);
+  if (err != 0) {
+    printf("RaiseThreadPriority failed - please run as root.\n");
+    abort();
+  }
 #endif
 }
 
 static inline void PinThreadToCPU() {
-#ifdef __linux__
+#if OS_WIN
+  DWORD_PTR process_affinity, system_affinity;
+  const BOOL ok = GetProcessAffinityMask(GetCurrentProcess(), &process_affinity,
+                                         &system_affinity);
+  NANOBENCHMARK_CHECK_ALWAYS(ok);
+
+  // Clear all but the _second_ affinity bit (interrupts are often pinned to
+  // the first core, so we should use another). No effect if there is only
+  // a single bit in the existing affinity mask.
+  int second_cpu = -1;
+  for (int cpu = 0; cpu < 64; ++cpu) {
+    if (process_affinity & (1ULL << cpu)) {
+      if (second_cpu == -1) {
+        // First CPU: skip, wait for the second.
+        second_cpu = -2;
+      } else {
+        // Second CPU: remember which one.
+        second_cpu = cpu;
+        process_affinity = 1ULL << cpu;
+        break;
+      }
+    }
+  }
+
+  const DWORD_PTR prev_affinity =
+      SetThreadAffinityMask(GetCurrentThread(), process_affinity);
+  NANOBENCHMARK_CHECK_ALWAYS(prev_affinity != 0);
+
+  // Only after SetThreadAffinityMask returns are we actually running on
+  // that CPU, so print the APIC ID afterwards.
+  int regs[4] = {0};
+  __cpuid(regs, 1);
+  const uint32_t apic_id = uint32_t(regs[1]) >> 24;
+  printf("Running on CPU #%d, APIC ID %2x\n", second_cpu, apic_id);
+#elif OS_LINUX
   const pid_t pid = 0;  // current thread
 
   cpu_set_t cpu_set;
@@ -578,6 +644,7 @@ static inline void PinThreadToCPU() {
   }
   err = sched_setaffinity(pid, sizeof(cpu_set), &cpu_set);
   NANOBENCHMARK_CHECK_ALWAYS(err == 0);
+
   // Only after setaffinity returns are we actually running on that CPU,
   // so print the APIC ID afterwards.
   unsigned apic_id;

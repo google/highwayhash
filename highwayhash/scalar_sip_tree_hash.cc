@@ -121,7 +121,7 @@ uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
 
   // Update with final 32-byte packet.
   const size_t remainder_mod4 = remainder & 3;
-  uint32 packet4 = remainder << 24;
+  uint32 packet4 = static_cast<uint32>(remainder << 24);
   const char* final_bytes = bytes + size - remainder_mod4;
   for (size_t i = 0; i < remainder_mod4; ++i) {
     const uint32 byte = static_cast<unsigned char>(final_bytes[i]);

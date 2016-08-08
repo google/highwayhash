@@ -50,8 +50,8 @@ class ScalarHighwayTreeHashState {
 
     // (Loop is faster than unrolling)
     for (int lane = 0; lane < kNumLanes; ++lane) {
-      const uint32 v0_32 = v0[lane];
-      const uint32 v1_32 = v1[lane];
+      const uint32 v0_32 = static_cast<uint32>(v0[lane]);
+      const uint32 v1_32 = static_cast<uint32>(v1[lane]);
       mul0[lane] ^= v0_32 * (v1[lane] >> 32);
       v0[lane] += mul1[lane];
       mul1[lane] ^= v1_32 * (v0[lane] >> 32);

@@ -1,4 +1,4 @@
-#include "third_party/highwayhash/highwayhash/data_parallel.h"
+#include "highwayhash/data_parallel.h"
 
 #include <cstdint>
 #include <future>  //NOLINT

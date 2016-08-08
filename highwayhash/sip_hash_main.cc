@@ -64,9 +64,9 @@ static void VerifyEqual(const char* caption, const Function1& hash_function1,
 // as LaTeX figures or tables.
 class Measurements {
  public:
-  void Add(const char* caption, const int bytes, const double cycles) {
-    const float cpb = cycles / bytes;
-    results_.emplace_back(caption, bytes, cpb);
+  void Add(const char* caption, const size_t bytes, const double cycles) {
+    const float cpb = static_cast<float>(cycles / bytes);
+    results_.emplace_back(caption, static_cast<int>(bytes), cpb);
   }
 
   // Prints results as a LaTeX table (only for in_sizes matching the
@@ -81,8 +81,8 @@ class Measurements {
       printf("%s", i == 0 ? "r" : "|r");
     }
     printf("}\n\\toprule\nAlgorithm");
-    for (const int in_size : unique) {
-      printf(" & %d", in_size);
+    for (const size_t in_size : unique) {
+      printf(" & %zu", in_size);
     }
     printf("\\\\\n\\midrule\n");
 
@@ -127,8 +127,8 @@ class Measurements {
     Result(const char* caption, const int in_size, const float cpb)
         : caption(caption), in_size(in_size), cpb(cpb) {}
 
-    // Algorithm name, printed as table caption or legend entry.
-    std::string caption;
+    // Algorithm name (string literal).
+    const char* caption;
     // Size of the input data [bytes].
     int in_size;
     // Measured throughput [cycles per byte].
@@ -150,8 +150,8 @@ class Measurements {
       const std::vector<size_t>& in_sizes) const {
     SpeedsForCaption cpb_for_caption;
     for (const Result& result : results_) {
-      for (const int in_size : in_sizes) {
-        if (result.in_size == in_size) {
+      for (const size_t in_size : in_sizes) {
+        if (result.in_size == static_cast<int>(in_size)) {
           cpb_for_caption[result.caption].push_back(result.cpb);
         }
       }
@@ -171,19 +171,23 @@ void AddMeasurements(const std::vector<size_t>& in_sizes, const char* caption,
     auto& samples = size_samples.second;
     const float median = nanobenchmark::Median(&samples);
     const float mad = nanobenchmark::MedianAbsoluteDeviation(samples, median);
-    printf("%s %4lu: median=%6.1f cycles; median L1 norm =%4.1f cycles\n",
+    printf("%s %4zu: median=%6.1f cycles; median L1 norm =%4.1f cycles\n",
            caption, size, median, mad);
     measurements->Add(caption, size, median);
   }
 }
 
 void RunTests(int argc, char* argv[]) {
+  // For reasons unknown, PinThreadToCPU leads to higher runtimes and
+  // variability in this (lengthy) benchmark.
+  nanobenchmark::RaiseThreadPriority();
+
   const std::vector<size_t> in_sizes = {3, 3, 4, 4, 7, 7, 8, 8, 9, 10, 1023};
   Measurements measurements;
 
   uint64 key2[2] = {0, 1};
   AddMeasurements(in_sizes, "SipHash", &measurements,
-                  [key2](const size_t size) {
+                  [&key2](const size_t size) {
                     char in[1024] = {static_cast<char>(size)};
                     return SipHash(key2, in, size);
                   });
@@ -192,13 +196,13 @@ void RunTests(int argc, char* argv[]) {
   {
     uint64 key4[4] = {0, 1, 2, 3};
     AddMeasurements(in_sizes, "SipTreeHash", &measurements,
-                    [key4](const size_t size) {
+                    [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return SipTreeHash(key4, in, size);
                     });
 
     AddMeasurements(in_sizes, "HighwayTreeHash", &measurements,
-                    [key4](const size_t size) {
+                    [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return HighwayTreeHash(key4, in, size);
                     });
@@ -209,7 +213,7 @@ void RunTests(int argc, char* argv[]) {
   {
     uint64 key4[4] = {0, 1, 2, 3};
     AddMeasurements(in_sizes, "SSE41HighwayTreeHash", &measurements,
-                    [key4](const size_t size) {
+                    [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return SSE41HighwayTreeHash(key4, in, size);
                     });

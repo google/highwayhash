@@ -142,7 +142,7 @@ static INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
   const int remainder_mod4 = remainder & 3;
   // Length padding ensures that zero-valued buffers of different lengths
   // result in different hashes.
-  uint32 packet4 = remainder << 24;
+  uint32 packet4 = static_cast<uint32>(remainder << 24);
   const char* final_bytes = bytes + (remaining_32 * 4);
   for (int i = 0; i < remainder_mod4; ++i) {
     const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
@@ -192,8 +192,7 @@ using Key = uint64[4];
 
 extern "C" {
 
-uint64 SipTreeHashC(const uint64* key, const char* bytes,
-                        const uint64 size) {
+uint64 SipTreeHashC(const uint64* key, const char* bytes, const uint64 size) {
   return SipTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
 }
 

@@ -15,27 +15,55 @@
 #ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
 #define HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
 
-// Compiler/OS detection
+// Compiler
 
-// #if is easier and safer than #ifdef. compiler version is zero if
-// not detected, or 100 * major + minor.
+// #if is shorter and safer than #ifdef. COMPILER_* is zero if not detected,
+// otherwise 100 * major + minor version.
 
 #ifdef _MSC_VER
-#define MSC_VERSION _MSC_VER
+#define COMPILER_MSVC _MSC_VER
 #else
-#define MSC_VERSION 0
+#define COMPILER_MSVC 0
 #endif
 
 #ifdef __GNUC__
-#define GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
+#define COMPILER_GCC (__GNUC__ * 100 + __GNUC_MINOR__)
 #else
-#define GCC_VERSION 0
+#define COMPILER_GCC 0
 #endif
 
 #ifdef __clang__
-#define CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
+#define COMPILER_CLANG (__clang_major__ * 100 + __clang_minor__)
 #else
-#define CLANG_VERSION 0
+#define COMPILER_CLANG 0
+#endif
+
+// Operating system
+
+#if defined(_WIN32) || defined(_WIN64)
+#define OS_WIN 1
+#else
+#define OS_WIN 0
+#endif
+
+#ifdef __linux__
+#define OS_LINUX 1
+#else
+#define OS_LINUX 0
+#endif
+
+#ifdef __MACH__
+#define OS_MAC 1
+#else
+#define OS_MAC 0
+#endif
+
+// Architecture
+
+#if defined(__x86_64__) || defined(_M_X64)
+#define ARCH_X64 1
+#else
+#define ARCH_X64 0
 #endif
 
 //-----------------------------------------------------------------------------
@@ -54,45 +82,53 @@
   className(const className&) = delete; \
   const className& operator=(const className&) = delete;
 
-#if MSC_VERSION
+#if COMPILER_MSVC
 #define RESTRICT __restrict
-#elif GCC_VERSION
+#elif COMPILER_GCC
 #define RESTRICT __restrict__
 #else
 #define RESTRICT
 #endif
 
-#if MSC_VERSION
+#if COMPILER_MSVC
 #define INLINE __forceinline
 #else
 #define INLINE inline
 #endif
 
-#if MSC_VERSION
+#if COMPILER_MSVC
 #define NORETURN __declspec(noreturn)
-#elif GCC_VERSION
+#elif COMPILER_GCC
 #define NORETURN __attribute__((noreturn))
 #endif
 
-#if MSC_VERSION
+#if COMPILER_MSVC
 #include <intrin.h>
 #pragma intrinsic(_ReadWriteBarrier)
 #define COMPILER_FENCE _ReadWriteBarrier()
-#elif GCC_VERSION
+#elif COMPILER_GCC
 #define COMPILER_FENCE asm volatile("" : : : "memory")
 #else
 #define COMPILER_FENCE
 #endif
 
-#if MSC_VERSION
+// Informs the compiler that the preceding function returns a pointer with the
+// specified alignment. This may improve code generation.
+#if COMPILER_MSVC
+#define CACHE_ALIGNED_RETURN /* not supported */
+#else
+#define CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
+#endif
+
+#if COMPILER_MSVC
 #define DEBUG_BREAK __debugbreak()
-#elif CLANG_VERSION
+#elif COMPILER_CLANG
 #define DEBUG_BREAK __builtin_debugger()
-#elif GCC_VERSION
+#elif COMPILER_GCC
 #define DEBUG_BREAK __builtin_trap()
 #endif
 
-#if MSC_VERSION
+#if COMPILER_MSVC
 #include <sal.h>
 #define FORMAT_STRING(s) _Printf_format_string_ s
 #else
@@ -117,10 +153,6 @@ char (*ArraySizeDeducer(T (&)[n]))[n];
 #define CONCAT(a, b) CONCAT2(a, b)
 
 // Generates a unique lvalue name.
-#if MSC_VERSION
-#define UNIQUE(prefix) CONCAT(prefix, __COUNTER__)
-#else
 #define UNIQUE(prefix) CONCAT(prefix, __LINE__)
-#endif
 
 #endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
