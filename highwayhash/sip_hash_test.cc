@@ -1,4 +1,9 @@
 #include "highwayhash/sip_hash.h"
+
+#include <cassert>
+#include <numeric>
+
+#include "base/integral_types.h"
 #include "highwayhash/highway_tree_hash.h"
 #include "highwayhash/scalar_highway_tree_hash.h"
 #include "highwayhash/scalar_sip_tree_hash.h"
@@ -8,6 +13,7 @@
 #include "testing/base/public/gunit.h"
 
 namespace highwayhash {
+
 namespace {
 
 /*

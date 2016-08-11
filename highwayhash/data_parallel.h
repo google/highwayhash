@@ -7,6 +7,10 @@
 #include <algorithm>  // find_if
 #include <atomic>
 #include <condition_variable>  //NOLINT
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
+#include <memory>
 #include <mutex>  //NOLINT
 #include <thread>  //NOLINT
 #include <vector>
@@ -69,7 +73,7 @@ class ThreadPool {
   // Subsequent calls will reuse the same threads.
   //
   // Precondition: 0 <= begin <= end.
-  template <typename Func>
+  template <class Func>
   void Run(const int begin, const int end, const Func& func) {
     if (begin < 0 || begin > end) {
       abort();
@@ -101,6 +105,27 @@ class ThreadPool {
   void RunTasks(const std::vector<std::function<void(void)>>& tasks) {
     Run(0, static_cast<int>(tasks.size()),
         [&tasks](const int i) { tasks[i](); });
+  }
+
+  // Statically (and deterministically) splits [begin, end) into ranges and
+  // calls "func" for each of them. Useful when "func" involves some overhead
+  // (e.g. for PerThread::Get or random seeding) that should be amortized over
+  // a range of values. "func" is void(int chunk, uint32_t begin, uint32_t end).
+  template <class Func>
+  void RunRanges(const uint32_t begin, const uint32_t end, const Func& func) {
+    const uint32_t length = end - begin;
+
+    // Use constant rather than num_threads_ for machine-independent splitting.
+    const uint32_t chunk = std::max(1U, (length + 127) / 128);
+    std::vector<std::pair<uint32_t, uint32_t>> ranges;  // begin/end
+    ranges.reserve(length / chunk + 1);
+    for (uint32_t i = 0; i < length; i += chunk) {
+      ranges.emplace_back(i, std::min(i + chunk, length));
+    }
+
+    Run(0, static_cast<int>(ranges.size()), [&ranges, func](const int i) {
+      func(i, ranges[i].first, ranges[i].second);
+    });
   }
 
  private:
@@ -145,21 +170,19 @@ class ThreadPool {
     //   is faster than halving k each iteration. We prefer this strategy
     //   because it avoids user-specified parameters.
 
-    // Until (any) thread reserves the final tasks (about 20-40 iterations
-    // for 1M tasks, 0-20 due to contention)
-    int num_reserved = self->num_reserved_.load();
-    while (num_reserved < num_tasks) {
+    for (;;) {
+      const int num_reserved = self->num_reserved_.load();
       const int num_remaining = num_tasks - num_reserved;
-      const int my_size = std::max(num_remaining / self->num_threads_, 1);
-      if (!self->num_reserved_.compare_exchange_weak(num_reserved,
-                                                     num_reserved + my_size)) {
-        _mm_pause();  // slight delay to let other threads make progress.
-        continue;     // num_reserved is already reloaded.
+      const int my_size = std::max(num_remaining / (self->num_threads_ * 2), 1);
+      const int my_begin = self->num_reserved_.fetch_add(my_size);
+      const int my_end = std::min(my_begin + my_size, num_tasks);
+      // Another thread already reserved the last task.
+      if (my_begin >= my_end) {
+        break;
       }
-      for (int i = 0; i < my_size; ++i) {
-        self->task_(begin + num_reserved + i);
+      for (int i = my_begin; i < my_end; ++i) {
+        self->task_(i);
       }
-      num_reserved = self->num_reserved_.load();
     }
   }
 
@@ -252,6 +275,14 @@ class PerThread {
     return *t;
   }
 
+  // Returns vector of all per-thread T. Used inside Reduce() or by clients
+  // that require direct access to T instead of Assimilating them.
+  // Function wrapper avoids separate static member variable definition.
+  static std::vector<T*>& Threads() {
+    static std::vector<T*> threads;
+    return threads;
+  }
+
   // Returns the first non-null T after assimilating all other threads' T
   // into it. Precondition: at least one non-null T exists (caller must have
   // called Get() and initialized the result).
@@ -283,13 +314,6 @@ class PerThread {
     for (T* t : Threads()) {
       t->Destroy();
     }
-  }
-
- private:
-  // Function wrapper avoids separate static member variable definition.
-  static std::vector<T*>& Threads() {
-    static std::vector<T*> threads;
-    return threads;
   }
 };
 

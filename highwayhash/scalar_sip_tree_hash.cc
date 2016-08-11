@@ -14,7 +14,10 @@
 
 #include "highwayhash/scalar_sip_tree_hash.h"
 
+#include <cstddef>
 #include <cstring>  // memcpy
+
+#include "highwayhash/code_annotation.h"
 #include "highwayhash/sip_hash.h"
 #include "highwayhash/vec2.h"
 

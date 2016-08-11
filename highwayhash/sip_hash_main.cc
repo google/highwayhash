@@ -21,19 +21,23 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdio>
-#include <cstring>
+#include <cstdlib>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "highwayhash/highway_tree_hash.h"
 #include "highwayhash/nanobenchmark.h"
+#include "highwayhash/os_specific.h"
 #include "highwayhash/scalar_highway_tree_hash.h"
 #include "highwayhash/scalar_sip_tree_hash.h"
 #include "highwayhash/sip_hash.h"
 #include "highwayhash/sip_tree_hash.h"
 #include "highwayhash/sse41_highway_tree_hash.h"
+#include "highwayhash/types.h"
 #include "highwayhash/vec2.h"
 
 namespace highwayhash {
@@ -178,9 +182,7 @@ void AddMeasurements(const std::vector<size_t>& in_sizes, const char* caption,
 }
 
 void RunTests(int argc, char* argv[]) {
-  // For reasons unknown, PinThreadToCPU leads to higher runtimes and
-  // variability in this (lengthy) benchmark.
-  nanobenchmark::RaiseThreadPriority();
+  // os_specific::PinThreadToRandomCPU();
 
   const std::vector<size_t> in_sizes = {3, 3, 4, 4, 7, 7, 8, 8, 9, 10, 1023};
   Measurements measurements;

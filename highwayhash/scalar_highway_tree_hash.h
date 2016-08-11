@@ -18,7 +18,10 @@
 // Portable, scalar (non-vector/SIMD) version.
 
 #include <cstring>  // memcpy
+
+#include "highwayhash/code_annotation.h"
 #include "highwayhash/state_helpers.h"
+#include "highwayhash/types.h"
 
 namespace highwayhash {
 

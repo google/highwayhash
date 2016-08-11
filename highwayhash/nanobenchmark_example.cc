@@ -1,17 +1,16 @@
-#include "highwayhash/nanobenchmark.h"
-
-#include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <map>
-#include <vector>
+#include <utility>
+
+#include "highwayhash/nanobenchmark.h"
+#include "highwayhash/os_specific.h"
 
 namespace nanobenchmark {
 namespace {
 
 void TestMemcpy() {
-  RaiseThreadPriority();
-  PinThreadToCPU();
+  os_specific::PinThreadToRandomCPU();
 
   for (auto& size_samples : RepeatedMeasureWithArguments(
            {3, 3, 4, 4, 7, 7, 8, 8}, [](const size_t size) {

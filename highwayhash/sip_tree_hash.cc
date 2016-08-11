@@ -16,6 +16,7 @@
 
 #ifdef __AVX2__
 #include <cstring>  // memcpy
+
 #include "highwayhash/sip_hash.h"
 #include "highwayhash/vec2.h"
 

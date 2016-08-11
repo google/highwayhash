@@ -3,6 +3,8 @@
 
 // Helper functions to split inputs into packets and call State::Update on each.
 
+#include <cstddef>
+#include <cstring>
 #include <memory>
 
 #include "highwayhash/code_annotation.h"

@@ -14,6 +14,8 @@
 
 #include "highwayhash/scalar_highway_tree_hash.h"
 
+#include "highwayhash/types.h"
+
 using highwayhash::uint64;
 using highwayhash::ScalarHighwayTreeHash;
 using Key = highwayhash::ScalarHighwayTreeHashState::Key;

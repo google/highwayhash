@@ -1,9 +1,12 @@
-#include "highwayhash/data_parallel.h"
-
+#include <unistd.h>
+#include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <future>  //NOLINT
 #include <set>
+
 #include "base/time.h"
+#include "highwayhash/data_parallel.h"
 #include "testing/base/public/gunit.h"
 #include "thread/threadpool.h"
 
@@ -11,9 +14,11 @@
     defined(__x86_64__) || defined(__amd64__)
 #if defined(_MSC_VER)
 #include <intrin.h>
+
 #define CPUID __cpuid
 #else  // GCC, clang
 #include <cpuid.h>
+
 #define CPUID(regs, input) \
   __get_cpuid(input, &regs[0], &regs[1], &regs[2], &regs[3])
 #endif

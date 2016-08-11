@@ -1,50 +1,18 @@
-#include "highwayhash/profiler.h"
-
-#if OS_WIN
-#define NOMINMAX
-#include <windows.h>
-#elif OS_MAC
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#else
-#include <time.h>
-#endif
-#include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstdio>
-#include <cstring>
+#include <cstdlib>
 
-double Now() {
-#if OS_WIN
-  LARGE_INTEGER counter;
-  (void)QueryPerformanceCounter(&counter);
-  LARGE_INTEGER freq;
-  (void)QueryPerformanceFrequency(&freq);
-  return double(counter.QuadPart) / freq.QuadPart;
-#elif OS_MAC
-  const auto t = mach_absolute_time();
-  // On OSX/iOS platform the elapsed time is cpu time unit
-  // We have to query the time base information to convert it back
-  // See https://developer.apple.com/library/mac/qa/qa1398/_index.html
-  static mach_timebase_info_data_t timebase;
-  if (timebase.denom == 0) {
-    (void)mach_timebase_info(&timebase);
-  }
-  return double(t) * timebase.numer / timebase.denom * 1E-9;
-#else
-  timespec t;
-  clock_gettime(CLOCK_REALTIME, &t);
-  return t.tv_sec + t.tv_nsec * 1E-9;
-#endif
-}
+#include "highwayhash/os_specific.h"
+#include "highwayhash/profiler.h"
+
+namespace {
 
 void Spin(const double min_time) {
-  const double t0 = Now();
+  const double t0 = os_specific::Now();
   int iterations = 0;
   for (;;) {
     ++iterations;
-    const double elapsed = Now() - t0;
+    const double elapsed = os_specific::Now() - t0;
     if (elapsed > min_time) {
       assert(iterations > 2);
       break;
@@ -96,7 +64,10 @@ void Level1() {
   Level2();
 }
 
+}  // namespace
+
 int main(int argc, char* argv[]) {
+  os_specific::PinThreadToRandomCPU();
   {
     PROFILER_FUNC;
     Spin10();

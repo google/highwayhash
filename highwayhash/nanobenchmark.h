@@ -52,21 +52,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <map>
+#include <random>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "highwayhash/code_annotation.h"
+#include "highwayhash/os_specific.h"
 #include "highwayhash/tsc_timer.h"
-
-#if OS_WIN
-#define NOMINMAX
-#include <windows.h>
-#elif OS_LINUX
-#include <sched.h>
-#endif
 
 // Enables sanity checks that verify correct operation at the cost of
 // longer benchmark runs.
@@ -88,59 +85,7 @@
 
 namespace nanobenchmark {
 
-template <typename T>
-using crpc = const T* const RESTRICT;
-
-// Even with high-priority pinned threads and frequency throttling disabled,
-// elapsed times are noisy due to interrupts or SMM operations. It might help
-// to detect such events via transactions and omit affected measurements.
-// Unfortunately, TSX is currently unavailable due to a bug. We achieve
-// repeatable results with a robust measure of the central tendency. The mode
-// is less affected by outliers in highly-skewed distributions than the
-// median. We use the Half Sample Mode estimator proposed by Bickel in
-// "On a fast, robust estimator of the mode". It requires N log N time.
-
-// @return i in [idx_begin, idx_begin + half_count) that minimizes
-// sorted[i + half_count] - sorted[i].
-template <typename T>
-size_t MinRange(crpc<T> sorted, const size_t idx_begin,
-                const size_t half_count) {
-  T min_range = std::numeric_limits<T>::max();
-  size_t min_idx = 0;
-
-  for (size_t idx = idx_begin; idx < idx_begin + half_count; ++idx) {
-    NANOBENCHMARK_CHECK(sorted[idx] <= sorted[idx + half_count]);
-    const T range = sorted[idx + half_count] - sorted[idx];
-    if (range < min_range) {
-      min_range = range;
-      min_idx = idx;
-    }
-  }
-
-  return min_idx;
-}
-
-// Returns an estimate of the mode by calling MinRange on successively
-// halved intervals. "sorted" must be in ascending order.
-template <typename T>
-T Mode(crpc<T> sorted, const size_t num_values) {
-  size_t idx_begin = 0;
-  size_t half_count = num_values / 2;
-  while (half_count > 1) {
-    idx_begin = MinRange(sorted, idx_begin, half_count);
-    half_count >>= 1;
-  }
-
-  const T x = sorted[idx_begin + 0];
-  if (half_count == 0) {
-    return x;
-  }
-  NANOBENCHMARK_CHECK(half_count == 1);
-  const T average = (x + sorted[idx_begin + 1] + 1) / 2;
-  return average;
-}
-
-#if COMPILER_MSVC
+#if MSC_VERSION
 
 // MSVC does not support inline assembly anymore (and never supported GCC's
 // RTL constraints used below), so we instead pass the address to another
@@ -225,29 +170,6 @@ using Input = size_t;
 // ensure wraparound on overflow.
 using Duration = uint32_t;
 
-// Returns cycles elapsed when running an empty region, i.e. the timer
-// resolution/overhead, which will be deducted from other measurements.
-static inline Duration TimerResolution32() {
-  // This need only be initialized once per run. This function is called from
-  // function templates, so the static variable must reside here.
-  static const Duration resolution = []() {
-    const size_t kNumSamples = 1024;
-    uint32_t samples[kNumSamples];
-    for (size_t i = 0; i < kNumSamples; ++i) {
-      const volatile uint32_t t0 = tsc_timer::Start32();
-      const volatile uint32_t t1 = tsc_timer::Stop32();
-      NANOBENCHMARK_CHECK(t0 < t1);
-      samples[i] = t1 - t0;
-    }
-    std::sort(samples, samples + kNumSamples);
-    const Duration resolution = Mode(samples, kNumSamples);
-    NANOBENCHMARK_CHECK(resolution != 0);
-    printf("TimerResolution32 %u\n", resolution);
-    return resolution;
-  }();
-  return resolution;
-}
-
 // Returns cycles elapsed when passing each of "inputs" (after in-place
 // shuffling) to "func", which must return something it has computed
 // so the compiler does not optimize it away.
@@ -259,11 +181,11 @@ Duration CyclesElapsed(const Duration resolution, const Func& func,
   // from the given "inputs" distribution, so we shuffle those values.
   std::random_shuffle(inputs->begin(), inputs->end());
 
-  const uint32_t t0 = tsc_timer::Start32();
+  const Duration t0 = tsc_timer::Start<Duration>();
   for (const Input input : *inputs) {
     PreventElision(func(input));
   }
-  const uint32_t t1 = tsc_timer::Stop32();
+  const Duration t1 = tsc_timer::Stop<Duration>();
   const Duration elapsed = t1 - t0;
   NANOBENCHMARK_CHECK(elapsed > resolution);
   return elapsed - resolution;
@@ -344,7 +266,7 @@ class Inputs {
     // We compute the difference in duration for inputs = Replicas() vs.
     // Without(). Dividing this by num_replicas must yield a value where the
     // quantization error (from the timer resolution) is sufficiently small.
-    const uint64_t min_elapsed = distribution.size() * resolution * 500;
+    const uint64_t min_elapsed = distribution.size() * resolution * 400;
 
     std::vector<Input> replicas;
     for (;;) {
@@ -415,7 +337,7 @@ class DurationSamples {
 
       NANOBENCHMARK_CHECK(samples.size() <= num_samples_);
       std::sort(samples.begin(), samples.end());
-      const Duration duration = Mode(samples.data(), samples.size());
+      const Duration duration = tsc_timer::Mode(samples.data(), samples.size());
       lambda(input, duration);
     }
   }
@@ -473,7 +395,7 @@ DurationSamples GatherDurationSamples(const Duration resolution,
 template <typename Func>
 std::map<Input, float> MeasureWithArguments(
     const std::vector<Input>& distribution, const Func& func) {
-  const Duration resolution = TimerResolution32();
+  const Duration resolution = tsc_timer::Resolution<Duration>();
 
   // Adds enough 'replicas' of the distribution to measure "func" given
   // the timer resolution.
@@ -501,7 +423,7 @@ template <typename Func>
 std::map<Input, std::vector<float>> RepeatedMeasureWithArguments(
     const std::vector<Input>& distribution, const Func& func,
     const int repetitions = 25) {
-  const Duration resolution = TimerResolution32();
+  const Duration resolution = tsc_timer::Resolution<Duration>();
 
   // Adds enough 'replicas' of the distribution to measure "func" given
   // the timer resolution.
@@ -550,113 +472,6 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
     abs_deviations.push_back(std::abs(sample - median));
   }
   return Median(&abs_deviations);
-}
-
-// Optional OS-specific functions for reducing variability (must be called
-// before starting any measurements):
-
-// Sets this thread's priority to the maximum. This should not be called on
-// single-core systems.
-static inline void RaiseThreadPriority() {
-#if OS_WIN
-  BOOL ok = SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-  NANOBENCHMARK_CHECK_ALWAYS(ok);
-  SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-  NANOBENCHMARK_CHECK_ALWAYS(ok);
-#elif OS_LINUX
-  const pid_t pid = 0;  // current thread
-  const int policy = SCHED_RR;
-  int err;
-
-  // Retrieve existing param and overwrite the priority.
-  sched_param param;
-  err = sched_getparam(pid, &param);
-  NANOBENCHMARK_CHECK_ALWAYS(err == 0);
-  param.sched_priority = sched_get_priority_max(policy);
-
-  err = sched_setscheduler(pid, policy, &param);
-  if (err != 0) {
-    printf("RaiseThreadPriority failed - please run as root.\n");
-    abort();
-  }
-#endif
-}
-
-static inline void PinThreadToCPU() {
-#if OS_WIN
-  DWORD_PTR process_affinity, system_affinity;
-  const BOOL ok = GetProcessAffinityMask(GetCurrentProcess(), &process_affinity,
-                                         &system_affinity);
-  NANOBENCHMARK_CHECK_ALWAYS(ok);
-
-  // Clear all but the _second_ affinity bit (interrupts are often pinned to
-  // the first core, so we should use another). No effect if there is only
-  // a single bit in the existing affinity mask.
-  int second_cpu = -1;
-  for (int cpu = 0; cpu < 64; ++cpu) {
-    if (process_affinity & (1ULL << cpu)) {
-      if (second_cpu == -1) {
-        // First CPU: skip, wait for the second.
-        second_cpu = -2;
-      } else {
-        // Second CPU: remember which one.
-        second_cpu = cpu;
-        process_affinity = 1ULL << cpu;
-        break;
-      }
-    }
-  }
-
-  const DWORD_PTR prev_affinity =
-      SetThreadAffinityMask(GetCurrentThread(), process_affinity);
-  NANOBENCHMARK_CHECK_ALWAYS(prev_affinity != 0);
-
-  // Only after SetThreadAffinityMask returns are we actually running on
-  // that CPU, so print the APIC ID afterwards.
-  int regs[4] = {0};
-  __cpuid(regs, 1);
-  const uint32_t apic_id = uint32_t(regs[1]) >> 24;
-  printf("Running on CPU #%d, APIC ID %2x\n", second_cpu, apic_id);
-#elif OS_LINUX
-  const pid_t pid = 0;  // current thread
-
-  cpu_set_t cpu_set;
-  int err = sched_getaffinity(pid, sizeof(cpu_set), &cpu_set);
-  NANOBENCHMARK_CHECK_ALWAYS(err == 0);
-
-  // Clear all but the _second_ affinity bit (interrupts are often pinned to
-  // the first core, so we should use another). No effect if there is only
-  // a single bit in the existing affinity mask.
-  int second_cpu = -1;
-  for (int cpu = 0; cpu < 1024; ++cpu) {
-    if (CPU_ISSET(cpu, &cpu_set)) {
-      if (second_cpu == -1) {
-        // First CPU: skip, wait for the second.
-        second_cpu = -2;
-      } else {
-        // Second CPU: remember which one.
-        second_cpu = cpu;
-        CPU_ZERO(&cpu_set);
-        CPU_SET(cpu, &cpu_set);
-        break;
-      }
-    }
-  }
-  err = sched_setaffinity(pid, sizeof(cpu_set), &cpu_set);
-  NANOBENCHMARK_CHECK_ALWAYS(err == 0);
-
-  // Only after setaffinity returns are we actually running on that CPU,
-  // so print the APIC ID afterwards.
-  unsigned apic_id;
-  asm volatile(
-      "movl $1, %%eax\n\t"
-      "cpuid\n\t"
-      "movl %%ebx, %0"
-      : "=r"(apic_id)
-      :
-      : "rax", "rbx", "rcx", "rdx", "memory");
-  printf("Running on CPU #%d, APIC ID %2x\n", second_cpu, apic_id >> 24);
-#endif
 }
 
 }  // namespace nanobenchmark

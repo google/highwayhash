@@ -1,6 +1,6 @@
 #include "highwayhash/nanobenchmark.h"
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 
 #pragma optimize("", off)
 

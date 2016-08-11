@@ -17,45 +17,26 @@
 
 // Compiler
 
-// #if is shorter and safer than #ifdef. COMPILER_* is zero if not detected,
-// otherwise 100 * major + minor version.
+// #if is shorter and safer than #ifdef. *_VERSION are zero if not detected,
+// otherwise 100 * major + minor version. Note that other packages check for
+// #ifdef COMPILER_MSVC, so we cannot use that same name.
 
 #ifdef _MSC_VER
-#define COMPILER_MSVC _MSC_VER
+#define MSC_VERSION _MSC_VER
 #else
-#define COMPILER_MSVC 0
+#define MSC_VERSION 0
 #endif
 
 #ifdef __GNUC__
-#define COMPILER_GCC (__GNUC__ * 100 + __GNUC_MINOR__)
+#define GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #else
-#define COMPILER_GCC 0
+#define GCC_VERSION 0
 #endif
 
 #ifdef __clang__
-#define COMPILER_CLANG (__clang_major__ * 100 + __clang_minor__)
+#define CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
 #else
-#define COMPILER_CLANG 0
-#endif
-
-// Operating system
-
-#if defined(_WIN32) || defined(_WIN64)
-#define OS_WIN 1
-#else
-#define OS_WIN 0
-#endif
-
-#ifdef __linux__
-#define OS_LINUX 1
-#else
-#define OS_LINUX 0
-#endif
-
-#ifdef __MACH__
-#define OS_MAC 1
-#else
-#define OS_MAC 0
+#define CLANG_VERSION 0
 #endif
 
 // Architecture
@@ -82,31 +63,31 @@
   className(const className&) = delete; \
   const className& operator=(const className&) = delete;
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #define RESTRICT __restrict
-#elif COMPILER_GCC
+#elif GCC_VERSION
 #define RESTRICT __restrict__
 #else
 #define RESTRICT
 #endif
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #define INLINE __forceinline
 #else
 #define INLINE inline
 #endif
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #define NORETURN __declspec(noreturn)
-#elif COMPILER_GCC
+#elif GCC_VERSION
 #define NORETURN __attribute__((noreturn))
 #endif
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #include <intrin.h>
 #pragma intrinsic(_ReadWriteBarrier)
 #define COMPILER_FENCE _ReadWriteBarrier()
-#elif COMPILER_GCC
+#elif GCC_VERSION
 #define COMPILER_FENCE asm volatile("" : : : "memory")
 #else
 #define COMPILER_FENCE
@@ -114,21 +95,21 @@
 
 // Informs the compiler that the preceding function returns a pointer with the
 // specified alignment. This may improve code generation.
-#if COMPILER_MSVC
+#if MSC_VERSION
 #define CACHE_ALIGNED_RETURN /* not supported */
 #else
 #define CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
 #endif
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #define DEBUG_BREAK __debugbreak()
-#elif COMPILER_CLANG
+#elif CLANG_VERSION
 #define DEBUG_BREAK __builtin_debugger()
-#elif COMPILER_GCC
+#elif GCC_VERSION
 #define DEBUG_BREAK __builtin_trap()
 #endif
 
-#if COMPILER_MSVC
+#if MSC_VERSION
 #include <sal.h>
 #define FORMAT_STRING(s) _Printf_format_string_ s
 #else

@@ -1,6 +1,7 @@
 CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall -I.
 
-OBJS := $(addprefix highwayhash/, \
+HASH_OBJS := $(addprefix highwayhash/, \
+	os_specific.o \
 	sip_hash.o \
 	sip_tree_hash.o \
 	scalar_sip_tree_hash.o \
@@ -9,17 +10,26 @@ OBJS := $(addprefix highwayhash/, \
 	sse41_highway_tree_hash.o \
 	sip_hash_main.o)
 
+PROFILER_OBJS := $(addprefix highwayhash/, \
+	profiler_example.o \
+	os_specific.o)
+
+NANOBENCHMARK_OBJS := $(addprefix highwayhash/, \
+	nanobenchmark.o \
+	nanobenchmark_example.o \
+	os_specific.o)
+
 all: sip_hash_main profiler_example nanobenchmark_example
 
-sip_hash_main: $(OBJS)
+sip_hash_main: $(HASH_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-profiler_example: highwayhash/profiler_example.o
+profiler_example: $(PROFILER_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-nanobenchmark_example: highwayhash/nanobenchmark.o highwayhash/nanobenchmark_example.o
+nanobenchmark_example: $(NANOBENCHMARK_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 .PHONY: clean all
 clean:
-	$(RM) $(OBJS) sip_hash_main profiler_example nanobenchmark_example
+	$(RM) $(HASH_OBJS) $(PROFILER_OBJS) $(NANOBENCHMARK_OBJS) sip_hash_main profiler_example nanobenchmark_example

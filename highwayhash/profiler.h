@@ -10,7 +10,7 @@
 // After all threads have exited any zones, invoke PROFILER_PRINT_RESULTS() to
 // print call counts and average durations [CPU cycles] to stdout, sorted in
 // descending order of total duration.
-//
+
 // Configuration settings:
 
 // If zero, this file has no effect and no measurements will be recorded.
@@ -28,28 +28,31 @@
 
 #if PROFILER_ENABLED
 
+#include <emmintrin.h>
+
 #include <algorithm>  // min/max
 #include <atomic>
 #include <cassert>
 #include <cstddef>  // ptrdiff_t
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>  // memcpy
-
-#include "highwayhash/code_annotation.h"
-#include "highwayhash/tsc_timer.h"
+#include <new>
 
 // Non-portable aspects:
 // - SSE2 128-bit load/store (write-combining, UpdateOrAdd)
 // - RDTSCP timestamps (serializing, high-resolution)
 // - assumes string literals are stored within an 8 MiB range
 // - compiler-specific annotations (restrict, alignment, fences)
-#if COMPILER_MSVC
+#if MSC_VERSION
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
-#include <emmintrin.h>
+
+#include "highwayhash/code_annotation.h"
+#include "highwayhash/tsc_timer.h"
 
 namespace profiler {
 
@@ -211,8 +214,8 @@ class Results {
   // Draw all required information from the packets, which can be discarded
   // afterwards. Called whenever this thread's storage is full.
   void AnalyzePackets(const Packet* begin, const Packet* end) {
-    const uint64_t t0 = tsc_timer::Start64();
-    static const uint64_t overhead = Overhead();
+    const uint64_t t0 = tsc_timer::Start<uint64_t>();
+    static const uint64_t overhead = tsc_timer::Resolution<uint64_t>();
     const __m128i one_64 = _mm_set1_epi64x(1);
 
     for (const Packet* p = begin; p < end; ++p) {
@@ -240,14 +243,14 @@ class Results {
         nodes_[depth_ - 1].child_total += duration + overhead;
       }
     }
-    const uint64_t t1 = tsc_timer::Stop64();
+    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0;
   }
 
   // Incorporates results from another thread. Call after all threads have
   // exited any zones.
   void Assimilate(const Results& other) {
-    const uint64_t t0 = tsc_timer::Start64();
+    const uint64_t t0 = tsc_timer::Start<uint64_t>();
     assert(depth_ == 0);
     assert(other.depth_ == 0);
 
@@ -256,13 +259,13 @@ class Results {
       const Accumulator& zone = other.zones_[i];
       UpdateOrAdd(zone.BiasedOffset(), zone.total_duration, one_64);
     }
-    const uint64_t t1 = tsc_timer::Stop64();
+    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0 + other.analyze_elapsed_;
   }
 
   // Single-threaded.
   void Print() {
-    const uint64_t t0 = tsc_timer::Start64();
+    const uint64_t t0 = tsc_timer::Start<uint64_t>();
     MergeDuplicates();
 
     // Sort by decreasing total (self) cost.
@@ -279,7 +282,7 @@ class Results {
              num_calls, r.total_duration / num_calls);
     }
 
-    const uint64_t t1 = tsc_timer::Stop64();
+    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0;
     printf("Total clocks during analysis: %zu\n", analyze_elapsed_);
   }
@@ -368,27 +371,6 @@ class Results {
       zones_[i].num_calls =
           (biased_offset << Accumulator::kNumCallBits) + num_calls;
     }
-  }
-
-  // Returns minimum (nonzero) difference between two consecutive timestamps.
-  // Used to deduct timer overhead.
-  static uint64_t Overhead() {
-    // (Waiting until the timestamp changes may cause an infinite loop because
-    // the compiler doesn't realize that Timestamp is volatile.)
-    volatile uint64_t timestamps[100];
-    for (int i = 0; i < 100; ++i) {
-      timestamps[i] = tsc_timer::Stop64();
-    }
-    uint64_t min_difference = ~0ULL;
-    for (int i = 1; i < 100; ++i) {
-      assert(timestamps[i - 1] <= timestamps[i]);
-      const uint64_t difference = timestamps[i] - timestamps[i - 1];
-      if (difference != 0) {
-        min_difference = std::min(min_difference, difference);
-      }
-    }
-    printf("Overhead %zu\n", min_difference);
-    return min_difference;
   }
 
   uint64_t analyze_elapsed_ = 0;
@@ -540,12 +522,12 @@ class Zone {
     thread_specific_ = thread_specific;
 
     // (Capture timestamp ASAP, not inside WriteEntry.)
-    const uint64_t timestamp = tsc_timer::Start64();
+    const uint64_t timestamp = tsc_timer::Start<uint64_t>();
     thread_specific_->WriteEntry(name, timestamp);
   }
 
   ~Zone() {
-    const uint64_t timestamp = tsc_timer::Stop64();
+    const uint64_t timestamp = tsc_timer::Stop<uint64_t>();
     thread_specific_->WriteExit(timestamp);
   }
 

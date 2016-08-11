@@ -5,24 +5,52 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 cc_library(
-    name = "vector",
+    name = "code_annotation",
     hdrs = [
         "highwayhash/code_annotation.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "vector",
+    hdrs = [
         "highwayhash/types.h",
         "highwayhash/vec.h",
         "highwayhash/vec2.h",
     ],
     includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":code_annotation",
+    ],
+)
+
+cc_library(
+    name = "os_specific",
+    srcs = ["highwayhash/os_specific.cc"],
+    hdrs = [
+        "highwayhash/os_specific.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":code_annotation",
+    ],
 )
 
 cc_library(
     name = "tsc_timer",
     hdrs = [
-        "highwayhash/code_annotation.h",
         "highwayhash/tsc_timer.h",
     ],
     includes = ["."],
     visibility = ["//visibility:public"],
+    deps = [
+        ":code_annotation",
+        ":os_specific",
+    ],
 )
 
 cc_library(
@@ -33,6 +61,7 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        ":code_annotation",
         ":tsc_timer",
     ],
 )
@@ -41,6 +70,7 @@ cc_binary(
     name = "profiler_example",
     srcs = ["highwayhash/profiler_example.cc"],
     deps = [
+        ":os_specific",
         ":profiler",
     ],
 )
@@ -53,6 +83,8 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        ":code_annotation",
+        ":os_specific",
         ":tsc_timer",
     ],
 )
@@ -65,6 +97,7 @@ cc_binary(
     includes = ["."],
     deps = [
         ":nanobenchmark",
+        ":os_specific",
     ],
 )
 
@@ -89,18 +122,19 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "sip_hash",
     srcs = ["highwayhash/sip_hash.cc"],
     hdrs = [
-        "highwayhash/code_annotation.h",
         "highwayhash/sip_hash.h",
         "highwayhash/state_helpers.h",
         "highwayhash/types.h",
     ],
     includes = ["."],
     visibility = ["//visibility:public"],
+    deps = [
+        ":code_annotation",
+    ],
 )
 
 cc_library(
@@ -110,6 +144,7 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        ":code_annotation",
         ":sip_hash",
         ":vector",
     ],
@@ -121,6 +156,7 @@ cc_library(
     hdrs = ["highwayhash/scalar_sip_tree_hash.h"],
     includes = ["."],
     deps = [
+        ":code_annotation",
         ":sip_hash",
         ":vector",
     ],
@@ -136,6 +172,7 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        ":code_annotation",
         ":vector",
     ],
 )
@@ -149,6 +186,7 @@ cc_library(
     ],
     includes = ["."],
     deps = [
+        ":code_annotation",
         ":vector",
     ],
 )
@@ -162,6 +200,7 @@ cc_library(
     ],
     includes = ["."],
     deps = [
+        ":code_annotation",
         ":vector",
     ],
 )
@@ -177,8 +216,8 @@ cc_test(
         ":sip_hash",
         ":sip_tree_hash",
         ":sse41_highway_tree_hash",
+        "//base",
         "//testing/base/public:gunit_main",
-        "//testing/base/public:gunit_main_no_google3",
     ],
 )
 
@@ -191,6 +230,7 @@ cc_binary(
     deps = [
         ":highway_tree_hash",
         ":nanobenchmark",
+        ":os_specific",
         ":scalar_highway_tree_hash",
         ":scalar_sip_tree_hash",
         ":sip_hash",
