@@ -186,7 +186,7 @@ inline uint64_t Stop<uint64_t>() {
 }
 
 template <typename T>
-using crpc = const T* const RESTRICT;
+using crpc = const T* const HIGHWAYHASH_RESTRICT;
 
 // Even with high-priority pinned threads and frequency throttling disabled,
 // elapsed times are noisy due to interrupts or SMM operations. It might help
@@ -260,7 +260,7 @@ void CountingSort(T* begin, T* end) {
   std::sort(unique.begin(), unique.end());
 
   // Write that many copies of each unique value to the array.
-  T* RESTRICT p = begin;
+  T* HIGHWAYHASH_RESTRICT p = begin;
   for (const auto& value_count : unique) {
     std::fill(p, p + value_count.second, value_count.first);
     p += value_count.second;

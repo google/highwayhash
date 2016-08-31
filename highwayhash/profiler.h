@@ -75,7 +75,7 @@ class CacheAligned {
   static constexpr size_t kPointerSize = sizeof(void*);
   static constexpr size_t kCacheLineSize = 64;
 
-  static void* Allocate(const size_t bytes) CACHE_ALIGNED_RETURN {
+  static void* Allocate(const size_t bytes) HIGHWAYHASH_CACHE_ALIGNED_RETURN {
     char* const allocated = static_cast<char*>(malloc(bytes + kCacheLineSize));
     if (allocated == nullptr) {
       return nullptr;
@@ -109,23 +109,23 @@ class CacheAligned {
     static_assert(sizeof(__m128i) % sizeof(T) == 0, "Cannot divide");
     const size_t kLanes = sizeof(__m128i) / sizeof(T);
     const __m128i v0 = LoadVector(from + 0 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     const __m128i v1 = LoadVector(from + 1 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     const __m128i v2 = LoadVector(from + 2 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     const __m128i v3 = LoadVector(from + 3 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     // Fences prevent the compiler from reordering loads/stores, which may
     // interfere with write-combining.
     StreamVector(v0, to + 0 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     StreamVector(v1, to + 1 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     StreamVector(v2, to + 2 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
     StreamVector(v3, to + 3 * kLanes);
-    COMPILER_FENCE;
+    HIGHWAYHASH_COMPILER_FENCE;
   }
 
  private:
@@ -305,7 +305,7 @@ class Results {
     const __m128i duration_64 = _mm_cvtsi64_si128(duration);
     const __m128i add_duration_call = _mm_unpacklo_epi64(one_64, duration_64);
 
-    __m128i* const RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
+    __m128i* const HIGHWAYHASH_RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
 
     // Special case for first zone: (maybe) update, without swapping.
     __m128i prev = _mm_load_si128(zones);

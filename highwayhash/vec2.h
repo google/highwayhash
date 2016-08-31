@@ -42,67 +42,67 @@ class V4x64U {
   static constexpr size_t kNumLanes = sizeof(__m256i) / sizeof(T);
 
   // Leaves v_ uninitialized - typically used for output parameters.
-  INLINE V4x64U() {}
+  HIGHWAYHASH_INLINE V4x64U() {}
 
   // Lane 0 (p_0) is the lowest.
-  INLINE V4x64U(T p_3, T p_2, T p_1, T p_0)
+  HIGHWAYHASH_INLINE V4x64U(T p_3, T p_2, T p_1, T p_0)
       : v_(_mm256_set_epi64x(p_3, p_2, p_1, p_0)) {}
 
   // Broadcasts i to all lanes.
-  INLINE explicit V4x64U(T i)
+  HIGHWAYHASH_INLINE explicit V4x64U(T i)
       : v_(_mm256_broadcastq_epi64(_mm_cvtsi64_si128(i))) {}
 
   // Converts to/from intrinsics.
-  INLINE explicit V4x64U(const __m256i& v) : v_(v) {}
-  INLINE operator __m256i() const { return v_; }
-  INLINE V4x64U& operator=(const __m256i& v) {
+  HIGHWAYHASH_INLINE explicit V4x64U(const __m256i& v) : v_(v) {}
+  HIGHWAYHASH_INLINE operator __m256i() const { return v_; }
+  HIGHWAYHASH_INLINE V4x64U& operator=(const __m256i& v) {
     v_ = v;
     return *this;
   }
 
   // _mm256_setzero_epi64 generates suboptimal code. Instead set
   // z = x - x (given an existing "x"), or x == x to set all bits.
-  INLINE V4x64U& operator=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator=(const V4x64U& other) {
     v_ = other.v_;
     return *this;
   }
 
-  INLINE V4x64U& operator+=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator+=(const V4x64U& other) {
     v_ = _mm256_add_epi64(v_, other);
     return *this;
   }
-  INLINE V4x64U& operator-=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator-=(const V4x64U& other) {
     v_ = _mm256_sub_epi64(v_, other);
     return *this;
   }
 
-  INLINE V4x64U& operator&=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator&=(const V4x64U& other) {
     v_ = _mm256_and_si256(v_, other);
     return *this;
   }
-  INLINE V4x64U& operator|=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator|=(const V4x64U& other) {
     v_ = _mm256_or_si256(v_, other);
     return *this;
   }
-  INLINE V4x64U& operator^=(const V4x64U& other) {
+  HIGHWAYHASH_INLINE V4x64U& operator^=(const V4x64U& other) {
     v_ = _mm256_xor_si256(v_, other);
     return *this;
   }
 
-  INLINE V4x64U& operator<<=(const int count) {
+  HIGHWAYHASH_INLINE V4x64U& operator<<=(const int count) {
     v_ = _mm256_slli_epi64(v_, count);
     return *this;
   }
-  INLINE V4x64U& operator<<=(const __m128i& count) {
+  HIGHWAYHASH_INLINE V4x64U& operator<<=(const __m128i& count) {
     v_ = _mm256_sll_epi64(v_, count);
     return *this;
   }
 
-  INLINE V4x64U& operator>>=(const int count) {
+  HIGHWAYHASH_INLINE V4x64U& operator>>=(const int count) {
     v_ = _mm256_srli_epi64(v_, count);
     return *this;
   }
-  INLINE V4x64U& operator>>=(const __m128i& count) {
+  HIGHWAYHASH_INLINE V4x64U& operator>>=(const __m128i& count) {
     v_ = _mm256_srl_epi64(v_, count);
     return *this;
   }
@@ -113,47 +113,56 @@ class V4x64U {
 
 // Nonmember functions implemented in terms of member functions
 
-static INLINE V4x64U operator+(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator+(const V4x64U& left, const V4x64U& right) {
   V4x64U t(left);
   return t += right;
 }
 
-static INLINE V4x64U operator-(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator-(const V4x64U& left, const V4x64U& right) {
   V4x64U t(left);
   return t -= right;
 }
 
-static INLINE V4x64U operator<<(const V4x64U& v, const int count) {
+static HIGHWAYHASH_INLINE
+V4x64U operator<<(const V4x64U& v, const int count) {
   V4x64U t(v);
   return t <<= count;
 }
 
-static INLINE V4x64U operator>>(const V4x64U& v, const int count) {
+static HIGHWAYHASH_INLINE
+V4x64U operator>>(const V4x64U& v, const int count) {
   V4x64U t(v);
   return t >>= count;
 }
 
-static INLINE V4x64U operator<<(const V4x64U& v, const __m128i& count) {
+static HIGHWAYHASH_INLINE
+V4x64U operator<<(const V4x64U& v, const __m128i& count) {
   V4x64U t(v);
   return t <<= count;
 }
 
-static INLINE V4x64U operator>>(const V4x64U& v, const __m128i& count) {
+static HIGHWAYHASH_INLINE
+V4x64U operator>>(const V4x64U& v, const __m128i& count) {
   V4x64U t(v);
   return t >>= count;
 }
 
-static INLINE V4x64U operator&(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator&(const V4x64U& left, const V4x64U& right) {
   V4x64U t(left);
   return t &= right;
 }
 
-static INLINE V4x64U operator|(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator|(const V4x64U& left, const V4x64U& right) {
   V4x64U t(left);
   return t |= right;
 }
 
-static INLINE V4x64U operator^(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator^(const V4x64U& left, const V4x64U& right) {
   V4x64U t(left);
   return t ^= right;
 }
@@ -161,44 +170,53 @@ static INLINE V4x64U operator^(const V4x64U& left, const V4x64U& right) {
 // Load/Store.
 
 // "from" must be vector-aligned.
-static INLINE V4x64U Load(const uint64* RESTRICT const from) {
+static HIGHWAYHASH_INLINE
+V4x64U Load(const uint64* HIGHWAYHASH_RESTRICT const from) {
   return V4x64U(_mm256_load_si256(reinterpret_cast<const __m256i*>(from)));
 }
 
-static INLINE V4x64U LoadU(const uint64* RESTRICT const from) {
+static HIGHWAYHASH_INLINE
+V4x64U LoadU(const uint64* HIGHWAYHASH_RESTRICT const from) {
   return V4x64U(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(from)));
 }
 
 // "to" must be vector-aligned.
-static INLINE void Store(const V4x64U& v, uint64* RESTRICT const to) {
+static HIGHWAYHASH_INLINE
+void Store(const V4x64U& v, uint64* HIGHWAYHASH_RESTRICT const to) {
   _mm256_store_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
-static INLINE void StoreU(const V4x64U& v, uint64* RESTRICT const to) {
+static HIGHWAYHASH_INLINE
+void StoreU(const V4x64U& v, uint64* HIGHWAYHASH_RESTRICT const to) {
   _mm256_storeu_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
 // Writes directly to (aligned) memory, bypassing the cache. This is useful for
 // data that will not be read again in the near future.
-static INLINE void Stream(const V4x64U& v, uint64* RESTRICT const to) {
+static HIGHWAYHASH_INLINE
+void Stream(const V4x64U& v, uint64* HIGHWAYHASH_RESTRICT const to) {
   _mm256_stream_si256(reinterpret_cast<__m256i*>(to), v);
 }
 
 // Miscellaneous functions.
 
-static INLINE V4x64U AndNot(const V4x64U& neg_mask, const V4x64U& values) {
+static HIGHWAYHASH_INLINE
+V4x64U AndNot(const V4x64U& neg_mask, const V4x64U& values) {
   return V4x64U(_mm256_andnot_si256(neg_mask, values));
 }
 
-static INLINE V4x64U UnpackLow(const V4x64U& low, const V4x64U& high) {
+static HIGHWAYHASH_INLINE
+V4x64U UnpackLow(const V4x64U& low, const V4x64U& high) {
   return V4x64U(_mm256_unpacklo_epi64(low, high));
 }
-static INLINE V4x64U UnpackHigh(const V4x64U& low, const V4x64U& high) {
+static HIGHWAYHASH_INLINE
+V4x64U UnpackHigh(const V4x64U& low, const V4x64U& high) {
   return V4x64U(_mm256_unpackhi_epi64(low, high));
 }
 
 // There are no greater-than comparison instructions for unsigned T.
-static INLINE V4x64U operator==(const V4x64U& left, const V4x64U& right) {
+static HIGHWAYHASH_INLINE
+V4x64U operator==(const V4x64U& left, const V4x64U& right) {
   return V4x64U(_mm256_cmpeq_epi64(left, right));
 }
 

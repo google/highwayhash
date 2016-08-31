@@ -32,7 +32,7 @@ class ScalarHighwayTreeHashState {
   using Key = Lanes;
   static const int kPacketSize = sizeof(Lanes);
 
-  INLINE ScalarHighwayTreeHashState(const Key& keys) {
+  HIGHWAYHASH_INLINE ScalarHighwayTreeHashState(const Key& keys) {
     static const Lanes init0 = {0xdbe6d5d5fe4cce2full, 0xa4093822299f31d0ull,
                                 0x13198a2e03707344ull, 0x243f6a8885a308d3ull};
     static const Lanes init1 = {0x3bd39e10cb0ef593ull, 0xc0acf169b5f18a8cull,
@@ -45,7 +45,7 @@ class ScalarHighwayTreeHashState {
     Xor(init1, permuted_keys, &v1);
   }
 
-  INLINE void Update(const char* bytes) {
+  HIGHWAYHASH_INLINE void Update(const char* bytes) {
     const Lanes& packets = *reinterpret_cast<const Lanes*>(bytes);
 
     Add(packets, &v1);
@@ -67,7 +67,7 @@ class ScalarHighwayTreeHashState {
     ZipperMergeAndAdd(v0[2], v0[3], &v1[2], &v1[3]);
   }
 
-  INLINE uint64 Finalize() {
+  HIGHWAYHASH_INLINE uint64 Finalize() {
     PermuteAndUpdate();
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -77,19 +77,19 @@ class ScalarHighwayTreeHashState {
   }
 
   // private:
-  static INLINE void Copy(const Lanes& source, Lanes* dest) {
+  static HIGHWAYHASH_INLINE void Copy(const Lanes& source, Lanes* dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] = source[lane];
     }
   }
 
-  static INLINE void Add(const Lanes& source, Lanes* dest) {
+  static HIGHWAYHASH_INLINE void Add(const Lanes& source, Lanes* dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] += source[lane];
     }
   }
 
-  static INLINE void Xor(const Lanes& op1, const Lanes& op2, Lanes* dest) {
+  static HIGHWAYHASH_INLINE void Xor(const Lanes& op1, const Lanes& op2, Lanes* dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] = op1[lane] ^ op2[lane];
     }
@@ -100,9 +100,10 @@ class ScalarHighwayTreeHashState {
 
   // 16-byte permutation; shifting is about 10% faster than byte loads.
   // Adds zipper-merge result to add*.
-  static INLINE void ZipperMergeAndAdd(const uint64 v0, const uint64 v1,
-                                       uint64* RESTRICT add0,
-                                       uint64* RESTRICT add1) {
+  static HIGHWAYHASH_INLINE
+  void ZipperMergeAndAdd(const uint64 v0, const uint64 v1,
+                         uint64* HIGHWAYHASH_RESTRICT add0,
+                         uint64* HIGHWAYHASH_RESTRICT add1) {
     *add0 += ((MASK(v0, 3) + MASK(v1, 4)) >> 24) +
              ((MASK(v0, 5) + MASK(v1, 6)) >> 16) + MASK(v0, 2) +
              (MASK(v0, 1) << 32) + (MASK(v1, 7) >> 8) + (v0 << 56);
@@ -114,16 +115,16 @@ class ScalarHighwayTreeHashState {
 
 #undef MASK
 
-  static INLINE uint64 Rot32(const uint64 x) { return (x >> 32) | (x << 32); }
+  static HIGHWAYHASH_INLINE uint64 Rot32(const uint64 x) { return (x >> 32) | (x << 32); }
 
-  static INLINE void Permute(const Lanes& v, Lanes* permuted) {
+  static HIGHWAYHASH_INLINE void Permute(const Lanes& v, Lanes* permuted) {
     (*permuted)[0] = Rot32(v[2]);
     (*permuted)[1] = Rot32(v[3]);
     (*permuted)[2] = Rot32(v[0]);
     (*permuted)[3] = Rot32(v[1]);
   }
 
-  INLINE void PermuteAndUpdate() {
+  HIGHWAYHASH_INLINE void PermuteAndUpdate() {
     Lanes permuted;
     Permute(v0, &permuted);
     Update(reinterpret_cast<const char*>(permuted));
@@ -148,9 +149,10 @@ class ScalarHighwayTreeHashState {
 // HighwayTreeHash would return (drop-in compatible).
 //
 // Throughput: 1.1 GB/s for 1 KB inputs (about 10% of the AVX-2 version).
-static INLINE uint64 ScalarHighwayTreeHash(const uint64 (&key)[4],
-                                           const char* bytes,
-                                           const uint64 size) {
+static HIGHWAYHASH_INLINE
+uint64 ScalarHighwayTreeHash(const uint64 (&key)[4],
+                             const char* bytes,
+                             const uint64 size) {
   return ComputeHash<ScalarHighwayTreeHashState>(key, bytes, size);
 }
 
