@@ -32,7 +32,7 @@ class HighwayTreeHashState {
   using Key = uint64[4];
   static const int kPacketSize = sizeof(Key);
 
-  explicit INLINE HighwayTreeHashState(const Key& key_lanes) {
+  explicit HIGHWAYHASH_INLINE HighwayTreeHashState(const Key& key_lanes) {
     // "Nothing up my sleeve" numbers, concatenated hex digits of Pi from
     // http://www.numberworld.org/digits/Pi/, retrieved Feb 22, 2016.
     //
@@ -58,12 +58,12 @@ def x(a,b,c):
     mul1 = init1;
   }
 
-  INLINE void Update(const char* bytes) {
+  HIGHWAYHASH_INLINE void Update(const char* bytes) {
     const V4x64U packet = LoadU(reinterpret_cast<const uint64*>(bytes));
     Update(packet);
   }
 
-  INLINE void Update(const V4x64U& packet) {
+  HIGHWAYHASH_INLINE void Update(const V4x64U& packet) {
     v1 += packet;
     v1 += mul0;
     mul0 ^= V4x64U(_mm256_mul_epu32(v0, v1 >> 32));
@@ -74,7 +74,7 @@ def x(a,b,c):
   }
 
   // Returns 256 pseudo-random bits that pass the smhasher tests.
-  INLINE V4x64U Finalize256() {
+  HIGHWAYHASH_INLINE V4x64U Finalize256() {
     // Mix together all lanes.
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -86,7 +86,7 @@ def x(a,b,c):
   }
 
   // Returns 64 pseudo-random bits that pass the smhasher tests.
-  INLINE uint64 Finalize() {
+  HIGHWAYHASH_INLINE uint64 Finalize() {
     const V4x64U sum = Finalize256();
     // Each lane is already sufficiently mixed. Extracting the lowest is faster
     // than Store(sum) to uint64[].
@@ -94,7 +94,7 @@ def x(a,b,c):
   }
 
  private:
-  static INLINE V4x64U ZipperMerge(const V4x64U& v) {
+  static HIGHWAYHASH_INLINE V4x64U ZipperMerge(const V4x64U& v) {
     // Multiplication mixes/scrambles bytes 0-7 of the 64-bit result to
     // varying degrees. In descending order of goodness, bytes
     // 3 4 2 5 1 6 0 7 have quality 228 224 164 160 100 96 36 32.
@@ -110,7 +110,7 @@ def x(a,b,c):
     return V4x64U(_mm256_shuffle_epi8(v, V4x64U(hi, lo, hi, lo)));
   }
 
-  static INLINE V4x64U Permute(const V4x64U& v) {
+  static HIGHWAYHASH_INLINE V4x64U Permute(const V4x64U& v) {
     // For complete mixing, we need to swap the upper and lower 128-bit halves;
     // we also swap all 32-bit halves.
     const V4x64U indices(0x0000000200000003ull, 0x0000000000000001ull,
@@ -118,7 +118,7 @@ def x(a,b,c):
     return V4x64U(_mm256_permutevar8x32_epi32(v, indices));
   }
 
-  INLINE void PermuteAndUpdate() {
+  HIGHWAYHASH_INLINE void PermuteAndUpdate() {
     // It is slightly better to permute v0 than v1; it will be added to v1.
     Update(Permute(v0));
   }
@@ -131,10 +131,11 @@ def x(a,b,c):
 
 // AVX-2 specialization for 1.1x higher hash throughput at 1KB.
 template <>
-INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
-                                               const char* remaining_bytes,
-                                               const uint64 remaining_size,
-                                               HighwayTreeHashState* state) {
+HIGHWAYHASH_INLINE
+void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
+                                        const char* remaining_bytes,
+                                        const uint64 remaining_size,
+                                        HighwayTreeHashState* state) {
   // Copying into an aligned buffer incurs a store-to-load-forwarding stall.
   // Instead, we use masked loads to read any remaining whole uint32
   // without incurring page faults for the others.
@@ -181,8 +182,9 @@ INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
 // Returns a 64-bit hash of the given data bytes.
 //
 // Throughput: 11 GB/s for 1 KB inputs.
-static INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
-                                     const char* bytes, const uint64 size) {
+static HIGHWAYHASH_INLINE
+uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
+                       const char* bytes, const uint64 size) {
   return ComputeHash<HighwayTreeHashState>(key, bytes, size);
 }
 
@@ -198,8 +200,9 @@ static INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
 // Returns a 256-bit hash of the given data bytes. These bits are well
 // distributed, but the function's resistance to differential attacks may be
 // lower (about 64 bits).
-static INLINE V4x64U HighwayTreeHash256(const HighwayTreeHashState::Key& key,
-                                        const char* bytes, const uint64 size) {
+static HIGHWAYHASH_INLINE
+V4x64U HighwayTreeHash256(const HighwayTreeHashState::Key& key,
+                          const char* bytes, const uint64 size) {
   HighwayTreeHashState state(key);
   UpdateState(bytes, size, &state);
   return state.Finalize256();

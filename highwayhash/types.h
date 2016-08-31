@@ -16,14 +16,14 @@ typedef unsigned int uint32;
 typedef unsigned char uint8;
 
 // Pointer to const
-typedef const uint8* const RESTRICT crpcU8;
-typedef const uint32* const RESTRICT crpcU32;
-typedef const uint64* const RESTRICT crpcU64;
+typedef const uint8* const HIGHWAYHASH_RESTRICT crpcU8;
+typedef const uint32* const HIGHWAYHASH_RESTRICT crpcU32;
+typedef const uint64* const HIGHWAYHASH_RESTRICT crpcU64;
 
 // Pointer to non-const
-typedef uint8* const RESTRICT crpU8;
-typedef uint32* const RESTRICT crpU32;
-typedef uint64* const RESTRICT crpU64;
+typedef uint8* const HIGHWAYHASH_RESTRICT crpU8;
+typedef uint32* const HIGHWAYHASH_RESTRICT crpU32;
+typedef uint64* const HIGHWAYHASH_RESTRICT crpU64;
 
 #ifdef __cplusplus
 }  // namespace highwayhash
