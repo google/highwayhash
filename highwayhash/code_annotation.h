@@ -43,16 +43,6 @@
 
 //-----------------------------------------------------------------------------
 
-// Marks a function parameter as unused and avoids
-// the corresponding compiler warning.
-// Wrap around the parameter name, e.g. void f(int UNUSED(x))
-#define UNUSED(param)
-
-// Marks a function local variable or parameter as unused and avoids
-// the corresponding compiler warning.
-// Use instead of UNUSED when the parameter is conditionally unused.
-#define UNUSED2(param) ((void)(param))
-
 #define NONCOPYABLE(className)          \
   className(const className&) = delete; \
   const className& operator=(const className&) = delete;

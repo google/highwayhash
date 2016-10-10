@@ -1,5 +1,5 @@
-#ifndef THIRD_PARTY_BUTTERAUGLI_PROFILER_H_
-#define THIRD_PARTY_BUTTERAUGLI_PROFILER_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
+#define HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
 
 // High precision, low overhead time measurements. Returns exact call counts and
 // total elapsed time for user-defined 'zones' (code regions, i.e. C++ scopes).
@@ -567,4 +567,4 @@ class Zone {
 #define PROFILER_PRINT_RESULTS()
 #endif
 
-#endif  // THIRD_PARTY_BUTTERAUGLI_PROFILER_H_
+#endif  // HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
