@@ -314,7 +314,7 @@ T Resolution() {
     T* const begin = resolutions.data();
     CountingSort(begin, begin + resolutions.size());
     const T resolution = Mode(begin, resolutions.size());
-    printf("Resolution<%zu> %u\n", sizeof(T) * 8, resolution);
+    printf("Resolution<%zu> %lu\n", sizeof(T) * 8, long(resolution));
     return resolution;
   }();
   return resolution;

@@ -96,11 +96,13 @@ class CacheAligned {
     return aligned;
   }
 
-  static void Free(void* aligned_pointer) {
+  // Template allows freeing pointer-to-const.
+  template <typename T>
+  static void Free(T* aligned_pointer) {
     if (aligned_pointer == nullptr) {
       return;
     }
-    char* const aligned = static_cast<char*>(aligned_pointer);
+    const char* const aligned = reinterpret_cast<const char*>(aligned_pointer);
     assert(reinterpret_cast<uintptr_t>(aligned) % kCacheLineSize == 0);
     char* allocated;
     memcpy(&allocated, aligned - kPointerSize, kPointerSize);
@@ -114,22 +116,17 @@ class CacheAligned {
   static void StreamCacheLine(const T* from, T* to) {
     static_assert(sizeof(__m128i) % sizeof(T) == 0, "Cannot divide");
     const size_t kLanes = sizeof(__m128i) / sizeof(T);
+    COMPILER_FENCE;
     const __m128i v0 = LoadVector(from + 0 * kLanes);
-    COMPILER_FENCE;
     const __m128i v1 = LoadVector(from + 1 * kLanes);
-    COMPILER_FENCE;
     const __m128i v2 = LoadVector(from + 2 * kLanes);
-    COMPILER_FENCE;
     const __m128i v3 = LoadVector(from + 3 * kLanes);
-    COMPILER_FENCE;
     // Fences prevent the compiler from reordering loads/stores, which may
     // interfere with write-combining.
+    COMPILER_FENCE;
     StreamVector(v0, to + 0 * kLanes);
-    COMPILER_FENCE;
     StreamVector(v1, to + 1 * kLanes);
-    COMPILER_FENCE;
     StreamVector(v2, to + 2 * kLanes);
-    COMPILER_FENCE;
     StreamVector(v3, to + 3 * kLanes);
     COMPILER_FENCE;
   }
@@ -153,7 +150,7 @@ class Packet {
   // If offsets do not fit, UpdateOrAdd will overrun our heap allocation
   // (governed by kMaxZones). We have seen multi-megabyte offsets.
   static constexpr size_t kOffsetBits = 25;
-  static constexpr ptrdiff_t kOffsetBias = 1LL << (kOffsetBits - 1);
+  static constexpr uint64_t kOffsetBias = 1ULL << (kOffsetBits - 1);
 
   // We need full-resolution timestamps; at an effective rate of 4 GHz,
   // this permits 1 minute zone durations (for longer durations, split into
@@ -209,6 +206,14 @@ struct Accumulator {
 };
 static_assert(sizeof(Accumulator) == sizeof(__m128i), "Wrong Accumulator size");
 
+template <typename T>
+static inline T ClampedSubtract(const T minuend, const T subtrahend) {
+  if (subtrahend > minuend) {
+    return 0;
+  }
+  return minuend - subtrahend;
+}
+
 // Per-thread call graph (stack) and Accumulator for each zone.
 class Results {
  public:
@@ -217,18 +222,40 @@ class Results {
     memset(zones_, 0, sizeof(Accumulator));
   }
 
+  // Used for computing overhead when this thread encounters its first Zone.
+  // This has no observable effect apart from increasing "analyze_elapsed_".
+  uint64_t ZoneDuration(const Packet* packets) {
+    PROFILER_CHECK(depth_ == 0);
+    PROFILER_CHECK(num_zones_ == 0);
+    AnalyzePackets(packets, 2);
+    const uint64_t duration = zones_[0].total_duration;
+    zones_[0].num_calls = 0;
+    zones_[0].total_duration = 0;
+    PROFILER_CHECK(depth_ == 0);
+    num_zones_ = 0;
+    return duration;
+  }
+
+  void SetSelfOverhead(const uint64_t self_overhead) {
+    self_overhead_ = self_overhead;
+  }
+
+  void SetChildOverhead(const uint64_t child_overhead) {
+    child_overhead_ = child_overhead;
+  }
+
   // Draw all required information from the packets, which can be discarded
   // afterwards. Called whenever this thread's storage is full.
-  void AnalyzePackets(const Packet* begin, const Packet* end) {
+  void AnalyzePackets(const Packet* packets, const size_t num_packets) {
     const uint64_t t0 = tsc_timer::Start<uint64_t>();
-    static const uint64_t overhead = tsc_timer::Resolution<uint64_t>();
     const __m128i one_64 = _mm_set1_epi64x(1);
 
-    for (const Packet* p = begin; p < end; ++p) {
+    for (size_t i = 0; i < num_packets; ++i) {
+      const Packet p = packets[i];
       // Entering a zone
-      if (p->BiasedOffset() != Packet::kOffsetBias) {
+      if (p.BiasedOffset() != Packet::kOffsetBias) {
         assert(depth_ < kMaxDepth);
-        nodes_[depth_].packet = *p;
+        nodes_[depth_].packet = p;
         nodes_[depth_].child_total = 0;
         ++depth_;
         continue;
@@ -238,15 +265,16 @@ class Results {
       const Node& node = nodes_[depth_ - 1];
       // Masking correctly handles unsigned wraparound.
       const uint64_t duration =
-          (p->Timestamp() - node.packet.Timestamp()) & Packet::kTimestampMask;
-      const uint64_t self_duration = duration - overhead - node.child_total;
+          (p.Timestamp() - node.packet.Timestamp()) & Packet::kTimestampMask;
+      const uint64_t self_duration = ClampedSubtract(
+          duration, self_overhead_ + child_overhead_ + node.child_total);
 
       UpdateOrAdd(node.packet.BiasedOffset(), self_duration, one_64);
       --depth_;
 
       // Deduct this nested node's time from its parent's self_duration.
       if (depth_ != 0) {
-        nodes_[depth_ - 1].child_total += duration + overhead;
+        nodes_[depth_ - 1].child_total += duration + child_overhead_;
       }
     }
     const uint64_t t1 = tsc_timer::Stop<uint64_t>();
@@ -284,8 +312,8 @@ class Results {
     for (size_t i = 0; i < num_zones_; ++i) {
       const Accumulator& r = zones_[i];
       const uint64_t num_calls = r.NumCalls();
-      printf("%40s: %10zu x %15zu\n", string_origin + r.BiasedOffset(),
-             num_calls, r.total_duration / num_calls);
+      printf("%40s: %10zu x %15zu = %15zu\n", string_origin + r.BiasedOffset(),
+             num_calls, r.total_duration / num_calls, r.total_duration);
     }
 
     const uint64_t t1 = tsc_timer::Stop<uint64_t>();
@@ -380,6 +408,8 @@ class Results {
   }
 
   uint64_t analyze_elapsed_ = 0;
+  uint64_t self_overhead_ = 0;
+  uint64_t child_overhead_ = 0;
 
   size_t depth_ = 0;      // Number of active zones.
   size_t num_zones_ = 0;  // Number of retired zones.
@@ -396,11 +426,11 @@ class ThreadSpecific {
  public:
   // "name" is used to sanity-check offsets fit in kOffsetBits.
   explicit ThreadSpecific(const char* name)
-      : buffer_pos_(buffer_),
-        begin_(static_cast<Packet*>(
+      : buffer_size_(0),
+        packets_(static_cast<Packet*>(
             CacheAligned::Allocate(PROFILER_THREAD_STORAGE << 20))),
-        end_(begin_),
-        capacity_(end_ + (PROFILER_THREAD_STORAGE << 17)),
+        num_packets_(0),
+        max_packets_(PROFILER_THREAD_STORAGE << 17),
         string_origin_(StringOrigin()) {
     // Even in optimized builds (with NDEBUG), verify that this zone's name
     // offset fits within the allotted space. If not, UpdateOrAdd is likely to
@@ -411,7 +441,10 @@ class ThreadSpecific {
     PROFILER_CHECK(biased_offset <= (1ULL << Packet::kOffsetBits));
   }
 
-  ~ThreadSpecific() { CacheAligned::Free(begin_); }
+  ~ThreadSpecific() { CacheAligned::Free(packets_); }
+
+  // Depends on Zone => defined below.
+  void ComputeOverhead();
 
   void WriteEntry(const char* name, const uint64_t timestamp) {
     const size_t biased_offset = name - string_origin_;
@@ -427,16 +460,15 @@ class ThreadSpecific {
     // Ensures prior weakly-ordered streaming stores are globally visible.
     _mm_sfence();
 
-    const ptrdiff_t num_buffered = buffer_pos_ - buffer_;
     // Storage full => empty it.
-    if (end_ + num_buffered > capacity_) {
-      results_.AnalyzePackets(begin_, end_);
-      end_ = begin_;
+    if (num_packets_ + buffer_size_ > max_packets_) {
+      results_.AnalyzePackets(packets_, num_packets_);
+      num_packets_ = 0;
     }
-    memcpy(end_, buffer_, num_buffered * sizeof(Packet));
-    end_ += num_buffered;
-    results_.AnalyzePackets(begin_, end_);
-    end_ = begin_;
+    memcpy(packets_ + num_packets_, buffer_, buffer_size_ * sizeof(Packet));
+    num_packets_ += buffer_size_;
+    results_.AnalyzePackets(packets_, num_packets_);
+    num_packets_ = 0;
   }
 
   Results& GetResults() { return results_; }
@@ -445,33 +477,33 @@ class ThreadSpecific {
   // Write packet to buffer/storage, emptying them as needed.
   void Write(const Packet packet) {
     // Buffer full => copy to storage.
-    if (buffer_pos_ == buffer_ + kBufferCapacity) {
+    if (buffer_size_ == kBufferCapacity) {
       // Storage full => empty it.
-      if (end_ + kBufferCapacity > capacity_) {
-        results_.AnalyzePackets(begin_, end_);
-        end_ = begin_;
+      if (num_packets_ + kBufferCapacity > max_packets_) {
+        results_.AnalyzePackets(packets_, num_packets_);
+        num_packets_ = 0;
       }
       // This buffering halves observer overhead and decreases the overall
       // runtime by about 3%.
-      CacheAligned::StreamCacheLine(buffer_, end_);
-      end_ += kBufferCapacity;
-      buffer_pos_ = buffer_;
+      CacheAligned::StreamCacheLine(buffer_, packets_ + num_packets_);
+      num_packets_ += kBufferCapacity;
+      buffer_size_ = 0;
     }
-    *buffer_pos_ = packet;
-    ++buffer_pos_;
+    buffer_[buffer_size_] = packet;
+    ++buffer_size_;
   }
 
   // Write-combining buffer to avoid cache pollution. Must be the first
   // non-static member to ensure cache-line alignment.
   Packet buffer_[kBufferCapacity];
-  Packet* buffer_pos_;
+  size_t buffer_size_;
 
   // Contiguous storage for zone enter/exit packets.
-  Packet* const begin_;
-  Packet* end_;
-  Packet* const capacity_;
+  Packet* const RESTRICT packets_;
+  size_t num_packets_;
+  const size_t max_packets_;
   // Cached here because we already read this cache line on zone entry/exit.
-  const char* string_origin_;
+  const char* RESTRICT string_origin_;
   Results results_;
 };
 
@@ -512,54 +544,129 @@ class ThreadList {
 class Zone {
  public:
   // "name" must be a string literal (see StringOrigin).
-  explicit Zone(const char* name) {
-    static thread_local ThreadSpecific* thread_specific;
-    if (thread_specific == nullptr) {
+  NOINLINE explicit Zone(const char* name) {
+    COMPILER_FENCE;
+    ThreadSpecific* RESTRICT thread_specific = StaticThreadSpecific();
+    if (UNLIKELY(thread_specific == nullptr)) {
       void* mem = CacheAligned::Allocate(sizeof(ThreadSpecific));
       thread_specific = new (mem) ThreadSpecific(name);
+      // Must happen before ComputeOverhead, which re-enters this ctor.
       Threads().Add(thread_specific);
+      StaticThreadSpecific() = thread_specific;
+      thread_specific->ComputeOverhead();
     }
 
-    thread_specific_ = thread_specific;
-
     // (Capture timestamp ASAP, not inside WriteEntry.)
+    COMPILER_FENCE;
     const uint64_t timestamp = tsc_timer::Start<uint64_t>();
-    thread_specific_->WriteEntry(name, timestamp);
+    thread_specific->WriteEntry(name, timestamp);
   }
 
-  ~Zone() {
+  NOINLINE ~Zone() {
+    COMPILER_FENCE;
     const uint64_t timestamp = tsc_timer::Stop<uint64_t>();
-    thread_specific_->WriteExit(timestamp);
+    StaticThreadSpecific()->WriteExit(timestamp);
+    COMPILER_FENCE;
   }
 
   // Call exactly once after all threads have exited all zones.
   static void PrintResults() { Threads().PrintResults(); }
 
  private:
-  // Returns the singleton ThreadList. Non time-critical, function-local static
-  // avoids needing a separate definition.
+  // Returns reference to the thread's ThreadSpecific pointer (initially null).
+  // Function-local static avoids needing a separate definition.
+  static ThreadSpecific*& StaticThreadSpecific() {
+    static thread_local ThreadSpecific* thread_specific;
+    return thread_specific;
+  }
+
+  // Returns the singleton ThreadList. Non time-critical.
   static ThreadList& Threads() {
     static ThreadList threads_;
     return threads_;
   }
-
-  // Cached so that the static thread_local can be function-local so we don't
-  // need to define the static member separately.
-  ThreadSpecific* thread_specific_;
 };
-
-}  // namespace profiler
 
 // Creates a zone starting from here until the end of the current scope.
 // Timestamps will be recorded when entering and exiting the zone.
 // "name" must be a string literal, which is ensured by merging with "".
-#define PROFILER_ZONE(name) const profiler::Zone zone("" name)
+#define PROFILER_ZONE(name) \
+  COMPILER_FENCE;           \
+  const profiler::Zone zone("" name); \
+  COMPILER_FENCE
 
 // Creates a zone for an entire function (when placed at its beginning).
 // Shorter/more convenient than ZONE.
-#define PROFILER_FUNC const profiler::Zone zone(__func__)
+#define PROFILER_FUNC        \
+  COMPILER_FENCE;            \
+  const profiler::Zone zone(__func__); \
+  COMPILER_FENCE
 
 #define PROFILER_PRINT_RESULTS profiler::Zone::PrintResults
+
+inline void ThreadSpecific::ComputeOverhead() {
+  // Delay after capturing timestamps before/after the actual zone runs. Even
+  // with frequency throttling disabled, this has a multimodal distribution,
+  // including 32, 34, 48, 52, 59, 62.
+  uint64_t self_overhead;
+  {
+    const size_t kNumSamples = 32;
+    uint32_t samples[kNumSamples];
+    for (size_t idx_sample = 0; idx_sample < kNumSamples; ++idx_sample) {
+      const size_t kNumDurations = 1024;
+      uint32_t durations[kNumDurations];
+
+      for (size_t idx_duration = 0; idx_duration < kNumDurations;
+           ++idx_duration) {
+        { PROFILER_ZONE("Dummy Zone (never shown)"); }
+        durations[idx_duration] = results_.ZoneDuration(buffer_);
+        buffer_size_ = 0;
+        PROFILER_CHECK(num_packets_ == 0);
+      }
+      tsc_timer::CountingSort(durations, durations + kNumDurations);
+      samples[idx_sample] = tsc_timer::Mode(durations, kNumDurations);
+    }
+    // Median.
+    tsc_timer::CountingSort(samples, samples + kNumSamples);
+    self_overhead = samples[kNumSamples / 2];
+    printf("Overhead: %zu\n", self_overhead);
+    results_.SetSelfOverhead(self_overhead);
+  }
+
+  // Delay before capturing start timestamp / after end timestamp.
+  const size_t kNumSamples = 32;
+  uint32_t samples[kNumSamples];
+  for (size_t idx_sample = 0; idx_sample < kNumSamples; ++idx_sample) {
+    const size_t kNumDurations = 16;
+    uint32_t durations[kNumDurations];
+    for (size_t idx_duration = 0; idx_duration < kNumDurations;
+         ++idx_duration) {
+      const size_t kReps = 10000;
+      // Analysis time should not be included => must fit within buffer.
+      PROFILER_CHECK(kReps * 2 < max_packets_);
+      _mm_mfence();
+      const uint64_t t0 = tsc_timer::Start<uint64_t>();
+      for (size_t i = 0; i < kReps; ++i) {
+        PROFILER_ZONE("Dummy");
+      }
+      _mm_sfence();
+      const uint64_t t1 = tsc_timer::Stop<uint64_t>();
+      PROFILER_CHECK(num_packets_ + buffer_size_ == kReps * 2);
+      num_packets_ = 0;
+      buffer_size_ = 0;
+      const uint64_t avg_duration = (t1 - t0 + kReps / 2) / kReps;
+      durations[idx_duration] = ClampedSubtract(avg_duration, self_overhead);
+    }
+    tsc_timer::CountingSort(durations, durations + kNumDurations);
+    samples[idx_sample] = tsc_timer::Mode(durations, kNumDurations);
+  }
+  tsc_timer::CountingSort(samples, samples + kNumSamples);
+  const uint64_t child_overhead = samples[9 * kNumSamples / 10];
+  printf("Child overhead: %zu\n", child_overhead);
+  results_.SetChildOverhead(child_overhead);
+}
+
+}  // namespace profiler
 
 #else  // !PROFILER_ENABLED
 #define PROFILER_ZONE(name)

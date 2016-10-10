@@ -69,14 +69,23 @@ using crp = T* const RESTRICT;
 
 #if MSC_VERSION
 #define INLINE __forceinline
+#define NOINLINE __declspec(noinline)
 #else
 #define INLINE inline
+#define NOINLINE __attribute__((noinline))
 #endif
 
 #if MSC_VERSION
 #define NORETURN __declspec(noreturn)
 #elif GCC_VERSION
 #define NORETURN __attribute__((noreturn))
+#endif
+
+#if MSC_VERSION
+// Unsupported, __assume is not the same.
+#define UNLIKELY(expr) expr
+#else
+#define UNLIKELY(expr) __builtin_expect(!!(expr), 0)
 #endif
 
 #if MSC_VERSION
