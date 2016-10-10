@@ -40,8 +40,8 @@ class SSE41HighwayTreeHashState {
     const V2x64U init0H(0x243f6a8885a308d3ull, 0x13198a2e03707344ull);
     const V2x64U init1L(0xc0acf169b5f18a8cull, 0x3bd39e10cb0ef593ull);
     const V2x64U init1H(0x452821e638d01377ull, 0xbe5466cf34e90c6cull);
-    const V2x64U keyL = Load2U(key + 0);
-    const V2x64U keyH = Load2U(key + 2);
+    const V2x64U keyL = LoadUnaligned128(key + 0);
+    const V2x64U keyH = LoadUnaligned128(key + 2);
     v0L = keyL ^ init0L;
     v0H = keyH ^ init0H;
     v1L = Rot32(keyH) ^ init1L;
@@ -71,8 +71,8 @@ class SSE41HighwayTreeHashState {
 
   INLINE void Update(const char* bytes) {
     const uint64* words = reinterpret_cast<const uint64*>(bytes);
-    const V2x64U packetL = Load2U(words + 0);
-    const V2x64U packetH = Load2U(words + 2);
+    const V2x64U packetL = LoadUnaligned128(words + 0);
+    const V2x64U packetH = LoadUnaligned128(words + 2);
     Update(packetL, packetH);
   }
 

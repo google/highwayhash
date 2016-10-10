@@ -51,7 +51,7 @@ def x(a,b,c):
                        0xa4093822299f31d0ull, 0xdbe6d5d5fe4cce2full);
     const V4x64U init1(0x452821e638d01377ull, 0xbe5466cf34e90c6cull,
                        0xc0acf169b5f18a8cull, 0x3bd39e10cb0ef593ull);
-    const V4x64U key = LoadU(key_lanes);
+    const V4x64U key = LoadUnaligned256(key_lanes);
     v0 = key ^ init0;
     v1 = Permute(key) ^ init1;
     mul0 = init0;
@@ -59,7 +59,8 @@ def x(a,b,c):
   }
 
   INLINE void Update(const char* bytes) {
-    const V4x64U packet = LoadU(reinterpret_cast<const uint64*>(bytes));
+    const V4x64U packet =
+        LoadUnaligned256(reinterpret_cast<const uint64*>(bytes));
     Update(packet);
   }
 

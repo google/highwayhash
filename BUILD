@@ -14,6 +14,15 @@ cc_library(
 )
 
 cc_library(
+    name = "arch_specific",
+    hdrs = [
+        "highwayhash/arch_specific.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "vector",
     hdrs = [
         "highwayhash/types.h",
@@ -24,6 +33,17 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
+    ],
+)
+
+cc_test(
+    name = "vector_test",
+    size = "small",
+    srcs = ["highwayhash/vector_test.cc"],
+    deps = [
+        ":vector",
+        "//base",
+        "//testing/base/public:gunit_main",
     ],
 )
 
@@ -83,6 +103,7 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        ":arch_specific",
         ":code_annotation",
         ":os_specific",
         ":tsc_timer",
@@ -114,6 +135,23 @@ cc_test(
     name = "data_parallel_test",
     size = "small",
     srcs = ["highwayhash/data_parallel_test.cc"],
+    tags = ["manual"],
+    deps = [
+        ":data_parallel",
+        "//base",
+        "//testing/base/public:gunit_main_no_google3",
+    ],
+)
+
+cc_test(
+    name = "data_parallel_benchmark",
+    size = "small",
+    srcs = ["highwayhash/data_parallel_benchmark.cc"],
+    tags = [
+        "local",
+        "manual",
+        "notap",
+    ],
     deps = [
         ":data_parallel",
         "//base",
@@ -209,6 +247,7 @@ cc_test(
     name = "sip_hash_test",
     size = "small",
     srcs = ["highwayhash/sip_hash_test.cc"],
+    tags = ["manual"],
     deps = [
         ":highway_tree_hash",
         ":scalar_highway_tree_hash",

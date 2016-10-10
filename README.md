@@ -120,9 +120,11 @@ no particular CPU requirements.
 
 ## Build instructions
 
-`sip_hash_test` and `data_parallel_test` use [GTest](https://github.com/google/googletest).
-You can avoid the dependency in [Bazel](http://bazel.io/) builds with
-`bazel build -c opt --copt=-mavx2 -- :all -:sip_hash_test -:data_parallel_test`
+To build with blaze/[Bazel](http://bazel.io/):
+`bazel build -c opt --copt=-mavx2 -- :all`
+
+`sip_hash_test` and `data_parallel_test` are omitted by default; to compile,
+please first install [GTest](https://github.com/google/googletest).
 
 To build with Make : `make`
 

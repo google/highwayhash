@@ -15,6 +15,12 @@
 #include <thread>  //NOLINT
 #include <vector>
 
+#define DATA_PARALLEL_CHECK(condition)                           \
+  while (!(condition)) {                                         \
+    printf("data_parallel check failed at line %d\n", __LINE__); \
+    abort();                                                     \
+  }
+
 namespace data_parallel {
 
 // Highly scalable thread pool, especially suitable for data-parallel
@@ -45,9 +51,7 @@ class ThreadPool {
   explicit ThreadPool(
       const int num_threads = std::thread::hardware_concurrency())
       : num_threads_(num_threads) {
-    if (num_threads_ <= 0) {
-      abort();
-    }
+    DATA_PARALLEL_CHECK(num_threads_ > 0);
     threads_.reserve(num_threads_);
     for (int i = 0; i < num_threads_; ++i) {
       threads_.emplace_back(ThreadFunc, this);
@@ -75,17 +79,14 @@ class ThreadPool {
   // Precondition: 0 <= begin <= end.
   template <class Func>
   void Run(const int begin, const int end, const Func& func) {
-    if (begin < 0 || begin > end) {
-      abort();
-    }
+    DATA_PARALLEL_CHECK(0 <= begin && begin <= end);
     if (begin == end) {
       return;
     }
     const WorkerCommand worker_command = (WorkerCommand(end) << 32) + begin;
     // Ensure the inputs do not result in a reserved command.
-    if (worker_command == kWorkerWait || worker_command == kWorkerExit) {
-      abort();
-    }
+    DATA_PARALLEL_CHECK(worker_command != kWorkerWait);
+    DATA_PARALLEL_CHECK(worker_command != kWorkerExit);
 
     // If Func is large (many captures), this will allocate memory, but it is
     // still slower to use a std::ref wrapper.
@@ -120,7 +121,7 @@ class ThreadPool {
     std::vector<std::pair<uint32_t, uint32_t>> ranges;  // begin/end
     ranges.reserve(length / chunk + 1);
     for (uint32_t i = 0; i < length; i += chunk) {
-      ranges.emplace_back(i, std::min(i + chunk, length));
+      ranges.emplace_back(begin + i, begin + std::min(i + chunk, length));
     }
 
     Run(0, static_cast<int>(ranges.size()), [&ranges, func](const int i) {
@@ -174,8 +175,8 @@ class ThreadPool {
       const int num_reserved = self->num_reserved_.load();
       const int num_remaining = num_tasks - num_reserved;
       const int my_size = std::max(num_remaining / (self->num_threads_ * 2), 1);
-      const int my_begin = self->num_reserved_.fetch_add(my_size);
-      const int my_end = std::min(my_begin + my_size, num_tasks);
+      const int my_begin = begin + self->num_reserved_.fetch_add(my_size);
+      const int my_end = std::min(my_begin + my_size, begin + num_tasks);
       // Another thread already reserved the last task.
       if (my_begin >= my_end) {
         break;

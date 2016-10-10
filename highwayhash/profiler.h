@@ -54,6 +54,12 @@
 #include "highwayhash/code_annotation.h"
 #include "highwayhash/tsc_timer.h"
 
+#define PROFILER_CHECK(condition)                           \
+  while (!(condition)) {                                    \
+    printf("Profiler check failed at line %d\n", __LINE__); \
+    abort();                                                \
+  }
+
 namespace profiler {
 
 // Upper bounds for various fixed-size data structures (guarded via assert):
@@ -402,9 +408,7 @@ class ThreadSpecific {
     // builds. Checking here on the cold path (only reached once per thread)
     // is cheap, but it only covers one zone.
     const size_t biased_offset = name - string_origin_;
-    if (biased_offset > (1ULL << Packet::kOffsetBits)) {
-      abort();
-    }
+    PROFILER_CHECK(biased_offset <= (1ULL << Packet::kOffsetBits));
   }
 
   ~ThreadSpecific() { CacheAligned::Free(begin_); }
@@ -476,10 +480,7 @@ class ThreadList {
   // Thread-safe.
   void Add(ThreadSpecific* const ts) {
     const uint32_t index = num_threads_.fetch_add(1);
-    if (index >= kMaxThreads) {
-      printf("Exceeded maximum permissible number of threads %u\n", index);
-      abort();
-    }
+    PROFILER_CHECK(index < kMaxThreads);
     threads_[index] = ts;
   }
 

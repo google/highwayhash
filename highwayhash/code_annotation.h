@@ -39,13 +39,7 @@
 #define CLANG_VERSION 0
 #endif
 
-// Architecture
 
-#if defined(__x86_64__) || defined(_M_X64)
-#define ARCH_X64 1
-#else
-#define ARCH_X64 0
-#endif
 
 //-----------------------------------------------------------------------------
 
@@ -69,6 +63,18 @@
 #define RESTRICT __restrict__
 #else
 #define RESTRICT
+#endif
+
+#ifdef __cplusplus
+
+// Pointer to const
+template <typename T>
+using crpc = const T* const RESTRICT;
+
+// Pointer to non-const
+template <typename T>
+using crp = T* const RESTRICT;
+
 #endif
 
 #if MSC_VERSION

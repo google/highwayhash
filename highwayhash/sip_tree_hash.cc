@@ -42,7 +42,7 @@ class SipTreeHashState {
                       0x646f72616e646f6dull, 0x736f6d6570736575ull);
     const V4x64U lanes(kNumLanes | 3, kNumLanes | 2, kNumLanes | 1,
                        kNumLanes | 0);
-    const V4x64U key = LoadU(keys) ^ lanes;
+    const V4x64U key = LoadUnaligned256(keys) ^ lanes;
     v0 = V4x64U(_mm256_permute4x64_epi64(init, 0x00)) ^ key;
     v1 = V4x64U(_mm256_permute4x64_epi64(init, 0x55)) ^ key;
     v2 = V4x64U(_mm256_permute4x64_epi64(init, 0xAA)) ^ key;
@@ -167,7 +167,7 @@ uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
   const size_t truncated_size = size - remainder;
   const uint64* packets = reinterpret_cast<const uint64*>(bytes);
   for (size_t i = 0; i < truncated_size / sizeof(uint64); i += kNumLanes) {
-    const V4x64U packet = LoadU(packets + i);
+    const V4x64U packet = LoadUnaligned256(packets + i);
     state.Update(packet);
   }
 

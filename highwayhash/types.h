@@ -1,19 +1,20 @@
 #ifndef HIGHWAYHASH_HIGHWAYHASH_TYPES_H_
 #define HIGHWAYHASH_HIGHWAYHASH_TYPES_H_
 
+#include <stdint.h>
 #include "highwayhash/code_annotation.h"
 
 #ifdef __cplusplus
 namespace highwayhash {
 #endif
 
-// cstdint's uint64_t is unsigned long on Linux; we need 'unsigned long long'
+// uint64_t is unsigned long on Linux; we need 'unsigned long long'
 // for interoperability with other software.
 typedef unsigned long long uint64;  // NOLINT
 
-typedef unsigned int uint32;
-
-typedef unsigned char uint8;
+typedef uint32_t uint32;
+typedef uint16_t uint16;
+typedef uint8_t uint8;
 
 // Pointer to const
 typedef const uint8* const RESTRICT crpcU8;

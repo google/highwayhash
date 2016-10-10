@@ -34,74 +34,287 @@
 
 namespace highwayhash {
 
-// 128-bit SSE4.1 vector with 2 uint64 lanes.
-class V2x64U {
+// Primary template for 128-bit SSE4.1 vectors; only specializations are used.
+template <typename T>
+class V128 {};
+
+template <>
+class V128<uint8> {
  public:
-  using T = uint64;
-  static constexpr size_t kNumLanes = sizeof(__m128i) / sizeof(T);
+  using T = uint8;
+  static constexpr size_t N = 16;
 
   // Leaves v_ uninitialized - typically used for output parameters.
-  INLINE V2x64U() {}
-
-  // Lane 0 (p_0) is the lowest.
-  INLINE V2x64U(T p_1, T p_0) : v_(_mm_set_epi64x(p_1, p_0)) {}
-  //
+  INLINE V128() {}
 
   // Broadcasts i to all lanes (usually by loading from memory).
-  INLINE explicit V2x64U(T i) : v_(_mm_set_epi64x(i, i)) {}
-  //
+  INLINE explicit V128(T i) : v_(_mm_set1_epi8(i)) {}
 
   // Converts to/from intrinsics.
-  INLINE explicit V2x64U(const __m128i& v) : v_(v) {}
+  INLINE explicit V128(const __m128i& v) : v_(v) {}
   INLINE operator __m128i() const { return v_; }
-  INLINE V2x64U& operator=(const __m128i& v) {
+  INLINE V128& operator=(const __m128i& v) {
     v_ = v;
     return *this;
   }
-
-  // _mm_setzero_epi64 generates suboptimal code. Instead set
-  // z = x - x (given an existing "x"), or x == x to set all bits.
-  INLINE V2x64U& operator=(const V2x64U& other) {
+  INLINE V128& operator=(const V128& other) {
     v_ = other.v_;
     return *this;
   }
 
-  INLINE V2x64U& operator+=(const V2x64U& other) {
-    v_ = _mm_add_epi64(v_, other);
+  // There are no greater-than comparison instructions for unsigned T.
+  INLINE V128 operator==(const V128& other) {
+    return V128(_mm_cmpeq_epi8(v_, other.v_));
+  }
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_epi8(v_, other);
     return *this;
   }
-  INLINE V2x64U& operator-=(const V2x64U& other) {
-    v_ = _mm_sub_epi64(v_, other);
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_epi8(v_, other);
     return *this;
   }
 
-  INLINE V2x64U& operator&=(const V2x64U& other) {
+  INLINE V128& operator&=(const V128& other) {
     v_ = _mm_and_si128(v_, other);
     return *this;
   }
-  INLINE V2x64U& operator|=(const V2x64U& other) {
+  INLINE V128& operator|=(const V128& other) {
     v_ = _mm_or_si128(v_, other);
     return *this;
   }
-  INLINE V2x64U& operator^=(const V2x64U& other) {
+  INLINE V128& operator^=(const V128& other) {
     v_ = _mm_xor_si128(v_, other);
     return *this;
   }
 
-  INLINE V2x64U& operator<<=(const int count) {
+ private:
+  __m128i v_;
+};
+
+template <>
+class V128<uint16> {
+ public:
+  using T = uint16;
+  static constexpr size_t N = 8;
+
+  // Leaves v_ uninitialized - typically used for output parameters.
+  INLINE V128() {}
+
+  // Lane 0 (p_0) is the lowest.
+  INLINE V128(T p_7, T p_6, T p_5, T p_4, T p_3, T p_2, T p_1, T p_0)
+      : v_(_mm_set_epi16(p_7, p_6, p_5, p_4, p_3, p_2, p_1, p_0)) {}
+
+  // Broadcasts i to all lanes (usually by loading from memory).
+  INLINE explicit V128(T i) : v_(_mm_set1_epi16(i)) {}
+
+  // Converts to/from intrinsics.
+  INLINE explicit V128(const __m128i& v) : v_(v) {}
+  INLINE operator __m128i() const { return v_; }
+  INLINE V128& operator=(const __m128i& v) {
+    v_ = v;
+    return *this;
+  }
+  INLINE V128& operator=(const V128& other) {
+    v_ = other.v_;
+    return *this;
+  }
+
+  // There are no greater-than comparison instructions for unsigned T.
+  INLINE V128 operator==(const V128& other) {
+    return V128(_mm_cmpeq_epi16(v_, other.v_));
+  }
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_epi16(v_, other);
+    return *this;
+  }
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_epi16(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator&=(const V128& other) {
+    v_ = _mm_and_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator|=(const V128& other) {
+    v_ = _mm_or_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator^=(const V128& other) {
+    v_ = _mm_xor_si128(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator<<=(const int count) {
+    v_ = _mm_slli_epi16(v_, count);
+    return *this;
+  }
+  INLINE V128& operator<<=(const __m128i& count) {
+    v_ = _mm_sll_epi16(v_, count);
+    return *this;
+  }
+
+  INLINE V128& operator>>=(const int count) {
+    v_ = _mm_srli_epi16(v_, count);
+    return *this;
+  }
+  INLINE V128& operator>>=(const __m128i& count) {
+    v_ = _mm_srl_epi16(v_, count);
+    return *this;
+  }
+
+ private:
+  __m128i v_;
+};
+
+template <>
+class V128<uint32> {
+ public:
+  using T = uint32;
+  static constexpr size_t N = 4;
+
+  // Leaves v_ uninitialized - typically used for output parameters.
+  INLINE V128() {}
+
+  // Lane 0 (p_0) is the lowest.
+  INLINE V128(T p_3, T p_2, T p_1, T p_0)
+      : v_(_mm_set_epi32(p_3, p_2, p_1, p_0)) {}
+
+  // Broadcasts i to all lanes (usually by loading from memory).
+  INLINE explicit V128(T i) : v_(_mm_set1_epi32(i)) {}
+
+  // Converts to/from intrinsics.
+  INLINE explicit V128(const __m128i& v) : v_(v) {}
+  INLINE operator __m128i() const { return v_; }
+  INLINE V128& operator=(const __m128i& v) {
+    v_ = v;
+    return *this;
+  }
+  INLINE V128& operator=(const V128& other) {
+    v_ = other.v_;
+    return *this;
+  }
+
+  // There are no greater-than comparison instructions for unsigned T.
+  INLINE V128 operator==(const V128& other) {
+    return V128(_mm_cmpeq_epi32(v_, other.v_));
+  }
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_epi32(v_, other);
+    return *this;
+  }
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_epi32(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator&=(const V128& other) {
+    v_ = _mm_and_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator|=(const V128& other) {
+    v_ = _mm_or_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator^=(const V128& other) {
+    v_ = _mm_xor_si128(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator<<=(const int count) {
+    v_ = _mm_slli_epi32(v_, count);
+    return *this;
+  }
+  INLINE V128& operator<<=(const __m128i& count) {
+    v_ = _mm_sll_epi32(v_, count);
+    return *this;
+  }
+
+  INLINE V128& operator>>=(const int count) {
+    v_ = _mm_srli_epi32(v_, count);
+    return *this;
+  }
+  INLINE V128& operator>>=(const __m128i& count) {
+    v_ = _mm_srl_epi32(v_, count);
+    return *this;
+  }
+
+ private:
+  __m128i v_;
+};
+
+template <>
+class V128<uint64> {
+ public:
+  using T = uint64;
+  static constexpr size_t N = 2;
+
+  // Leaves v_ uninitialized - typically used for output parameters.
+  INLINE V128() {}
+
+  // Lane 0 (p_0) is the lowest.
+  INLINE V128(T p_1, T p_0) : v_(_mm_set_epi64x(p_1, p_0)) {}
+
+  // Broadcasts i to all lanes (usually by loading from memory).
+  INLINE explicit V128(T i) : v_(_mm_set_epi64x(i, i)) {}
+
+  // Converts to/from intrinsics.
+  INLINE explicit V128(const __m128i& v) : v_(v) {}
+  INLINE operator __m128i() const { return v_; }
+  INLINE V128& operator=(const __m128i& v) {
+    v_ = v;
+    return *this;
+  }
+  INLINE V128& operator=(const V128& other) {
+    v_ = other.v_;
+    return *this;
+  }
+
+  // There are no greater-than comparison instructions for unsigned T.
+  INLINE V128 operator==(const V128& other) {
+    return V128(_mm_cmpeq_epi64(v_, other.v_));
+  }
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_epi64(v_, other);
+    return *this;
+  }
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_epi64(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator&=(const V128& other) {
+    v_ = _mm_and_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator|=(const V128& other) {
+    v_ = _mm_or_si128(v_, other);
+    return *this;
+  }
+  INLINE V128& operator^=(const V128& other) {
+    v_ = _mm_xor_si128(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator<<=(const int count) {
     v_ = _mm_slli_epi64(v_, count);
     return *this;
   }
-  INLINE V2x64U& operator<<=(const __m128i& count) {
+  INLINE V128& operator<<=(const __m128i& count) {
     v_ = _mm_sll_epi64(v_, count);
     return *this;
   }
 
-  INLINE V2x64U& operator>>=(const int count) {
+  INLINE V128& operator>>=(const int count) {
     v_ = _mm_srli_epi64(v_, count);
     return *this;
   }
-  INLINE V2x64U& operator>>=(const __m128i& count) {
+  INLINE V128& operator>>=(const __m128i& count) {
     v_ = _mm_srl_epi64(v_, count);
     return *this;
   }
@@ -110,83 +323,287 @@ class V2x64U {
   __m128i v_;
 };
 
-// Nonmember functions implemented in terms of member functions
+template <>
+class V128<float> {
+ public:
+  using T = float;
+  static constexpr size_t N = 4;
 
-static INLINE V2x64U operator+(const V2x64U& left, const V2x64U& right) {
-  V2x64U t(left);
+  // Leaves v_ uninitialized - typically used for output parameters.
+  INLINE V128() {}
+
+  // Lane 0 (p_0) is the lowest.
+  INLINE V128(T p_3, T p_2, T p_1, T p_0)
+      : v_(_mm_set_ps(p_3, p_2, p_1, p_0)) {}
+
+  // Broadcasts to all lanes.
+  INLINE explicit V128(T f) : v_(_mm_set1_ps(f)) {}
+
+  // Converts to/from intrinsics.
+  INLINE explicit V128(const __m128& v) : v_(v) {}
+  INLINE operator __m128() const { return v_; }
+  INLINE V128& operator=(const __m128& v) {
+    v_ = v;
+    return *this;
+  }
+  INLINE V128& operator=(const V128& other) {
+    v_ = other.v_;
+    return *this;
+  }
+
+  // There are too many comparison operators; use _mm_cmp_ps instead.
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_ps(v_, other);
+    return *this;
+  }
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_ps(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator&=(const V128& other) {
+    v_ = _mm_and_ps(v_, other);
+    return *this;
+  }
+  INLINE V128& operator|=(const V128& other) {
+    v_ = _mm_or_ps(v_, other);
+    return *this;
+  }
+  INLINE V128& operator^=(const V128& other) {
+    v_ = _mm_xor_ps(v_, other);
+    return *this;
+  }
+
+ private:
+  __m128 v_;
+};
+
+template <>
+class V128<double> {
+ public:
+  using T = double;
+  static constexpr size_t N = 2;
+
+  // Leaves v_ uninitialized - typically used for output parameters.
+  INLINE V128() {}
+
+  // Lane 0 (p_0) is the lowest.
+  INLINE V128(T p_1, T p_0)
+      : v_(_mm_set_pd(p_1, p_0)) {}
+
+  // Broadcasts to all lanes.
+  INLINE explicit V128(T f) : v_(_mm_set1_pd(f)) {}
+
+  // Converts to/from intrinsics.
+  INLINE explicit V128(const __m128d& v) : v_(v) {}
+  INLINE operator __m128d() const { return v_; }
+  INLINE V128& operator=(const __m128d& v) {
+    v_ = v;
+    return *this;
+  }
+  INLINE V128& operator=(const V128& other) {
+    v_ = other.v_;
+    return *this;
+  }
+
+  // There are too many comparison operators; use _mm_cmp_pd instead.
+
+  INLINE V128& operator+=(const V128& other) {
+    v_ = _mm_add_pd(v_, other);
+    return *this;
+  }
+  INLINE V128& operator-=(const V128& other) {
+    v_ = _mm_sub_pd(v_, other);
+    return *this;
+  }
+
+  INLINE V128& operator&=(const V128& other) {
+    v_ = _mm_and_pd(v_, other);
+    return *this;
+  }
+  INLINE V128& operator|=(const V128& other) {
+    v_ = _mm_or_pd(v_, other);
+    return *this;
+  }
+  INLINE V128& operator^=(const V128& other) {
+    v_ = _mm_xor_pd(v_, other);
+    return *this;
+  }
+
+ private:
+  __m128d v_;
+};
+
+// Nonmember functions for any V128 via member functions.
+
+template <typename T>
+INLINE V128<T> operator+(const V128<T>& left, const V128<T>& right) {
+  V128<T> t(left);
   return t += right;
 }
 
-static INLINE V2x64U operator-(const V2x64U& left, const V2x64U& right) {
-  V2x64U t(left);
+template <typename T>
+INLINE V128<T> operator-(const V128<T>& left, const V128<T>& right) {
+  V128<T> t(left);
   return t -= right;
 }
 
-static INLINE V2x64U operator<<(const V2x64U& v, const int count) {
-  V2x64U t(v);
-  return t <<= count;
-}
-
-static INLINE V2x64U operator>>(const V2x64U& v, const int count) {
-  V2x64U t(v);
-  return t >>= count;
-}
-
-static INLINE V2x64U operator<<(const V2x64U& v, const __m128i& count) {
-  V2x64U t(v);
-  return t <<= count;
-}
-
-static INLINE V2x64U operator>>(const V2x64U& v, const __m128i& count) {
-  V2x64U t(v);
-  return t >>= count;
-}
-
-static INLINE V2x64U operator&(const V2x64U& left, const V2x64U& right) {
-  V2x64U t(left);
+template <typename T>
+INLINE V128<T> operator&(const V128<T>& left, const V128<T>& right) {
+  V128<T> t(left);
   return t &= right;
 }
 
-static INLINE V2x64U operator|(const V2x64U& left, const V2x64U& right) {
-  V2x64U t(left);
+template <typename T>
+INLINE V128<T> operator|(const V128<T>& left, const V128<T>& right) {
+  V128<T> t(left);
   return t |= right;
 }
 
-static INLINE V2x64U operator^(const V2x64U& left, const V2x64U& right) {
-  V2x64U t(left);
+template <typename T>
+INLINE V128<T> operator^(const V128<T>& left, const V128<T>& right) {
+  V128<T> t(left);
   return t ^= right;
 }
 
-// Load/Store.
-
-// "from" must be vector-aligned.
-static INLINE V2x64U Load2(const uint64* RESTRICT const from) {
-  return V2x64U(_mm_load_si128(reinterpret_cast<const __m128i*>(from)));
+template <typename T>
+INLINE V128<T> operator<<(const V128<T>& v, const int count) {
+  V128<T> t(v);
+  return t <<= count;
 }
 
-static INLINE V2x64U Load2U(const uint64* RESTRICT const from) {
-  return V2x64U(_mm_loadu_si128(reinterpret_cast<const __m128i*>(from)));
+template <typename T>
+INLINE V128<T> operator>>(const V128<T>& v, const int count) {
+  V128<T> t(v);
+  return t >>= count;
+}
+
+template <typename T>
+INLINE V128<T> operator<<(const V128<T>& v, const __m128i& count) {
+  V128<T> t(v);
+  return t <<= count;
+}
+
+template <typename T>
+INLINE V128<T> operator>>(const V128<T>& v, const __m128i& count) {
+  V128<T> t(v);
+  return t >>= count;
+}
+
+// Load/Store for any V128.
+
+// The function name requires a "128" suffix to differentiate from AVX2 loads.
+// "from" must be vector-aligned.
+template <typename T>
+INLINE V128<T> Load128(crpc<T> from) {
+  crpc<__m128i> p = reinterpret_cast<crpc<__m128i>>(from);
+  return V128<T>(_mm_load_si128(p));
+}
+INLINE V128<float> Load128(crpc<float> from) {
+  return V128<float>(_mm_load_ps(from));
+}
+INLINE V128<double> Load128(crpc<double> from) {
+  return V128<double>(_mm_load_pd(from));
+}
+
+template <typename T>
+INLINE V128<T> LoadUnaligned128(crpc<T> from) {
+  crpc<__m128i> p = reinterpret_cast<crpc<__m128i>>(from);
+  return V128<T>(_mm_loadu_si128(p));
+}
+INLINE V128<float> LoadUnaligned128(crpc<float> from) {
+  return V128<float>(_mm_loadu_ps(from));
+}
+INLINE V128<double> LoadUnaligned128(crpc<double> from) {
+  return V128<double>(_mm_loadu_pd(from));
 }
 
 // "to" must be vector-aligned.
-static INLINE void Store(const V2x64U& v, uint64* RESTRICT const to) {
-  _mm_store_si128(reinterpret_cast<__m128i*>(to), v);
+template <typename T>
+INLINE void Store(const V128<T>& v, crp<T> to) {
+  _mm_store_si128(reinterpret_cast<crp<__m128i>>(to), v);
+}
+INLINE void Store(const V128<float>& v, crp<float> to) {
+  _mm_store_ps(to, v);
+}
+INLINE void Store(const V128<double>& v, crp<double> to) {
+  _mm_store_pd(to, v);
 }
 
-static INLINE void StoreU(const V2x64U& v, uint64* RESTRICT const to) {
-  _mm_storeu_si128(reinterpret_cast<__m128i*>(to), v);
+template <typename T>
+INLINE void StoreUnaligned(const V128<T>& v, crp<T> to) {
+  _mm_storeu_si128(reinterpret_cast<crp<__m128i>>(to), v);
+}
+INLINE void StoreUnaligned(const V128<float>& v, crp<float> to) {
+  _mm_storeu_ps(to, v);
+}
+INLINE void StoreUnaligned(const V128<double>& v, crp<double> to) {
+  _mm_storeu_pd(to, v);
 }
 
 // Writes directly to (aligned) memory, bypassing the cache. This is useful for
 // data that will not be read again in the near future.
-static INLINE void Stream(const V2x64U& v, uint64* RESTRICT const to) {
-  _mm_stream_si128(reinterpret_cast<__m128i*>(to), v);
+template <typename T>
+INLINE void Stream(const V128<T>& v, crp<T> to) {
+  _mm_stream_si128(reinterpret_cast<crp<__m128i>>(to), v);
+}
+INLINE void Stream(const V128<float>& v, crp<float> to) {
+  _mm_stream_ps(to, v);
+}
+INLINE void Stream(const V128<double>& v, crp<double> to) {
+  _mm_stream_pd(to, v);
 }
 
 // Miscellaneous functions.
 
-static INLINE V2x64U AndNot(const V2x64U& neg_mask, const V2x64U& values) {
-  return V2x64U(_mm_andnot_si128(neg_mask, values));
+template<typename T>
+INLINE V128<T> RotateLeft(const V128<T>& v, const int count) {
+  constexpr size_t num_bits = sizeof(T) * 8;
+  return (v << count) | (v >> (num_bits - count));
+}
+
+template <typename T>
+INLINE V128<T> AndNot(const V128<T>& neg_mask, const V128<T>& values) {
+  return V128<T>(_mm_andnot_si128(neg_mask, values));
+}
+template <>
+INLINE V128<float> AndNot(const V128<float>& neg_mask,
+                          const V128<float>& values) {
+  return V128<float>(_mm_andnot_ps(neg_mask, values));
+}
+template <>
+INLINE V128<double> AndNot(const V128<double>& neg_mask,
+                           const V128<double>& values) {
+  return V128<double>(_mm_andnot_pd(neg_mask, values));
+}
+
+using V16x8U = V128<uint8>;
+using V8x16U = V128<uint16>;
+using V4x32U = V128<uint32>;
+using V2x64U = V128<uint64>;
+using V4x32F = V128<float>;
+using V2x64F = V128<double>;
+
+static INLINE V16x8U UnpackLow(const V16x8U& low, const V16x8U& high) {
+  return V16x8U(_mm_unpacklo_epi8(low, high));
+}
+static INLINE V16x8U UnpackHigh(const V16x8U& low, const V16x8U& high) {
+  return V16x8U(_mm_unpackhi_epi8(low, high));
+}
+
+static INLINE V8x16U UnpackLow(const V8x16U& low, const V8x16U& high) {
+  return V8x16U(_mm_unpacklo_epi16(low, high));
+}
+static INLINE V8x16U UnpackHigh(const V8x16U& low, const V8x16U& high) {
+  return V8x16U(_mm_unpackhi_epi16(low, high));
+}
+
+static INLINE V4x32U UnpackLow(const V4x32U& low, const V4x32U& high) {
+  return V4x32U(_mm_unpacklo_epi32(low, high));
+}
+static INLINE V4x32U UnpackHigh(const V4x32U& low, const V4x32U& high) {
+  return V4x32U(_mm_unpackhi_epi32(low, high));
 }
 
 static INLINE V2x64U UnpackLow(const V2x64U& low, const V2x64U& high) {
@@ -196,13 +613,18 @@ static INLINE V2x64U UnpackHigh(const V2x64U& low, const V2x64U& high) {
   return V2x64U(_mm_unpackhi_epi64(low, high));
 }
 
-// There are no greater-than comparison instructions for unsigned T.
-static INLINE V2x64U operator==(const V2x64U& left, const V2x64U& right) {
-  return V2x64U(_mm_cmpeq_epi64(left, right));
+static INLINE V4x32F UnpackLow(const V4x32F& low, const V4x32F& high) {
+  return V4x32F(_mm_unpacklo_ps(low, high));
+}
+static INLINE V4x32F UnpackHigh(const V4x32F& low, const V4x32F& high) {
+  return V4x32F(_mm_unpackhi_ps(low, high));
 }
 
-static INLINE V2x64U RotateLeft(const V2x64U& v, const int count) {
-  return (v << count) | (v >> (64-count));
+static INLINE V2x64F UnpackLow(const V2x64F& low, const V2x64F& high) {
+  return V2x64F(_mm_unpacklo_pd(low, high));
+}
+static INLINE V2x64F UnpackHigh(const V2x64F& low, const V2x64F& high) {
+  return V2x64F(_mm_unpackhi_pd(low, high));
 }
 
 }  // namespace highwayhash

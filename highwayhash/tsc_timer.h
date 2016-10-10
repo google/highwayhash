@@ -80,12 +80,12 @@ namespace tsc_timer {
 
 template <typename T>
 inline T Start() {
-  abort();  // Must use one of the specializations.
+  TSC_TIMER_CHECK(false);  // Must use one of the specializations.
 }
 
 template <typename T>
 inline T Stop() {
-  abort();  // Must use one of the specializations.
+  TSC_TIMER_CHECK(false);  // Must use one of the specializations.
 }
 
 // Returns a 32-bit timestamp with about 4 cycles less overhead than
@@ -184,9 +184,6 @@ inline uint64_t Stop<uint64_t>() {
 #endif
   return t;
 }
-
-template <typename T>
-using crpc = const T* const RESTRICT;
 
 // Even with high-priority pinned threads and frequency throttling disabled,
 // elapsed times are noisy due to interrupts or SMM operations. It might help

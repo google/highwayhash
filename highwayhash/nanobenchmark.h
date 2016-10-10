@@ -3,13 +3,13 @@
 
 // Benchmarks functions of a single integer argument with realistic branch
 // prediction hit rates. Uses a robust estimator to summarize the measurements.
-// Measurements are precise to about 0.5 cycles.
+// Measurements are precise to about 0.2 cycles.
 //
 // Example:
 // #include "highwayhash/nanobenchmark.h"
 // nanobenchmark::RaiseThreadPriority();
 // nanobenchmark::PinThreadToCPU();
-// std::map<size_t, float> durations =
+// const std::map<size_t, float> durations =
 //     nanobenchmark::MeasureWithArguments({3, 4, 7, 8}, [](const size_t size) {
 //       char from[8] = {static_cast<char>(size)};
 //       char to[8];
@@ -19,13 +19,24 @@
 // printf("Cycles for input = 3: %4.1f\n", durations[3]);
 // printf("Cycles for input = 7: %4.1f\n", durations[7]);
 //
-// Output:
-// Cycles for input = 3: 62.4
-// Cycles for input = 7: 29.1
-// (7 is presumably faster because it can use two unaligned 32-bit load/stores.)
+// Alternatively, repeating samples and measurements increases the precision:
 //
-// Usage note: when calling RaiseThreadPriority, copy the binary to /tmp and
-// run via sudo.
+// for (const auto& size_samples : nanobenchmark::RepeatedMeasureWithArguments(
+//          {3, 3, 4, 4, 7, 7, 8, 8}, [](const size_t size) {
+//            char from[8] = {static_cast<char>(size)};
+//            char to[8];
+//            memcpy(to, from, size);
+//            return to[0];
+//          })) {
+//   nanobenchmark::PrintMedianAndVariability(size_samples);
+// }
+//
+// Output:
+//   3: median= 20.8 cycles; median abs. deviation= 0.1 cycles
+//   4: median=  8.8 cycles; median abs. deviation= 0.2 cycles
+//   7: median=  8.8 cycles; median abs. deviation= 0.2 cycles
+//   8: median= 27.5 cycles; median abs. deviation= 0.1 cycles
+// (7 is presumably faster because it can use two unaligned 32-bit load/stores.)
 //
 // Background: Microbenchmarks such as http://github.com/google/benchmark
 // can measure elapsed times on the order of a microsecond. Shorter functions
@@ -61,6 +72,7 @@
 #include <utility>
 #include <vector>
 
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/code_annotation.h"
 #include "highwayhash/os_specific.h"
 #include "highwayhash/tsc_timer.h"
@@ -472,6 +484,17 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
     abs_deviations.push_back(std::abs(sample - median));
   }
   return Median(&abs_deviations);
+}
+
+// Print median duration and variability for this size's samples.
+void PrintMedianAndVariability(
+    const std::pair<Input, std::vector<float>>& input_samples) {
+  const Input input = input_samples.first;
+  auto samples = input_samples.second;  // Copy (modified by Median)
+  const float median = Median(&samples);
+  const float variability = MedianAbsoluteDeviation(samples, median);
+  printf("%5zu: median=%5.1f cycles; median abs. deviation=%4.1f cycles\n",
+         input, median, variability);
 }
 
 }  // namespace nanobenchmark
