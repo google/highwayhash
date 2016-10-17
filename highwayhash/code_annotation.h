@@ -39,8 +39,6 @@
 #define CLANG_VERSION 0
 #endif
 
-
-
 //-----------------------------------------------------------------------------
 
 #define NONCOPYABLE(className)          \
@@ -120,16 +118,6 @@ using crp = T* const RESTRICT;
 #else
 #define FORMAT_STRING(s) s
 #endif
-
-// Function taking a reference to an array and returning a pointer to
-// an array of characters. Only declared and never defined; we just
-// need it to determine n, the size of the array that was passed.
-template <typename T, int n>
-char (*ArraySizeDeducer(T (&)[n]))[n];
-
-// Number of elements in an array. Safer than sizeof(name) / sizeof(name[0])
-// because it doesn't compile when a pointer is passed.
-#define ARRAY_SIZE(name) (sizeof(*ArraySizeDeducer(name)))
 
 // decltype(T)::x cannot be used directly when T is a reference type, so
 // we need to remove the reference first.

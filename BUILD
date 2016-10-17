@@ -40,6 +40,7 @@ cc_test(
     name = "vector_test",
     size = "small",
     srcs = ["highwayhash/vector_test.cc"],
+    tags = ["manual"],
     deps = [
         ":vector",
         "//base",

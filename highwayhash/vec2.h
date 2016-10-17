@@ -65,7 +65,7 @@ class V256<uint8> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V256 operator==(const V256& other) {
+  INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmpeq_epi8(v_, other.v_));
   }
 
@@ -127,7 +127,7 @@ class V256<uint16> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V256 operator==(const V256& other) {
+  INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmpeq_epi16(v_, other.v_));
   }
 
@@ -205,7 +205,7 @@ class V256<uint32> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V256 operator==(const V256& other) {
+  INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmpeq_epi32(v_, other.v_));
   }
 
@@ -283,7 +283,7 @@ class V256<uint64> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V256 operator==(const V256& other) {
+  INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmpeq_epi64(v_, other.v_));
   }
 

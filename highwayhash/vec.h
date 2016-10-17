@@ -63,7 +63,7 @@ class V128<uint8> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V128 operator==(const V128& other) {
+  INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_epi8(v_, other.v_));
   }
 
@@ -122,7 +122,7 @@ class V128<uint16> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V128 operator==(const V128& other) {
+  INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_epi16(v_, other.v_));
   }
 
@@ -199,7 +199,7 @@ class V128<uint32> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V128 operator==(const V128& other) {
+  INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_epi32(v_, other.v_));
   }
 
@@ -275,7 +275,7 @@ class V128<uint64> {
   }
 
   // There are no greater-than comparison instructions for unsigned T.
-  INLINE V128 operator==(const V128& other) {
+  INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_epi64(v_, other.v_));
   }
 
