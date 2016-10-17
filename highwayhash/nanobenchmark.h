@@ -487,7 +487,7 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
 }
 
 // Print median duration and variability for this size's samples.
-void PrintMedianAndVariability(
+inline void PrintMedianAndVariability(
     const std::pair<Input, std::vector<float>>& input_samples) {
   const Input input = input_samples.first;
   auto samples = input_samples.second;  // Copy (modified by Median)
