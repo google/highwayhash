@@ -124,8 +124,10 @@ using crp = T* const RESTRICT;
 // Function taking a reference to an array and returning a pointer to
 // an array of characters. Only declared and never defined; we just
 // need it to determine n, the size of the array that was passed.
+#ifdef __cplusplus
 template <typename T, int n>
 char (*ArraySizeDeducer(T (&)[n]))[n];
+#endif
 
 // Number of elements in an array. Safer than sizeof(name) / sizeof(name[0])
 // because it doesn't compile when a pointer is passed.

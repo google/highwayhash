@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cstring>
 #include <random>
 
 #include "highwayhash/code_annotation.h"
