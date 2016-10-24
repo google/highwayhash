@@ -7,7 +7,9 @@ HASH_OBJS := $(addprefix highwayhash/, \
 	scalar_sip_tree_hash.o \
 	highway_tree_hash.o \
 	scalar_highway_tree_hash.o \
-	sse41_highway_tree_hash.o \
+	sse41_highway_tree_hash.o)
+
+HASH_EXE_OBJS := $(addprefix highwayhash/, \
 	sip_hash_main.o)
 
 PROFILER_OBJS := $(addprefix highwayhash/, \
@@ -21,7 +23,10 @@ NANOBENCHMARK_OBJS := $(addprefix highwayhash/, \
 
 all: sip_hash_main profiler_example nanobenchmark_example
 
-sip_hash_main: $(HASH_OBJS)
+libhighwayhash.a: $(HASH_OBJS)
+	$(AR) rcs $@ $^
+
+sip_hash_main: $(HASH_OBJS) $(HASH_EXE_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 profiler_example: $(PROFILER_OBJS)
@@ -32,4 +37,4 @@ nanobenchmark_example: $(NANOBENCHMARK_OBJS)
 
 .PHONY: clean all
 clean:
-	$(RM) $(HASH_OBJS) $(PROFILER_OBJS) $(NANOBENCHMARK_OBJS) sip_hash_main profiler_example nanobenchmark_example
+	$(RM) $(HASH_OBJS) $(HASH_EXE_OBJS) $(PROFILER_OBJS) $(NANOBENCHMARK_OBJS) sip_hash_main profiler_example nanobenchmark_example libhighwayhash.a
