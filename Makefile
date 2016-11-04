@@ -1,4 +1,4 @@
-CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall -I.
+CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall -I../..
 
 HASH_OBJS := $(addprefix highwayhash/, \
 	os_specific.o \
