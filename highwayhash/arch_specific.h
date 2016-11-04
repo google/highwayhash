@@ -10,11 +10,11 @@
 #endif
 
 #ifdef _MSC_VER
-#define HIGHWAYHASH_BSWAP32(x) _byteswap_ulong(x)
-#define HIGHWAYHASH_BSWAP64(x) _byteswap_uint64(x)
+#define HH_BSWAP32(x) _byteswap_ulong(x)
+#define HH_BSWAP64(x) _byteswap_uint64(x)
 #else
-#define HIGHWAYHASH_BSWAP32(x) __builtin_bswap32(x)
-#define HIGHWAYHASH_BSWAP64(x) __builtin_bswap64(x)
+#define HH_BSWAP32(x) __builtin_bswap32(x)
+#define HH_BSWAP64(x) __builtin_bswap64(x)
 #endif
 
 #endif  // HIGHWAYHASH_HIGHWAYHASH_ARCH_SPECIFIC_H_

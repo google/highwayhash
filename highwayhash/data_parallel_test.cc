@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <cstdint>
 
-#include "highwayhash/data_parallel.h"
 #include "testing/base/public/gunit.h"
+#include "third_party/highwayhash/highwayhash/data_parallel.h"
 
 namespace data_parallel {
 namespace {

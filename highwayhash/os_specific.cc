@@ -1,4 +1,4 @@
-#include "highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -9,7 +9,7 @@
 #include <ctime>
 #include <random>
 
-#include "highwayhash/code_annotation.h"
+#include "third_party/highwayhash/highwayhash/code_annotation.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WIN 1
@@ -170,7 +170,7 @@ void PinThreadToCPU(const int cpu) {
 }
 
 uint32_t ApicId() {
-#if MSC_VERSION
+#if HH_MSC_VERSION
   int regs[4] = {0};
   __cpuid(regs, 1);
   return uint32_t(regs[1]) >> 24;

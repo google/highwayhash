@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "highwayhash/sse41_highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sse41_highway_tree_hash.h"
 
 #ifdef __SSE4_1__
 

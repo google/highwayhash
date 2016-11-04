@@ -6,7 +6,7 @@
 // Measurements are precise to about 0.2 cycles.
 //
 // Example:
-// #include "highwayhash/nanobenchmark.h"
+// #include "third_party/highwayhash/highwayhash/nanobenchmark.h"
 // nanobenchmark::RaiseThreadPriority();
 // nanobenchmark::PinThreadToCPU();
 // const std::map<size_t, float> durations =
@@ -72,10 +72,10 @@
 #include <utility>
 #include <vector>
 
-#include "highwayhash/arch_specific.h"
-#include "highwayhash/code_annotation.h"
-#include "highwayhash/os_specific.h"
-#include "highwayhash/tsc_timer.h"
+#include "third_party/highwayhash/highwayhash/arch_specific.h"
+#include "third_party/highwayhash/highwayhash/code_annotation.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/tsc_timer.h"
 
 // Enables sanity checks that verify correct operation at the cost of
 // longer benchmark runs.
@@ -97,7 +97,7 @@
 
 namespace nanobenchmark {
 
-#if MSC_VERSION
+#if HH_MSC_VERSION
 
 // MSVC does not support inline assembly anymore (and never supported GCC's
 // RTL constraints used below), so we instead pass the address to another

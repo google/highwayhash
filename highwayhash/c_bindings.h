@@ -3,7 +3,7 @@
 
 // C-callable function prototypes, documented in the other header files.
 
-#include "highwayhash/types.h"
+#include "third_party/highwayhash/highwayhash/types.h"
 
 uint64 SipHashC(const uint64* key, const char* bytes, const uint64 size);
 

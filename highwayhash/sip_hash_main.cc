@@ -29,16 +29,16 @@
 #include <utility>
 #include <vector>
 
-#include "highwayhash/highway_tree_hash.h"
-#include "highwayhash/nanobenchmark.h"
-#include "highwayhash/os_specific.h"
-#include "highwayhash/scalar_highway_tree_hash.h"
-#include "highwayhash/scalar_sip_tree_hash.h"
-#include "highwayhash/sip_hash.h"
-#include "highwayhash/sip_tree_hash.h"
-#include "highwayhash/sse41_highway_tree_hash.h"
-#include "highwayhash/types.h"
-#include "highwayhash/vec2.h"
+#include "third_party/highwayhash/highwayhash/highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/nanobenchmark.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/scalar_highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/scalar_sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sip_hash.h"
+#include "third_party/highwayhash/highwayhash/sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sse41_highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/types.h"
+#include "third_party/highwayhash/highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {

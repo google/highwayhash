@@ -17,7 +17,7 @@
 
 // Scalar (non-vector/SIMD) version for comparison purposes.
 
-#include "highwayhash/types.h"
+#include "third_party/highwayhash/highwayhash/types.h"
 
 #ifdef __cplusplus
 namespace highwayhash {

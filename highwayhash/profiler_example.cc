@@ -2,8 +2,8 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "highwayhash/os_specific.h"
-#include "highwayhash/profiler.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/profiler.h"
 
 namespace {
 

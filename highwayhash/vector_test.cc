@@ -3,8 +3,8 @@
 #include "testing/base/public/gmock.h"
 #include "testing/base/public/gunit.h"
 
-#include "highwayhash/vec.h"
-#include "highwayhash/vec2.h"
+#include "third_party/highwayhash/highwayhash/vec.h"
+#include "third_party/highwayhash/highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {

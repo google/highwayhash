@@ -1,6 +1,6 @@
-#include "highwayhash/nanobenchmark.h"
+#include "third_party/highwayhash/highwayhash/nanobenchmark.h"
 
-#if MSC_VERSION
+#if HH_MSC_VERSION
 
 #pragma optimize("", off)
 

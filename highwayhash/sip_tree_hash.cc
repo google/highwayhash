@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "highwayhash/sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sip_tree_hash.h"
 
 #ifdef __AVX2__
 #include <cstring>  // memcpy
 
-#include "highwayhash/sip_hash.h"
-#include "highwayhash/vec2.h"
+#include "third_party/highwayhash/highwayhash/sip_hash.h"
+#include "third_party/highwayhash/highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {
@@ -37,7 +37,7 @@ const int kNumLanes = kPacketSize / sizeof(uint64);
 // 32 bytes key. Parameters are hardwired to c=2, d=4 [rounds].
 class SipTreeHashState {
  public:
-  explicit INLINE SipTreeHashState(const uint64 (&keys)[kNumLanes]) {
+  explicit HH_INLINE SipTreeHashState(const uint64 (&keys)[kNumLanes]) {
     const V4x64U init(0x7465646279746573ull, 0x6c7967656e657261ull,
                       0x646f72616e646f6dull, 0x736f6d6570736575ull);
     const V4x64U lanes(kNumLanes | 3, kNumLanes | 2, kNumLanes | 1,
@@ -49,7 +49,7 @@ class SipTreeHashState {
     v3 = V4x64U(_mm256_permute4x64_epi64(init, 0xFF)) ^ key;
   }
 
-  INLINE void Update(const V4x64U& packet) {
+  HH_INLINE void Update(const V4x64U& packet) {
     v3 ^= packet;
 
     Compress<2>();
@@ -57,7 +57,7 @@ class SipTreeHashState {
     v0 ^= packet;
   }
 
-  INLINE V4x64U Finalize() {
+  HH_INLINE V4x64U Finalize() {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= V4x64U(0xFF);
 
@@ -67,7 +67,7 @@ class SipTreeHashState {
   }
 
  private:
-  static INLINE V4x64U RotateLeft16(const V4x64U& v) {
+  static HH_INLINE V4x64U RotateLeft16(const V4x64U& v) {
     const V4x64U control(0x0D0C0B0A09080F0EULL, 0x0504030201000706ULL,
                          0x0D0C0B0A09080F0EULL, 0x0504030201000706ULL);
     return V4x64U(_mm256_shuffle_epi8(v, control));
@@ -75,18 +75,18 @@ class SipTreeHashState {
 
   // Rotates each 64-bit element of "v" left by N bits.
   template <uint64 bits>
-  static INLINE V4x64U RotateLeft(const V4x64U& v) {
+  static HH_INLINE V4x64U RotateLeft(const V4x64U& v) {
     const V4x64U left = v << bits;
     const V4x64U right = v >> (64 - bits);
     return left | right;
   }
 
-  static INLINE V4x64U Rotate32(const V4x64U& v) {
+  static HH_INLINE V4x64U Rotate32(const V4x64U& v) {
     return V4x64U(_mm256_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
   }
 
   template <size_t rounds>
-  INLINE void Compress() {
+  HH_INLINE void Compress() {
     // Loop is faster than unrolling!
     for (size_t i = 0; i < rounds; ++i) {
       // ARX network: add, rotate, exclusive-or.
@@ -121,8 +121,8 @@ class SipTreeHashState {
 // "remainder" is the number of accessible/remaining bytes (size % 32).
 // Loading past the end of the input risks page fault exceptions which even
 // LDDQU cannot prevent.
-static INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
-                                       const uint64 remainder) {
+static HH_INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
+                                          const uint64 remainder) {
   // Copying into an aligned buffer incurs a store-to-load-forwarding stall.
   // Instead, we use masked loads to read any remaining whole uint32
   // without incurring page faults for the others.

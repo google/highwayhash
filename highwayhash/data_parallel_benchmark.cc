@@ -1,9 +1,9 @@
-#include <future>  //NOLINT
 #include <cmath>
 #include <cstdio>
+#include <future>  //NOLINT
 #include <set>
-#include "highwayhash/data_parallel.h"
 #include "testing/base/public/gunit.h"
+#include "third_party/highwayhash/highwayhash/data_parallel.h"
 #include "thread/threadpool.h"
 
 #if defined(_M_X64) || defined(__x86_64) || defined(__amd64) || \

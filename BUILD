@@ -9,7 +9,6 @@ cc_library(
     hdrs = [
         "highwayhash/code_annotation.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
 )
 
@@ -18,7 +17,6 @@ cc_library(
     hdrs = [
         "highwayhash/arch_specific.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
 )
 
@@ -29,7 +27,6 @@ cc_library(
         "highwayhash/vec.h",
         "highwayhash/vec2.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -54,7 +51,6 @@ cc_library(
     hdrs = [
         "highwayhash/os_specific.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -66,7 +62,6 @@ cc_library(
     hdrs = [
         "highwayhash/tsc_timer.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -79,7 +74,6 @@ cc_library(
     hdrs = [
         "highwayhash/profiler.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -101,7 +95,6 @@ cc_library(
     hdrs = [
         "highwayhash/nanobenchmark.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":arch_specific",
@@ -116,7 +109,6 @@ cc_binary(
     srcs = [
         "highwayhash/nanobenchmark_example.cc",
     ],
-    includes = ["."],
     deps = [
         ":nanobenchmark",
         ":os_specific",
@@ -128,7 +120,6 @@ cc_library(
     hdrs = [
         "highwayhash/data_parallel.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
 )
 
@@ -169,7 +160,6 @@ cc_library(
         "highwayhash/state_helpers.h",
         "highwayhash/types.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -180,7 +170,6 @@ cc_library(
     name = "sip_tree_hash",
     srcs = ["highwayhash/sip_tree_hash.cc"],
     hdrs = ["highwayhash/sip_tree_hash.h"],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -193,7 +182,6 @@ cc_library(
     name = "scalar_sip_tree_hash",
     srcs = ["highwayhash/scalar_sip_tree_hash.cc"],
     hdrs = ["highwayhash/scalar_sip_tree_hash.h"],
-    includes = ["."],
     deps = [
         ":code_annotation",
         ":sip_hash",
@@ -208,7 +196,6 @@ cc_library(
         "highwayhash/highway_tree_hash.h",
         "highwayhash/state_helpers.h",
     ],
-    includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
@@ -223,7 +210,6 @@ cc_library(
         "highwayhash/sse41_highway_tree_hash.h",
         "highwayhash/state_helpers.h",
     ],
-    includes = ["."],
     deps = [
         ":code_annotation",
         ":vector",
@@ -237,7 +223,6 @@ cc_library(
         "highwayhash/scalar_highway_tree_hash.h",
         "highwayhash/state_helpers.h",
     ],
-    includes = ["."],
     deps = [
         ":code_annotation",
         ":vector",
@@ -266,7 +251,6 @@ cc_binary(
     srcs = [
         "highwayhash/sip_hash_main.cc",
     ],
-    includes = ["."],
     deps = [
         ":highway_tree_hash",
         ":nanobenchmark",

@@ -16,7 +16,7 @@
 #define HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
 #ifdef __AVX2__
 
-#include "highwayhash/types.h"
+#include "third_party/highwayhash/highwayhash/types.h"
 
 #ifdef __cplusplus
 namespace highwayhash {

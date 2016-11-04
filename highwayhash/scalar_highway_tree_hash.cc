@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "highwayhash/scalar_highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/scalar_highway_tree_hash.h"
 
-#include "highwayhash/types.h"
+#include "third_party/highwayhash/highwayhash/types.h"
 
 using highwayhash::uint64;
 using highwayhash::ScalarHighwayTreeHash;

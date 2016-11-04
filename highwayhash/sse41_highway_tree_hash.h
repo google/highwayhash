@@ -19,8 +19,8 @@
 
 #include <cstdio>
 #include <cstring>  // memcpy
-#include "highwayhash/state_helpers.h"
-#include "highwayhash/vec.h"
+#include "third_party/highwayhash/highwayhash/state_helpers.h"
+#include "third_party/highwayhash/highwayhash/vec.h"
 
 namespace highwayhash {
 
@@ -34,7 +34,7 @@ class SSE41HighwayTreeHashState {
   using Key = uint64[4];
   static const int kPacketSize = sizeof(Key);
 
-  explicit INLINE SSE41HighwayTreeHashState(const Key& key) {
+  explicit HH_INLINE SSE41HighwayTreeHashState(const Key& key) {
     // "Nothing up my sleeve numbers"; see HighwayTreeHashState.
     const V2x64U init0L(0xa4093822299f31d0ull, 0xdbe6d5d5fe4cce2full);
     const V2x64U init0H(0x243f6a8885a308d3ull, 0x13198a2e03707344ull);
@@ -52,7 +52,7 @@ class SSE41HighwayTreeHashState {
     mul1H = init1H;
   }
 
-  INLINE void Update(const V2x64U& packetL, const V2x64U& packetH) {
+  HH_INLINE void Update(const V2x64U& packetL, const V2x64U& packetH) {
     v1L += packetL;
     v1H += packetH;
     v1L += mul0L;
@@ -69,14 +69,14 @@ class SSE41HighwayTreeHashState {
     v1H += ZipperMerge(v0H);
   }
 
-  INLINE void Update(const char* bytes) {
+  HH_INLINE void Update(const char* bytes) {
     const uint64* words = reinterpret_cast<const uint64*>(bytes);
     const V2x64U packetL = LoadUnaligned128(words + 0);
     const V2x64U packetH = LoadUnaligned128(words + 2);
     Update(packetL, packetH);
   }
 
-  INLINE uint64 Finalize() {
+  HH_INLINE uint64 Finalize() {
     // Mix together all lanes.
     PermuteAndUpdate();
     PermuteAndUpdate();
@@ -98,7 +98,7 @@ class SSE41HighwayTreeHashState {
            lanesL[0]);
   }
 
-  static INLINE V2x64U ZipperMerge(const V2x64U& v) {
+  static HH_INLINE V2x64U ZipperMerge(const V2x64U& v) {
     // Multiplication mixes/scrambles bytes 0-7 of the 64-bit result to
     // varying degrees. In descending order of goodness, bytes
     // 3 4 2 5 1 6 0 7 have quality 228 224 164 160 100 96 36 32.
@@ -114,11 +114,11 @@ class SSE41HighwayTreeHashState {
   }
 
   // Swap 32-bit halves of each lane (caller swaps 128-bit halves)
-  static INLINE V2x64U Rot32(const V2x64U& v) {
+  static HH_INLINE V2x64U Rot32(const V2x64U& v) {
     return V2x64U(_mm_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
   }
 
-  INLINE void PermuteAndUpdate() {
+  HH_INLINE void PermuteAndUpdate() {
     // It is slightly better to permute v0 than v1; it will be added to v1.
     // AVX-2 Permute also swaps 128-bit halves, so swap input operands.
     Update(Rot32(v0H), Rot32(v0L));
@@ -147,9 +147,9 @@ class SSE41HighwayTreeHashState {
 // HighwayTreeHash would return (drop-in compatible).
 //
 // Throughput: 8.2 GB/s for 1 KB inputs (about 75% of the AVX-2 version).
-static INLINE uint64 SSE41HighwayTreeHash(const uint64 (&key)[4],
-                                          const char* bytes,
-                                          const uint64 size) {
+static HH_INLINE uint64 SSE41HighwayTreeHash(const uint64 (&key)[4],
+                                             const char* bytes,
+                                             const uint64 size) {
   return ComputeHash<SSE41HighwayTreeHashState>(key, bytes, size);
 }
 

@@ -1,16 +1,16 @@
-#include "highwayhash/sip_hash.h"
+#include "third_party/highwayhash/highwayhash/sip_hash.h"
 
 #include <cassert>
 #include <numeric>
 
 #include "base/integral_types.h"
-#include "highwayhash/highway_tree_hash.h"
-#include "highwayhash/scalar_highway_tree_hash.h"
-#include "highwayhash/scalar_sip_tree_hash.h"
-#include "highwayhash/sip_tree_hash.h"
-#include "highwayhash/sse41_highway_tree_hash.h"
 #include "testing/base/public/benchmark.h"
 #include "testing/base/public/gunit.h"
+#include "third_party/highwayhash/highwayhash/highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/scalar_highway_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/scalar_sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/sse41_highway_tree_hash.h"
 
 namespace highwayhash {
 

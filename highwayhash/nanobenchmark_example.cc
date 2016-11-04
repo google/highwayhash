@@ -3,8 +3,8 @@
 #include <cstring>
 #include <utility>
 
-#include "highwayhash/nanobenchmark.h"
-#include "highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/nanobenchmark.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
 
 namespace nanobenchmark {
 namespace {

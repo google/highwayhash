@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "highwayhash/scalar_sip_tree_hash.h"
+#include "third_party/highwayhash/highwayhash/scalar_sip_tree_hash.h"
 
 #include <cstddef>
 #include <cstring>  // memcpy
 
-#include "highwayhash/code_annotation.h"
-#include "highwayhash/sip_hash.h"
-#include "highwayhash/vec2.h"
+#include "third_party/highwayhash/highwayhash/code_annotation.h"
+#include "third_party/highwayhash/highwayhash/sip_hash.h"
+#include "third_party/highwayhash/highwayhash/vec2.h"
 
 namespace highwayhash {
 namespace {
@@ -38,7 +38,7 @@ const int kPacketSize = sizeof(Lanes);
 
 class ScalarSipTreeHashState {
  public:
-  INLINE ScalarSipTreeHashState(const Lanes& keys, const int lane) {
+  HH_INLINE ScalarSipTreeHashState(const Lanes& keys, const int lane) {
     const uint64 key = keys[lane] ^ (kNumLanes | lane);
     v0 = 0x736f6d6570736575ull ^ key;
     v1 = 0x646f72616e646f6dull ^ key;
@@ -46,7 +46,7 @@ class ScalarSipTreeHashState {
     v3 = 0x7465646279746573ull ^ key;
   }
 
-  INLINE void Update(const uint64& packet) {
+  HH_INLINE void Update(const uint64& packet) {
     v3 ^= packet;
 
     Compress<2>();
@@ -54,7 +54,7 @@ class ScalarSipTreeHashState {
     v0 ^= packet;
   }
 
-  INLINE uint64 Finalize() {
+  HH_INLINE uint64 Finalize() {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
@@ -66,14 +66,14 @@ class ScalarSipTreeHashState {
  private:
   // Rotate a 64-bit value "v" left by N bits.
   template <uint64 bits>
-  static INLINE uint64 RotateLeft(const uint64 v) {
+  static HH_INLINE uint64 RotateLeft(const uint64 v) {
     const uint64 left = v << bits;
     const uint64 right = v >> (64 - bits);
     return left | right;
   }
 
   template <size_t rounds>
-  INLINE void Compress() {
+  HH_INLINE void Compress() {
     for (size_t i = 0; i < rounds; ++i) {
       // ARX network: add, rotate, exclusive-or.
       v0 += v1;

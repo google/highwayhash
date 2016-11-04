@@ -45,14 +45,14 @@
 // - RDTSCP timestamps (serializing, high-resolution)
 // - assumes string literals are stored within an 8 MiB range
 // - compiler-specific annotations (restrict, alignment, fences)
-#if MSC_VERSION
+#if HH_MSC_VERSION
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
 
-#include "highwayhash/code_annotation.h"
-#include "highwayhash/tsc_timer.h"
+#include "third_party/highwayhash/highwayhash/code_annotation.h"
+#include "third_party/highwayhash/highwayhash/tsc_timer.h"
 
 #define PROFILER_CHECK(condition)                           \
   while (!(condition)) {                                    \
@@ -81,7 +81,7 @@ class CacheAligned {
   static constexpr size_t kPointerSize = sizeof(void*);
   static constexpr size_t kCacheLineSize = 64;
 
-  static void* Allocate(const size_t bytes) CACHE_ALIGNED_RETURN {
+  static void* Allocate(const size_t bytes) HH_CACHE_ALIGNED_RETURN {
     char* const allocated = static_cast<char*>(malloc(bytes + kCacheLineSize));
     if (allocated == nullptr) {
       return nullptr;
@@ -116,19 +116,19 @@ class CacheAligned {
   static void StreamCacheLine(const T* from, T* to) {
     static_assert(sizeof(__m128i) % sizeof(T) == 0, "Cannot divide");
     const size_t kLanes = sizeof(__m128i) / sizeof(T);
-    COMPILER_FENCE;
+    HH_COMPILER_FENCE;
     const __m128i v0 = LoadVector(from + 0 * kLanes);
     const __m128i v1 = LoadVector(from + 1 * kLanes);
     const __m128i v2 = LoadVector(from + 2 * kLanes);
     const __m128i v3 = LoadVector(from + 3 * kLanes);
     // Fences prevent the compiler from reordering loads/stores, which may
     // interfere with write-combining.
-    COMPILER_FENCE;
+    HH_COMPILER_FENCE;
     StreamVector(v0, to + 0 * kLanes);
     StreamVector(v1, to + 1 * kLanes);
     StreamVector(v2, to + 2 * kLanes);
     StreamVector(v3, to + 3 * kLanes);
-    COMPILER_FENCE;
+    HH_COMPILER_FENCE;
   }
 
  private:
@@ -339,7 +339,7 @@ class Results {
     const __m128i duration_64 = _mm_cvtsi64_si128(duration);
     const __m128i add_duration_call = _mm_unpacklo_epi64(one_64, duration_64);
 
-    __m128i* const RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
+    __m128i* const HH_RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
 
     // Special case for first zone: (maybe) update, without swapping.
     __m128i prev = _mm_load_si128(zones);
@@ -499,11 +499,11 @@ class ThreadSpecific {
   size_t buffer_size_;
 
   // Contiguous storage for zone enter/exit packets.
-  Packet* const RESTRICT packets_;
+  Packet* const HH_RESTRICT packets_;
   size_t num_packets_;
   const size_t max_packets_;
   // Cached here because we already read this cache line on zone entry/exit.
-  const char* RESTRICT string_origin_;
+  const char* HH_RESTRICT string_origin_;
   Results results_;
 };
 
@@ -544,10 +544,10 @@ class ThreadList {
 class Zone {
  public:
   // "name" must be a string literal (see StringOrigin).
-  NOINLINE explicit Zone(const char* name) {
-    COMPILER_FENCE;
-    ThreadSpecific* RESTRICT thread_specific = StaticThreadSpecific();
-    if (UNLIKELY(thread_specific == nullptr)) {
+  HH_NOINLINE explicit Zone(const char* name) {
+    HH_COMPILER_FENCE;
+    ThreadSpecific* HH_RESTRICT thread_specific = StaticThreadSpecific();
+    if (HH_UNLIKELY(thread_specific == nullptr)) {
       void* mem = CacheAligned::Allocate(sizeof(ThreadSpecific));
       thread_specific = new (mem) ThreadSpecific(name);
       // Must happen before ComputeOverhead, which re-enters this ctor.
@@ -557,16 +557,16 @@ class Zone {
     }
 
     // (Capture timestamp ASAP, not inside WriteEntry.)
-    COMPILER_FENCE;
+    HH_COMPILER_FENCE;
     const uint64_t timestamp = tsc_timer::Start<uint64_t>();
     thread_specific->WriteEntry(name, timestamp);
   }
 
-  NOINLINE ~Zone() {
-    COMPILER_FENCE;
+  HH_NOINLINE ~Zone() {
+    HH_COMPILER_FENCE;
     const uint64_t timestamp = tsc_timer::Stop<uint64_t>();
     StaticThreadSpecific()->WriteExit(timestamp);
-    COMPILER_FENCE;
+    HH_COMPILER_FENCE;
   }
 
   // Call exactly once after all threads have exited all zones.
@@ -590,17 +590,17 @@ class Zone {
 // Creates a zone starting from here until the end of the current scope.
 // Timestamps will be recorded when entering and exiting the zone.
 // "name" must be a string literal, which is ensured by merging with "".
-#define PROFILER_ZONE(name) \
-  COMPILER_FENCE;           \
+#define PROFILER_ZONE(name)           \
+  HH_COMPILER_FENCE;                  \
   const profiler::Zone zone("" name); \
-  COMPILER_FENCE
+  HH_COMPILER_FENCE
 
 // Creates a zone for an entire function (when placed at its beginning).
 // Shorter/more convenient than ZONE.
-#define PROFILER_FUNC        \
-  COMPILER_FENCE;            \
+#define PROFILER_FUNC                  \
+  HH_COMPILER_FENCE;                   \
   const profiler::Zone zone(__func__); \
-  COMPILER_FENCE
+  HH_COMPILER_FENCE
 
 #define PROFILER_PRINT_RESULTS profiler::Zone::PrintResults
 

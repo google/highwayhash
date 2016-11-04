@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
-#include "highwayhash/code_annotation.h"
-#include "highwayhash/os_specific.h"
+#include "third_party/highwayhash/highwayhash/code_annotation.h"
+#include "third_party/highwayhash/highwayhash/os_specific.h"
 
-#if MSC_VERSION
+#if HH_MSC_VERSION
 #include <emmintrin.h>  // _mm_lfence
 #include <intrin.h>
 #endif
@@ -94,13 +94,13 @@ inline T Stop() {
 template <>
 inline uint32_t Start<uint32_t>() {
   uint32_t t;
-#if MSC_VERSION
+#if HH_MSC_VERSION
   _mm_lfence();
-  COMPILER_FENCE;
+  HH_COMPILER_FENCE;
   t = static_cast<uint32_t>(__rdtsc());
   _mm_lfence();
-  COMPILER_FENCE;
-#elif CLANG_VERSION || GCC_VERSION
+  HH_COMPILER_FENCE;
+#elif HH_CLANG_VERSION || HH_GCC_VERSION
   asm volatile(
       "lfence\n\t"
       "rdtsc\n\t"
@@ -116,13 +116,13 @@ inline uint32_t Start<uint32_t>() {
 template <>
 inline uint32_t Stop<uint32_t>() {
   uint32_t t;
-#if MSC_VERSION
-  COMPILER_FENCE;
+#if HH_MSC_VERSION
+  HH_COMPILER_FENCE;
   unsigned aux;
   t = static_cast<uint32_t>(__rdtscp(&aux));
   _mm_lfence();
-  COMPILER_FENCE;
-#elif CLANG_VERSION || GCC_VERSION
+  HH_COMPILER_FENCE;
+#elif HH_CLANG_VERSION || HH_GCC_VERSION
   // Use inline asm because __rdtscp generates code to store TSC_AUX (ecx).
   asm volatile(
       "rdtscp\n\t"
@@ -138,13 +138,13 @@ inline uint32_t Stop<uint32_t>() {
 template <>
 inline uint64_t Start<uint64_t>() {
   uint64_t t;
-#if MSC_VERSION
+#if HH_MSC_VERSION
   _mm_lfence();
-  COMPILER_FENCE;
+  HH_COMPILER_FENCE;
   t = __rdtsc();
   _mm_lfence();
-  COMPILER_FENCE;
-#elif CLANG_VERSION || GCC_VERSION
+  HH_COMPILER_FENCE;
+#elif HH_CLANG_VERSION || HH_GCC_VERSION
   asm volatile(
       "lfence\n\t"
       "rdtsc\n\t"
@@ -163,13 +163,13 @@ inline uint64_t Start<uint64_t>() {
 template <>
 inline uint64_t Stop<uint64_t>() {
   uint64_t t;
-#if MSC_VERSION
-  COMPILER_FENCE;
+#if HH_MSC_VERSION
+  HH_COMPILER_FENCE;
   unsigned aux;
   t = __rdtscp(&aux);
   _mm_lfence();
-  COMPILER_FENCE;
-#elif CLANG_VERSION || GCC_VERSION
+  HH_COMPILER_FENCE;
+#elif HH_CLANG_VERSION || HH_GCC_VERSION
   // Use inline asm because __rdtscp generates code to store TSC_AUX (ecx).
   asm volatile(
       "rdtscp\n\t"
@@ -197,7 +197,7 @@ inline uint64_t Stop<uint64_t>() {
 // @return i in [idx_begin, idx_begin + half_count) that minimizes
 // sorted[i + half_count] - sorted[i].
 template <typename T>
-size_t MinRange(crpc<T> sorted, const size_t idx_begin,
+size_t MinRange(const T* const HH_RESTRICT sorted, const size_t idx_begin,
                 const size_t half_count) {
   T min_range = std::numeric_limits<T>::max();
   size_t min_idx = 0;
@@ -217,7 +217,7 @@ size_t MinRange(crpc<T> sorted, const size_t idx_begin,
 // Returns an estimate of the mode by calling MinRange on successively
 // halved intervals. "sorted" must be in ascending order.
 template <typename T>
-T Mode(crpc<T> sorted, const size_t num_values) {
+T Mode(const T* const HH_RESTRICT sorted, const size_t num_values) {
   size_t idx_begin = 0;
   size_t half_count = num_values / 2;
   while (half_count > 1) {
@@ -257,7 +257,7 @@ void CountingSort(T* begin, T* end) {
   std::sort(unique.begin(), unique.end());
 
   // Write that many copies of each unique value to the array.
-  T* RESTRICT p = begin;
+  T* HH_RESTRICT p = begin;
   for (const auto& value_count : unique) {
     std::fill(p, p + value_count.second, value_count.first);
     p += value_count.second;
