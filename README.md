@@ -1,11 +1,10 @@
 Hash functions are widely used, so it is desirable to increase their speed and
-security. This package provides three hash functions that are resistant to
-hash flooding and outperform existing algorithms: a faster version of SipHash,
-a data-parallel variant of SipHash using tree hashing, and an even faster
-algorithm we call HighwayHash.
+security. This package provides three hash functions that improve on SipHash:
+a faster version of SipHash, a data-parallel variant of SipHash using tree hashing,
+and an even faster algorithm we call HighwayHash.
 
-SipHash is a fast but cryptographically strong pseudo-random function by
-Aumasson and Bernstein [https://www.131002.net/siphash/siphash.pdf].
+SipHash is a popular pseudo-random function by Aumasson and Bernstein 
+[https://www.131002.net/siphash/siphash.pdf].
 
 SipTreeHash slices inputs into 8-byte packets and computes their SipHash in
 parallel, which is faster when processing at least 96 bytes.
@@ -18,12 +17,14 @@ higher throughput at 1 KiB.
 
 ## Applications
 
-Expected applications include DoS-proof hash tables and random generators.
+Expected applications include hash tables and random generators.
 
-SipHash is immune to hash flooding because multi-collisions are infeasible to
-compute. This makes it suitable for hash tables storing user-controlled data.
+SipHash is immune to remote seed exposure because multi-collisions are hard to
+compute. But it doesn't help on hash tables which deviate to linear search
+on exposed seeds, so it cannot be recommended as the only hash-flood protection.
+You need to use a proper collision resolution scheme to protect from that.
 
-The output is also indistinguishable from a uniform random function, which
+The output is indistinguishable from a uniform random function, which
 means it can be used for choosing random subsets (e.g. for A/B experiments).
 Such generators are idempotent (repeatable/deterministic), which is useful
 in parallel algorithms and for testing/verification.
