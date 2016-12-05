@@ -1,10 +1,10 @@
 Hash functions are widely used, so it is desirable to increase their speed and
-security. This package provides three hash functions that are resistant to
-hash flooding and outperform existing algorithms: a faster version of SipHash,
-a data-parallel variant of SipHash using tree hashing, and an even faster
-algorithm we call HighwayHash.
+security. This package provides three 'strong' (well-distributed and
+unpredictable) hash functions: a faster version of SipHash, a data-parallel
+variant of SipHash using tree hashing, and an even faster algorithm we call
+HighwayHash.
 
-SipHash is a fast but cryptographically strong pseudo-random function by
+SipHash is a fast but 'cryptographically strong' pseudo-random function by
 Aumasson and Bernstein [https://www.131002.net/siphash/siphash.pdf].
 
 SipTreeHash slices inputs into 8-byte packets and computes their SipHash in
@@ -13,24 +13,32 @@ parallel, which is faster when processing at least 96 bytes.
 HighwayHash is a new way of mixing inputs which may inspire new
 cryptographically strong hashes. Large inputs are processed at a rate of
 0.3 cycles per byte, and latency remains low even for small inputs.
-HighwayHash is faster than SipHash for all input sizes, with about 5 times
+HighwayHash is faster than SipHash for all input sizes, with about 3.5 times
 higher throughput at 1 KiB.
 
 ## Applications
 
-Expected applications include DoS-proof hash tables and random generators.
+Unlike prior strong hashes, these functions are fast enough to be recommended
+as safer replacements for weak hashes in many applications. The additional CPU
+cost appears affordable, based on profiling data indicating C++ hash functions
+account for less than 0.25% of CPU usage.
 
-SipHash is immune to hash flooding because multi-collisions are infeasible to
-compute. This makes it suitable for hash tables storing user-controlled data.
+Hash-based selection of random subsets is useful for A/B experiments and similar
+applications. Such random generators are idempotent (repeatable and
+deterministic), which is helpful for parallel algorithms and testing. To avoid
+bias, it is important that the hash function be unpredictable and
+indistinguishable from a uniform random generator. We have verified the bit
+distribution and avalanche properties of SipHash and HighwayHash.
 
-The output is also indistinguishable from a uniform random function, which
-means it can be used for choosing random subsets (e.g. for A/B experiments).
-Such generators are idempotent (repeatable/deterministic), which is useful
-in parallel algorithms and for testing/verification.
+64-bit hashes are also useful for authenticating short-lived messages such as
+network/RPC packets. This requires that the hash function withstand
+differential, length extension and other attacks. We have undertaken such a
+formal security analysis for HighwayHash (pending publication). New
+cryptanalysis tools may still need to be developed for further analysis.
 
-We have verified the bit distribution and avalanche properties of HighwayHash.
-A formal security analysis is pending publication, though new cryptanalysis
-tools may still need to be developed for further analysis.
+Strong hashes are also important parts of methods for protecting hash tables
+against unacceptable worst-case behavior and denial of service attacks
+(see "hash flooding" below).
 
 ## SipHash
 
@@ -118,6 +126,65 @@ SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
 SSE41HighwayTreeHash requires SSE4.1. SipHash and ScalarHighwayTreeHash have
 no particular CPU requirements.
 
+## Defending against hash flooding
+
+We wish to defend (web) services that utilize hash sets/maps against
+denial-of-service attacks. Such data structures assign attacker-controlled
+input messages `m` to bin `H(s, m) % p` using a seed `s`, hash function `H`, and
+preferably prime table size `p`. Attackers can trigger 'flooding' (excessive
+work in insertions/lookups) by finding 'collisions', i.e. many `m` assigned to
+the same bin.
+
+If the attacker has local access, they can do far worse, so we assume the
+attacker can only issue remote requests. If the attacker is able to send large
+numbers of requests, they can already deny service, so we need only ensure the
+attacker's cost is sufficiently large compared to the service's provisioning.
+
+If the hash function is 'weak' (e.g. CityHash/Murmur), attackers can easily
+generate collisions regardless of the seed. This causes `n^2` work for `n`
+requests to an unprotected hash table, which is unacceptable. If the seed is
+known, the attacker can find collisions for any `H` by computing `H(s, m) % p`
+for various `m`. This raises the attacker's cost by a factor of `p` (typically
+10^3..10^5), but we need a further increase in the cost/work ratio to be safe.
+
+It is reasonable to assume `s` is a secret property of the service generated on
+startup or even per-connection, and therefore initially unknown to remote
+attackers. A timing attack by Wool/Bar-Yosef recovers 13-bit seeds by testing
+all 8K possibilities using millions of requests, which takes several days (even
+assuming unrealistic 150 us round-trip times). It appears infeasible to recover
+64-bit seeds in this way.
+
+If the seed remains secret, the security claims of 'strong' hashes such as
+SipHash or HighwayHash imply attackers need 2^32 guesses of `m` before
+expecting a collision (birthday paradox), and 2^63 requests to guess the seed.
+These costs are large enough to consider the service safe, even when using a
+conventional hash table.
+
+Even if the seed is somehow revealed and/or attackers manage to find collisions,
+there are two ways to prevent denial of service by limiting the work per
+request.
+
+1. Instead of conventional chained or closed hash tables, the service can use
+augmented/de-amortized cuckoo hash tables (https://arxiv.org/pdf/0903.0391.pdf).
+These guarantee worst-case `log n` bounds, but only if the hash function is
+'indistinguishable from random', which is claimed for SipHash and HighwayHash
+but certainly not for weak hashes.
+
+2. When flooding is detected, the service can switch from hashing to a tree.
+@funny-falcon proposes to avoid the space and time overhead of self-balancing
+algorithms (AVL/splay/red-black/a,b trees) by indexing the tree with `H(s, m)`
+rather than `m`. This relies on the equidistribution property of strong hashes.
+
+In both cases, attackers pay a high cost (likely at least proportional to `p`)
+to trigger only modest additional work (a factor of `log n`).
+
+In summary, a strong hash function is not, by itself, sufficient to protect a
+chained hash table from flooding attacks. However, strong hash functions are
+important parts of two schemes for preventing denial of service. Using weak hash
+functions can slightly accelerate the best-case and average-case performance of
+a service, but at the risk of greatly reduced attack costs and worst-case
+performance.
+
 ## Build instructions
 
 To build with blaze/[Bazel](http://bazel.io/):
@@ -169,6 +236,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-08-05
+<jyrki.alakuijala@gmail.com>, updated 2016-12-05
 
 This is not an official Google product.
