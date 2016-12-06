@@ -209,7 +209,7 @@ raise an issue and we'll add yours as well.
 
 By | Language | URL
 --- | --- | ---
-Damian Gryski | Go | https://github.com/dgryski/go-highway/
+Damian Gryski | Go/SSE | https://github.com/dgryski/go-highway/
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
