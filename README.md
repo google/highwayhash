@@ -131,14 +131,15 @@ no particular CPU requirements.
 We wish to defend (web) services that utilize hash sets/maps against
 denial-of-service attacks. Such data structures assign attacker-controlled
 input messages `m` to bin `H(s, m) % p` using a seed `s`, hash function `H`, and
-preferably prime table size `p`. Attackers can trigger 'flooding' (excessive
-work in insertions/lookups) by finding 'collisions', i.e. many `m` assigned to
-the same bin.
+table size `p`. Choosing a prime `p` ensures all hash bits are used; the costly
+division can be avoided by multiplying with the inverse (https://goo.gl/l7ASm8).
 
-If the attacker has local access, they can do far worse, so we assume the
-attacker can only issue remote requests. If the attacker is able to send large
-numbers of requests, they can already deny service, so we need only ensure the
-attacker's cost is sufficiently large compared to the service's provisioning.
+Attackers may attempt to trigger 'flooding' (excessive work in insertions or
+lookups) by finding 'collisions', i.e. many `m` assigned to the same bin. If the
+attacker has local access, they can do far worse, so we assume the attacker can
+only issue remote requests. If the attacker is able to send large numbers of
+requests, they can already deny service, so we need only ensure the attacker's
+cost is sufficiently large compared to the service's provisioning.
 
 If the hash function is 'weak' (e.g. CityHash/Murmur), attackers can easily
 generate collisions regardless of the seed. This causes `n^2` work for `n`
@@ -164,16 +165,16 @@ Even if the seed is somehow revealed and/or attackers manage to find collisions,
 there are two ways to prevent denial of service by limiting the work per
 request.
 
-1. Instead of conventional chained or closed hash tables, the service can use
-augmented/de-amortized cuckoo hash tables (https://arxiv.org/pdf/0903.0391.pdf).
+1. Use augmented/de-amortized cuckoo hash tables (https://goo.gl/PFwwkx).
 These guarantee worst-case `log n` bounds, but only if the hash function is
 'indistinguishable from random', which is claimed for SipHash and HighwayHash
 but certainly not for weak hashes.
 
-2. When flooding is detected, the service can switch from hashing to a tree.
-@funny-falcon proposes to avoid the space and time overhead of self-balancing
-algorithms (AVL/splay/red-black/a,b trees) by indexing the tree with `H(s, m)`
-rather than `m`. This relies on the equidistribution property of strong hashes.
+2. Use conventional separate chaining for collision resolution, but with trees
+instead of linked lists. Indexing the tree with `H(s, m)` rather than `m` avoids
+the space and time overhead of self-balancing algorithms such as
+AVL/splay/red-black/a,b trees. This relies on the equidistribution property of
+strong hashes. (Thanks to funny-falcon for proposing this!)
 
 In both cases, attackers pay a high cost (likely at least proportional to `p`)
 to trigger only modest additional work (a factor of `log n`).
