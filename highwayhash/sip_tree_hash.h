@@ -42,6 +42,9 @@ extern "C" {
 uint64 SipTreeHash(const uint64 (&key)[4], const char* bytes,
                    const uint64 size);
 
+uint64 SipTreeHash13(const uint64 (&key)[4], const char* bytes,
+                   const uint64 size);
+
 #ifdef __cplusplus
 }  // extern "C"
 }  // namespace highwayhash

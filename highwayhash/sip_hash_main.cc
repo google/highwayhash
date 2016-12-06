@@ -194,6 +194,12 @@ void RunTests(int argc, char* argv[]) {
                     return SipHash(key2, in, size);
                   });
 
+  AddMeasurements(in_sizes, "SipHash13", &measurements,
+                  [&key2](const size_t size) {
+                    char in[1024] = {static_cast<char>(size)};
+                    return SipHash13(key2, in, size);
+                  });
+
 #ifdef __AVX2__
   {
     uint64 key4[4] = {0, 1, 2, 3};
@@ -201,6 +207,12 @@ void RunTests(int argc, char* argv[]) {
                     [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return SipTreeHash(key4, in, size);
+                    });
+
+    AddMeasurements(in_sizes, "SipTreeHash13", &measurements,
+                    [&key4](const size_t size) {
+                      char in[1024] = {static_cast<char>(size)};
+                      return SipTreeHash13(key4, in, size);
                     });
 
     AddMeasurements(in_sizes, "HighwayTreeHash", &measurements,
@@ -230,6 +242,7 @@ void RunTests(int argc, char* argv[]) {
 #endif
 #ifdef __AVX2__
   VerifyEqual("SipTreeHash", ScalarSipTreeHash, SipTreeHash);
+  VerifyEqual("SipTreeHash13", ScalarSipTreeHash13, SipTreeHash13);
   VerifyEqual("HighwayTreeHash", ScalarHighwayTreeHash, HighwayTreeHash);
 #endif
 }
