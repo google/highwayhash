@@ -35,6 +35,7 @@ const int kPacketSize = 32;
 const int kNumLanes = kPacketSize / sizeof(uint64);
 
 // 32 bytes key. Parameters are hardwired to c=2, d=4 [rounds].
+template <size_t blk, size_t fin>
 class SipTreeHashState {
  public:
   explicit HH_INLINE SipTreeHashState(const uint64 (&keys)[kNumLanes]) {
@@ -52,7 +53,7 @@ class SipTreeHashState {
   HH_INLINE void Update(const V4x64U& packet) {
     v3 ^= packet;
 
-    Compress<2>();
+    Compress<blk>();
 
     v0 ^= packet;
   }
@@ -61,7 +62,7 @@ class SipTreeHashState {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= V4x64U(0xFF);
 
-    Compress<4>();
+    Compress<fin>();
 
     return (v0 ^ v1) ^ (v2 ^ v3);
   }
@@ -159,9 +160,10 @@ static HH_INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
 
 }  // namespace
 
-uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
+template <size_t blk, size_t fin>
+uint64 SipTreeHashImp(const uint64 (&key)[kNumLanes], const char* bytes,
                    const uint64 size) {
-  SipTreeHashState state(key);
+  SipTreeHashState<blk, fin> state(key);
 
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
@@ -180,21 +182,35 @@ uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
   alignas(64) uint64 hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
-  SipHashState::Key reduce_key;
+  typename SipHashStateImp<blk, fin>::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
-  return ReduceSipTreeHash(reduce_key, hashes);
+  return ReduceSipTreeHash<kNumLanes, blk, fin>(reduce_key, hashes);
 }
 
+uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
+                   const uint64 size) {
+  return SipTreeHashImp<2, 4>(key, bytes, size);
+}
+
+uint64 SipTreeHash13(const uint64 (&key)[kNumLanes], const char* bytes,
+                   const uint64 size) {
+  return SipTreeHashImp<1, 3>(key, bytes, size);
+}
 }  // namespace highwayhash
 
 using highwayhash::uint64;
 using highwayhash::SipTreeHash;
+using highwayhash::SipTreeHash13;
 using Key = uint64[4];
 
 extern "C" {
 
 uint64 SipTreeHashC(const uint64* key, const char* bytes, const uint64 size) {
   return SipTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+uint64 SipTreeHash13C(const uint64* key, const char* bytes, const uint64 size) {
+  return SipTreeHash13(*reinterpret_cast<const Key*>(key), bytes, size);
 }
 
 }  // extern "C"

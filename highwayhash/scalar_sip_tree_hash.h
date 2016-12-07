@@ -26,6 +26,8 @@ extern "C" {
 
 uint64 ScalarSipTreeHash(const uint64 (&key)[4], const char* bytes,
                          const uint64 size);
+uint64 ScalarSipTreeHash13(const uint64 (&key)[4], const char* bytes,
+                         const uint64 size);
 
 #ifdef __cplusplus
 }  // extern "C"

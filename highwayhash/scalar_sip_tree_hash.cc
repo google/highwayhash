@@ -36,6 +36,7 @@ const int kNumLanes = 4;
 using Lanes = uint64[kNumLanes];
 const int kPacketSize = sizeof(Lanes);
 
+template <size_t blk, size_t fin>
 class ScalarSipTreeHashState {
  public:
   HH_INLINE ScalarSipTreeHashState(const Lanes& keys, const int lane) {
@@ -49,7 +50,7 @@ class ScalarSipTreeHashState {
   HH_INLINE void Update(const uint64& packet) {
     v3 ^= packet;
 
-    Compress<2>();
+    Compress<blk>();
 
     v0 ^= packet;
   }
@@ -58,7 +59,7 @@ class ScalarSipTreeHashState {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
-    Compress<4>();
+    Compress<fin>();
 
     return (v0 ^ v1) ^ (v2 ^ v3);
   }
@@ -104,12 +105,14 @@ class ScalarSipTreeHashState {
 
 }  // namespace
 
-uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
+template <size_t blk, size_t fin>
+uint64 ScalarSipTreeHashImp(const Lanes& key, const char* bytes,
                          const uint64 size) {
   // "j-lanes" tree hashing interleaves 8-byte input packets.
-  ScalarSipTreeHashState state[kNumLanes] = {
-      ScalarSipTreeHashState(key, 0), ScalarSipTreeHashState(key, 1),
-      ScalarSipTreeHashState(key, 2), ScalarSipTreeHashState(key, 3)};
+  using State = ScalarSipTreeHashState<blk, fin>;
+  State state[kNumLanes] = {
+      State(key, 0), State(key, 1),
+      State(key, 2), State(key, 3)};
 
   // Hash entire 32-byte packets.
   const size_t remainder = size & (kPacketSize - 1);
@@ -145,15 +148,25 @@ uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
     hashes[lane] = state[lane].Finalize();
   }
 
-  SipHashState::Key reduce_key;
+  typename SipHashStateImp<blk, fin>::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
-  return ReduceSipTreeHash(reduce_key, hashes);
+  return ReduceSipTreeHash<kNumLanes, blk, fin>(reduce_key, hashes);
 }
 
+uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
+                         const uint64 size) {
+  return ScalarSipTreeHashImp<2, 4>(key, bytes, size);
+}
+
+uint64 ScalarSipTreeHash13(const Lanes& key, const char* bytes,
+                         const uint64 size) {
+  return ScalarSipTreeHashImp<1, 3>(key, bytes, size);
+}
 }  // namespace highwayhash
 
 using highwayhash::uint64;
 using highwayhash::ScalarSipTreeHash;
+using highwayhash::ScalarSipTreeHash13;
 using Key = uint64[4];
 
 extern "C" {
@@ -161,6 +174,11 @@ extern "C" {
 uint64 ScalarSipTreeHashC(const uint64* key, const char* bytes,
                           const uint64 size) {
   return ScalarSipTreeHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+uint64 ScalarSipTreeHash13C(const uint64* key, const char* bytes,
+                          const uint64 size) {
+  return ScalarSipTreeHash13(*reinterpret_cast<const Key*>(key), bytes, size);
 }
 
 }  // extern "C"

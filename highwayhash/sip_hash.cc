@@ -14,14 +14,30 @@
 
 #include "third_party/highwayhash/highwayhash/sip_hash.h"
 
+namespace highwayhash {
+uint64 SipHash(const SipHashState::Key& key, const char* bytes,
+                                const uint64 size) {
+  return ComputeHash<SipHashStateImp<2,4>>(key, bytes, size);
+}
+uint64 SipHash13(const SipHash13State::Key& key, const char* bytes,
+                                const uint64 size) {
+  return ComputeHash<SipHashStateImp<1,3>>(key, bytes, size);
+}
+}
 using highwayhash::uint64;
 using highwayhash::SipHash;
+using highwayhash::SipHash13;
 using Key = highwayhash::SipHashState::Key;
+using Key13 = highwayhash::SipHash13State::Key;
 
 extern "C" {
 
 uint64 SipHashC(const uint64* key, const char* bytes, const uint64 size) {
   return SipHash(*reinterpret_cast<const Key*>(key), bytes, size);
+}
+
+uint64 SipHash13C(const uint64* key, const char* bytes, const uint64 size) {
+  return SipHash13(*reinterpret_cast<const Key13*>(key), bytes, size);
 }
 
 }  // extern "C"

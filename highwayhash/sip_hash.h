@@ -27,12 +27,13 @@
 namespace highwayhash {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
-class SipHashState {
+template <size_t blk, size_t fin>
+class SipHashStateImp {
  public:
   using Key = uint64[2];
   static const size_t kPacketSize = sizeof(uint64);
 
-  explicit HH_INLINE SipHashState(const Key& key) {
+  explicit HH_INLINE SipHashStateImp(const Key& key) {
     v0 = 0x736f6d6570736575ull ^ key[0];
     v1 = 0x646f72616e646f6dull ^ key[1];
     v2 = 0x6c7967656e657261ull ^ key[0];
@@ -42,10 +43,9 @@ class SipHashState {
   HH_INLINE void Update(const char* bytes) {
     uint64 packet;
     memcpy(&packet, bytes, sizeof(packet));
-
     v3 ^= packet;
 
-    Compress<2>();
+    Compress<blk>();
 
     v0 ^= packet;
   }
@@ -54,11 +54,10 @@ class SipHashState {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
-    Compress<4>();
+    Compress<fin>();
 
     return (v0 ^ v1) ^ (v2 ^ v3);
   }
-
  private:
   // Rotate a 64-bit value "v" left by N bits.
   template <uint64 bits>
@@ -98,6 +97,9 @@ class SipHashState {
   uint64 v3;
 };
 
+using SipHashState = SipHashStateImp<2, 4>;
+using SipHash13State = SipHashStateImp<1, 3>;
+
 // Override the HighwayTreeHash padding scheme with that of SipHash so that
 // the hash output matches the known-good values in sip_hash_test.
 template <>
@@ -109,6 +111,18 @@ HH_INLINE void PaddedUpdate<SipHashState>(const uint64 size,
   char final_packet[SipHashState::kPacketSize] = {0};
   memcpy(final_packet, remaining_bytes, remaining_size);
   final_packet[SipHashState::kPacketSize - 1] = static_cast<char>(size & 0xFF);
+  state->Update(final_packet);
+}
+
+template <>
+HH_INLINE void PaddedUpdate<SipHash13State>(const uint64 size,
+                                          const char* remaining_bytes,
+                                          const uint64 remaining_size,
+                                          SipHash13State* state) {
+  // Copy to avoid overrunning the input buffer.
+  char final_packet[SipHash13State::kPacketSize] = {0};
+  memcpy(final_packet, remaining_bytes, remaining_size);
+  final_packet[SipHash13State::kPacketSize - 1] = static_cast<char>(size & 0xFF);
   state->Update(final_packet);
 }
 
@@ -126,15 +140,14 @@ HH_INLINE void PaddedUpdate<SipHashState>(const uint64 size,
 // "key" is a secret 128-bit key unknown to attackers.
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
 // Returns a 64-bit hash of the given data bytes.
-static HH_INLINE uint64 SipHash(const SipHashState::Key& key, const char* bytes,
-                                const uint64 size) {
-  return ComputeHash<SipHashState>(key, bytes, size);
-}
+uint64 SipHash(const SipHashState::Key& key, const char* bytes, const uint64 size);
 
-template <int kNumLanes>
-static HH_INLINE uint64 ReduceSipTreeHash(const SipHashState::Key& key,
+uint64 SipHash13(const SipHash13State::Key& key, const char* bytes, const uint64 size);
+
+template <int kNumLanes, size_t blk, size_t fin>
+static HH_INLINE uint64 ReduceSipTreeHash(const typename SipHashStateImp<blk, fin>::Key& key,
                                           const uint64 (&hashes)[kNumLanes]) {
-  SipHashState state(key);
+  SipHashStateImp<blk, fin> state(key);
 
   for (int i = 0; i < kNumLanes; ++i) {
     state.Update(reinterpret_cast<const char*>(&hashes[i]));
