@@ -36,7 +36,7 @@ const int kNumLanes = 4;
 using Lanes = uint64[kNumLanes];
 const int kPacketSize = sizeof(Lanes);
 
-template <size_t blk, size_t fin>
+template <int kUpdateRounds, int kFinalizeRounds>
 class ScalarSipTreeHashState {
  public:
   HH_INLINE ScalarSipTreeHashState(const Lanes& keys, const int lane) {
@@ -50,7 +50,7 @@ class ScalarSipTreeHashState {
   HH_INLINE void Update(const uint64& packet) {
     v3 ^= packet;
 
-    Compress<blk>();
+    Compress<kUpdateRounds>();
 
     v0 ^= packet;
   }
@@ -59,7 +59,7 @@ class ScalarSipTreeHashState {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
-    Compress<fin>();
+    Compress<kFinalizeRounds>();
 
     return (v0 ^ v1) ^ (v2 ^ v3);
   }
@@ -73,9 +73,9 @@ class ScalarSipTreeHashState {
     return left | right;
   }
 
-  template <size_t rounds>
+  template <int kRounds>
   HH_INLINE void Compress() {
-    for (size_t i = 0; i < rounds; ++i) {
+    for (int i = 0; i < kRounds; ++i) {
       // ARX network: add, rotate, exclusive-or.
       v0 += v1;
       v2 += v3;
@@ -105,14 +105,13 @@ class ScalarSipTreeHashState {
 
 }  // namespace
 
-template <size_t blk, size_t fin>
-uint64 ScalarSipTreeHashImp(const Lanes& key, const char* bytes,
-                         const uint64 size) {
+template <size_t kUpdateRounds, size_t kFinalizeRounds>
+uint64 ScalarSipTreeHashT(const Lanes& key, const char* bytes,
+                          const uint64 size) {
   // "j-lanes" tree hashing interleaves 8-byte input packets.
-  using State = ScalarSipTreeHashState<blk, fin>;
-  State state[kNumLanes] = {
-      State(key, 0), State(key, 1),
-      State(key, 2), State(key, 3)};
+  using State = ScalarSipTreeHashState<kUpdateRounds, kFinalizeRounds>;
+  State state[kNumLanes] = {State(key, 0), State(key, 1), State(key, 2),
+                            State(key, 3)};
 
   // Hash entire 32-byte packets.
   const size_t remainder = size & (kPacketSize - 1);
@@ -148,19 +147,20 @@ uint64 ScalarSipTreeHashImp(const Lanes& key, const char* bytes,
     hashes[lane] = state[lane].Finalize();
   }
 
-  typename SipHashStateImp<blk, fin>::Key reduce_key;
+  typename SipHashStateT<kUpdateRounds, kFinalizeRounds>::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
-  return ReduceSipTreeHash<kNumLanes, blk, fin>(reduce_key, hashes);
+  return ReduceSipTreeHash<kNumLanes, kUpdateRounds, kFinalizeRounds>(
+      reduce_key, hashes);
 }
 
 uint64 ScalarSipTreeHash(const Lanes& key, const char* bytes,
                          const uint64 size) {
-  return ScalarSipTreeHashImp<2, 4>(key, bytes, size);
+  return ScalarSipTreeHashT<2, 4>(key, bytes, size);
 }
 
 uint64 ScalarSipTreeHash13(const Lanes& key, const char* bytes,
-                         const uint64 size) {
-  return ScalarSipTreeHashImp<1, 3>(key, bytes, size);
+                           const uint64 size) {
+  return ScalarSipTreeHashT<1, 3>(key, bytes, size);
 }
 }  // namespace highwayhash
 
@@ -177,7 +177,7 @@ uint64 ScalarSipTreeHashC(const uint64* key, const char* bytes,
 }
 
 uint64 ScalarSipTreeHash13C(const uint64* key, const char* bytes,
-                          const uint64 size) {
+                            const uint64 size) {
   return ScalarSipTreeHash13(*reinterpret_cast<const Key*>(key), bytes, size);
 }
 

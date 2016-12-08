@@ -13,11 +13,13 @@
 // limitations under the License.
 
 // Benchmark and verification for hashing algorithms. Output (cycles per byte):
-// Algo \              3       4       7       8       9      10  [bytes]
-// SSE41HighwayTreeHash & 40.40 & 33.34 & 18.09 & 16.84 & 14.42 & 12.93 &  0.39
-//      HighwayTreeHash & 40.75 & 31.59 & 17.48 & 15.80 & 13.76 & 12.41 &  0.38
-//          SipTreeHash & 55.43 & 42.83 & 23.99 & 21.46 & 18.82 & 16.92 &  0.61
-//              SipHash & 36.57 & 25.82 & 14.69 & 15.20 & 14.49 & 13.16 &  1.32
+// Algo \            bytes: 3       4       7       8       9      10      1023
+//      HighwayTreeHash & 45.86 & 34.58 & 19.69 & 17.29 & 15.31 & 13.79 &  0.35
+// SSE41HighwayTreeHash & 47.37 & 35.88 & 20.81 & 17.82 & 15.92 & 14.41 &  0.40
+//              SipHash & 42.44 & 32.79 & 18.69 & 18.17 & 16.27 & 14.68 &  1.33
+//            SipHash13 & 39.83 & 30.64 & 17.53 & 16.69 & 15.04 & 13.63 &  0.76
+//          SipTreeHash & 67.66 & 51.12 & 29.03 & 25.57 & 22.42 & 20.15 &  0.64
+//        SipTreeHash13 & 58.39 & 42.63 & 25.03 & 21.34 & 18.92 & 17.15 &  0.40
 
 #include <algorithm>
 #include <cassert>

@@ -13,7 +13,7 @@ parallel, which is faster when processing at least 96 bytes.
 HighwayHash is a new way of mixing inputs which may inspire new
 cryptographically strong hashes. Large inputs are processed at a rate of
 0.3 cycles per byte, and latency remains low even for small inputs.
-HighwayHash is faster than SipHash for all input sizes, with about 3.5 times
+HighwayHash is faster than SipHash for all input sizes, with about 3.8 times
 higher throughput at 1 KiB.
 
 ## Applications
@@ -50,6 +50,9 @@ Interestingly, it is about twice as fast as a SIMD implementation using SSE4.1
 (https://goo.gl/80GBSD). This is presumably due to the lack of SIMD bit rotate
 instructions.
 
+SipHash13 is a faster but weaker variant with one mixing round per update and
+three during finalization.
+
 ## SipTreeHash
 
 Even faster throughput can be achieved by logically partitioning inputs into
@@ -81,8 +84,7 @@ remain independent until the reduce phase. The algorithm outputs 64 bit digests
 or up to 256 bits at no extra cost.
 
 In addition to high throughput, the algorithm is designed for low finalization
-cost. This enables a 2-3x speedup versus SipTreeHash, especially for smaller
-inputs.
+cost. The result is about 1.5 times as fast as SipTreeHash.
 
 For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and a
 portable fall-back (about 10% as fast).
@@ -111,19 +113,21 @@ for various input sizes:
 
 Algorithm | 3 | 4 | 7 | 8 | 9 | 10 | 1023
 --- | --- | --- | --- | --- | --- |--- |--- |
-HighwayTreeHash (AVX-2) | 40.75 | 31.59 | 17.48 | 15.80 | 13.76 | 12.41 |  0.38
-SSE41HighwayTreeHash | 40.40 | 33.34 | 18.09 | 16.84 | 14.42 | 12.93 |  0.39
-SipTreeHash | 55.43 | 42.83 | 23.99 | 21.46 | 18.82 | 16.92 |  0.61
-SipHash | 36.57 | 25.82 | 14.69 | 15.20 | 14.49 | 13.16 |  1.32
+HighwayTreeHash (AVX-2) | 45.86 | 34.58 | 19.69 | 17.29 | 15.31 | 13.79 |  0.35
+SSE41HighwayTreeHash | 47.37 | 35.88 | 20.81 | 17.82 | 15.92 | 14.41 |  0.40
+SipTreeHash | 67.66 | 51.12 | 29.03 | 25.57 | 22.42 | 20.15 |  0.64
+SipTreeHash13 | 58.39 | 42.63 | 25.03 | 21.34 | 18.92 | 17.15 |  0.40
+SipHash | 42.44 | 32.79 | 18.69 | 18.17 | 16.27 | 14.68 |  1.33
+SipHash13 | 39.83 | 30.64 | 17.53 | 16.69 | 15.04 | 13.63 |  0.76
 
-The tree hashes are slightly slower for <= 8 byte inputs, but up to 3.5 times
+The tree hashes are slightly slower for <= 8 byte inputs, but up to 3.8 times
 as fast for large inputs. The SSE4.1 variant is nearly as fast as the AVX-2
 version because it also processes 32 bytes at a time.
 
 ## Requirements
 
-SipTreeHash and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
-SSE41HighwayTreeHash requires SSE4.1. SipHash and ScalarHighwayTreeHash have
+SipTreeHash[13] and HighwayTreeHash require an AVX-2-capable CPU (e.g. Haswell).
+SSE41HighwayTreeHash requires SSE4.1. SipHash[13] and ScalarHighwayTreeHash have
 no particular CPU requirements.
 
 ## Defending against hash flooding
@@ -191,7 +195,7 @@ performance.
 To build with blaze/[Bazel](http://bazel.io/):
 `bazel build -c opt --copt=-mavx2 -- :all`
 
-`sip_hash_test` and `data_parallel_test` are omitted by default; to compile,
+`sip_hash_test` and other tests are omitted by default; to compile them,
 please first install [GTest](https://github.com/google/googletest).
 
 To build with Make : `make`
@@ -237,6 +241,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-12-05
+<jyrki.alakuijala@gmail.com>, updated 2016-12-07
 
 This is not an official Google product.

@@ -35,10 +35,10 @@ const int kPacketSize = 32;
 const int kNumLanes = kPacketSize / sizeof(uint64);
 
 // 32 bytes key. Parameters are hardwired to c=2, d=4 [rounds].
-template <size_t blk, size_t fin>
-class SipTreeHashState {
+template <int kUpdateRounds, int kFinalizeRounds>
+class SipTreeHashStateT {
  public:
-  explicit HH_INLINE SipTreeHashState(const uint64 (&keys)[kNumLanes]) {
+  explicit HH_INLINE SipTreeHashStateT(const uint64 (&keys)[kNumLanes]) {
     const V4x64U init(0x7465646279746573ull, 0x6c7967656e657261ull,
                       0x646f72616e646f6dull, 0x736f6d6570736575ull);
     const V4x64U lanes(kNumLanes | 3, kNumLanes | 2, kNumLanes | 1,
@@ -53,7 +53,7 @@ class SipTreeHashState {
   HH_INLINE void Update(const V4x64U& packet) {
     v3 ^= packet;
 
-    Compress<blk>();
+    Compress<kUpdateRounds>();
 
     v0 ^= packet;
   }
@@ -62,7 +62,7 @@ class SipTreeHashState {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= V4x64U(0xFF);
 
-    Compress<fin>();
+    Compress<kFinalizeRounds>();
 
     return (v0 ^ v1) ^ (v2 ^ v3);
   }
@@ -86,10 +86,10 @@ class SipTreeHashState {
     return V4x64U(_mm256_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
   }
 
-  template <size_t rounds>
+  template <int kRounds>
   HH_INLINE void Compress() {
     // Loop is faster than unrolling!
-    for (size_t i = 0; i < rounds; ++i) {
+    for (int i = 0; i < kRounds; ++i) {
       // ARX network: add, rotate, exclusive-or.
       v0 += v1;
       v2 += v3;
@@ -160,10 +160,10 @@ static HH_INLINE V4x64U LoadFinalPacket32(const char* bytes, const uint64 size,
 
 }  // namespace
 
-template <size_t blk, size_t fin>
-uint64 SipTreeHashImp(const uint64 (&key)[kNumLanes], const char* bytes,
-                   const uint64 size) {
-  SipTreeHashState<blk, fin> state(key);
+template <size_t kUpdateRounds, size_t kFinalizeRounds>
+uint64 SipTreeHashT(const uint64 (&key)[kNumLanes], const char* bytes,
+                    const uint64 size) {
+  SipTreeHashStateT<kUpdateRounds, kFinalizeRounds> state(key);
 
   const size_t remainder = size & (kPacketSize - 1);
   const size_t truncated_size = size - remainder;
@@ -182,19 +182,20 @@ uint64 SipTreeHashImp(const uint64 (&key)[kNumLanes], const char* bytes,
   alignas(64) uint64 hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
-  typename SipHashStateImp<blk, fin>::Key reduce_key;
+  typename SipHashStateT<kUpdateRounds, kFinalizeRounds>::Key reduce_key;
   memcpy(&reduce_key, &key, sizeof(reduce_key));
-  return ReduceSipTreeHash<kNumLanes, blk, fin>(reduce_key, hashes);
+  return ReduceSipTreeHash<kNumLanes, kUpdateRounds, kFinalizeRounds>(
+      reduce_key, hashes);
 }
 
 uint64 SipTreeHash(const uint64 (&key)[kNumLanes], const char* bytes,
                    const uint64 size) {
-  return SipTreeHashImp<2, 4>(key, bytes, size);
+  return SipTreeHashT<2, 4>(key, bytes, size);
 }
 
 uint64 SipTreeHash13(const uint64 (&key)[kNumLanes], const char* bytes,
-                   const uint64 size) {
-  return SipTreeHashImp<1, 3>(key, bytes, size);
+                     const uint64 size) {
+  return SipTreeHashT<1, 3>(key, bytes, size);
 }
 }  // namespace highwayhash
 
