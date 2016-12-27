@@ -14,7 +14,8 @@ HighwayHash is a new way of mixing inputs which may inspire new
 cryptographically strong hashes. Large inputs are processed at a rate of
 0.3 cycles per byte, and latency remains low even for small inputs.
 HighwayHash is faster than SipHash for all input sizes, with about 3.8 times
-higher throughput at 1 KiB.
+higher throughput at 1 KiB. We discuss design choices and provide statistical
+analysis and preliminary cryptanalysis in https://arxiv.org/abs/1612.06257.
 
 ## Applications
 
@@ -88,6 +89,9 @@ cost. The result is about 1.5 times as fast as SipTreeHash.
 
 For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and a
 portable fall-back (about 10% as fast).
+
+Statistical analyses and preliminary cryptanalysis are given in
+https://arxiv.org/abs/1612.06257.
 
 ## Performance measurements
 
@@ -241,6 +245,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-12-07
+<jyrki.alakuijala@gmail.com>, updated 2016-12-27
 
 This is not an official Google product.
