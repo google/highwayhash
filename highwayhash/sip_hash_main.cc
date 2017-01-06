@@ -13,13 +13,13 @@
 // limitations under the License.
 
 // Benchmark and verification for hashing algorithms. Output (cycles per byte):
-// Algo \            bytes: 3       4       7       8       9      10      1023
-//      HighwayTreeHash & 45.86 & 34.58 & 19.69 & 17.29 & 15.31 & 13.79 &  0.35
-// SSE41HighwayTreeHash & 47.37 & 35.88 & 20.81 & 17.82 & 15.92 & 14.41 &  0.40
-//              SipHash & 42.44 & 32.79 & 18.69 & 18.17 & 16.27 & 14.68 &  1.33
-//            SipHash13 & 39.83 & 30.64 & 17.53 & 16.69 & 15.04 & 13.63 &  0.76
-//          SipTreeHash & 67.66 & 51.12 & 29.03 & 25.57 & 22.42 & 20.15 &  0.64
-//        SipTreeHash13 & 58.39 & 42.63 & 25.03 & 21.34 & 18.92 & 17.15 &  0.40
+// Algo \          bytes: 8       31      32      63      64     1023
+//      HighwayHash & 15.42 &  4.32 &  3.79 &  2.04 &  2.05 &  0.34
+// SSE41HighwayHash & 17.38 &  4.58 &  4.40 &  2.37 &  2.28 &  0.39
+//          SipHash & 17.81 &  5.52 &  5.72 &  3.34 &  3.45 &  1.47
+//        SipHash13 & 13.88 &  4.00 &  4.25 &  2.46 &  2.46 &  0.74
+//      SipTreeHash & 22.98 &  6.10 &  5.80 &  3.02 &  3.14 &  0.61
+//    SipTreeHash13 & 19.53 &  5.21 &  4.72 &  2.52 &  2.47 &  0.37
 
 #include <algorithm>
 #include <cassert>
@@ -94,7 +94,7 @@ class Measurements {
 
     const SpeedsForCaption cpb_for_caption = SortByCaptionFilterBySize(unique);
     for (const auto& item : cpb_for_caption) {
-      printf("%21s", item.first.c_str());
+      printf("%17s", item.first.c_str());
       for (const float cpb : item.second) {
         printf(" & %5.2f", cpb);
       }
@@ -183,10 +183,18 @@ void AddMeasurements(const std::vector<size_t>& in_sizes, const char* caption,
   }
 }
 
-void RunTests(int argc, char* argv[]) {
-  // os_specific::PinThreadToRandomCPU();
+#define PRINT_PLOT 0
 
-  const std::vector<size_t> in_sizes = {3, 3, 4, 4, 7, 7, 8, 8, 9, 10, 1023};
+void RunTests(int argc, char* argv[]) {
+#if PRINT_PLOT
+  std::vector<size_t> in_sizes;
+  for (int i = 0; i < 256; i += 4) {
+    in_sizes.push_back(i);
+  }
+#else
+  const std::vector<size_t> in_sizes = {8,  8,  31, 31, 32,   32,
+                                        63, 63, 64, 64, 1023, 1023};
+#endif
   Measurements measurements;
 
   uint64 key2[2] = {0, 1};
@@ -205,6 +213,7 @@ void RunTests(int argc, char* argv[]) {
 #ifdef __AVX2__
   {
     uint64 key4[4] = {0, 1, 2, 3};
+
     AddMeasurements(in_sizes, "SipTreeHash", &measurements,
                     [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
@@ -217,7 +226,7 @@ void RunTests(int argc, char* argv[]) {
                       return SipTreeHash13(key4, in, size);
                     });
 
-    AddMeasurements(in_sizes, "HighwayTreeHash", &measurements,
+    AddMeasurements(in_sizes, "HighwayHash", &measurements,
                     [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return HighwayTreeHash(key4, in, size);
@@ -228,7 +237,7 @@ void RunTests(int argc, char* argv[]) {
 #ifdef __SSE4_1__
   {
     uint64 key4[4] = {0, 1, 2, 3};
-    AddMeasurements(in_sizes, "SSE41HighwayTreeHash", &measurements,
+    AddMeasurements(in_sizes, "SSE41HighwayHash", &measurements,
                     [&key4](const size_t size) {
                       char in[1024] = {static_cast<char>(size)};
                       return SSE41HighwayTreeHash(key4, in, size);
@@ -236,7 +245,11 @@ void RunTests(int argc, char* argv[]) {
   }
 #endif
 
+#if PRINT_PLOT
+  measurements.PrintPlots();
+#else
   measurements.PrintTable(in_sizes);
+#endif
 
 #ifdef __SSE4_1__
   VerifyEqual("SSE41HighwayTreeHash", ScalarHighwayTreeHash,

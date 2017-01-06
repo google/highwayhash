@@ -245,6 +245,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2016-12-27
+<jyrki.alakuijala@gmail.com>, updated 2017-01-06
 
 This is not an official Google product.

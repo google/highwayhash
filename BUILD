@@ -21,6 +21,17 @@ cc_library(
 )
 
 cc_library(
+    name = "iaca",
+    hdrs = [
+        "highwayhash/iaca.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":code_annotation",
+    ],
+)
+
+cc_library(
     name = "vector",
     hdrs = [
         "highwayhash/types.h",
@@ -162,6 +173,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":arch_specific",
         ":code_annotation",
     ],
 )

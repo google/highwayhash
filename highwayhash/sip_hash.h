@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstring>  // memcpy
 
+#include "third_party/highwayhash/highwayhash/arch_specific.h"
 #include "third_party/highwayhash/highwayhash/code_annotation.h"
 #include "third_party/highwayhash/highwayhash/state_helpers.h"
 #include "third_party/highwayhash/highwayhash/types.h"
@@ -43,6 +44,10 @@ class SipHashStateT {
   HH_INLINE void Update(const char* bytes) {
     uint64 packet;
     memcpy(&packet, bytes, sizeof(packet));
+#if HH_BIG_ENDIAN
+    packet = HH_BSWAP64(packet);
+#endif
+
     v3 ^= packet;
 
     Compress<kUpdateIters>();
@@ -127,12 +132,9 @@ HH_INLINE void PaddedUpdate<SipHash13State>(const uint64 size,
   state->Update(final_packet);
 }
 
-// Fast, cryptographically strong pseudo-random function. Useful for:
-// . hash tables holding attacker-controlled data. This function is
-//   immune to hash flooding DOS attacks because multi-collisions are
-//   infeasible to compute, provided the key remains secret.
-// . deterministic/idempotent 'random' number generation, e.g. for
-//   choosing a subset of items based on their contents.
+// Fast, cryptographically strong pseudo-random function, e.g. for
+// deterministic/idempotent 'random' number generation. See also
+// README.md for information on resisting hash flooding attacks.
 //
 // Robust versus timing attacks because memory accesses are sequential
 // and the algorithm is branch-free. Compute time is proportional to the
@@ -140,12 +142,14 @@ HH_INLINE void PaddedUpdate<SipHash13State>(const uint64 size,
 //
 // "key" is a secret 128-bit key unknown to attackers.
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
-// Returns a 64-bit hash of the given data bytes.
+// Returns a 64-bit hash of the given data bytes, which are swapped on
+// big-endian CPUs so the return value is the same as on little-endian CPUs.
 static HH_INLINE uint64 SipHash(const SipHashState::Key& key, const char* bytes,
                                 const uint64 size) {
   return ComputeHash<SipHashState>(key, bytes, size);
 }
 
+// Round-reduced SipHash version (1 update and 3 finalization rounds).
 static HH_INLINE uint64 SipHash13(const SipHash13State::Key& key,
                                   const char* bytes, const uint64 size) {
   return ComputeHash<SipHash13State>(key, bytes, size);

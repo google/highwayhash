@@ -9,6 +9,15 @@
 #define ARCH_X64 0
 #endif
 
+// TODO(janwas): add other platforms as needed.
+#if ARCH_X64
+#define HH_LITTLE_ENDIAN 1
+#define HH_BIG_ENDIAN 0
+#else
+#define HH_LITTLE_ENDIAN 0
+#define HH_BIG_ENDIAN 1
+#endif
+
 #ifdef _MSC_VER
 #define HH_BSWAP32(x) _byteswap_ulong(x)
 #define HH_BSWAP64(x) _byteswap_uint64(x)
