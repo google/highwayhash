@@ -13,7 +13,7 @@ parallel, which is faster when processing at least 96 bytes.
 HighwayHash is a new way of mixing inputs which may inspire new
 cryptographically strong hashes. Large inputs are processed at a rate of
 0.3 cycles per byte, and latency remains low even for small inputs.
-HighwayHash is faster than SipHash for all input sizes, with about 3.8 times
+HighwayHash is faster than SipHash for all input sizes, with 4-5 times
 higher throughput at 1 KiB. We discuss design choices and provide statistical
 analysis and preliminary cryptanalysis in https://arxiv.org/abs/1612.06257.
 
@@ -85,10 +85,10 @@ remain independent until the reduce phase. The algorithm outputs 64 bit digests
 or up to 256 bits at no extra cost.
 
 In addition to high throughput, the algorithm is designed for low finalization
-cost. The result is about 1.5 times as fast as SipTreeHash.
+cost. The result is about twice as fast as SipTreeHash.
 
-For older CPUs, we also provide an SSE4.1 version (about 95% as fast) and a
-portable fall-back (about 10% as fast).
+For older CPUs, we also provide an SSE4.1 version (80% as fast for large inputs
+and slightly faster for short inputs) and a portable version (10% as fast).
 
 Statistical analyses and preliminary cryptanalysis are given in
 https://arxiv.org/abs/1612.06257.
@@ -115,18 +115,19 @@ We compile the C++ implementations with GCC 4.8.4 and run on a single core of
 a Xeon E5-2690 v3 clocked at 2.6 GHz. CPU cost is measured as cycles per byte
 for various input sizes:
 
-Algorithm | 3 | 4 | 7 | 8 | 9 | 10 | 1023
---- | --- | --- | --- | --- | --- |--- |--- |
-HighwayTreeHash (AVX-2) | 45.86 | 34.58 | 19.69 | 17.29 | 15.31 | 13.79 |  0.35
-SSE41HighwayTreeHash | 47.37 | 35.88 | 20.81 | 17.82 | 15.92 | 14.41 |  0.40
-SipTreeHash | 67.66 | 51.12 | 29.03 | 25.57 | 22.42 | 20.15 |  0.64
-SipTreeHash13 | 58.39 | 42.63 | 25.03 | 21.34 | 18.92 | 17.15 |  0.40
-SipHash | 42.44 | 32.79 | 18.69 | 18.17 | 16.27 | 14.68 |  1.33
-SipHash13 | 39.83 | 30.64 | 17.53 | 16.69 | 15.04 | 13.63 |  0.76
+Algorithm | 8 | 31 | 32 | 63 | 64 | 1024
+--- | --- | --- | --- | --- | --- |--- |
+HighwayTreeHash (AVX-2) | 14.48 | 3.72 | 3.64 | 1.87 | 1.91 | 0.31
+SSE41HighwayTreeHash | 13.95 | 3.63 | 3.62 | 1.89 | 1.88 | 0.36
+SipTreeHash | 23.33 | 6.22 | 6.00 | 3.17 | 3.19 | 0.62
+SipTreeHash13 | 19.63 | 5.32 | 4.81 | 2.61 | 2.54 | 0.37
+SipHash | 20.67 | 6.60 | 6.57 | 3.96 | 4.01 | 1.76
+SipHash13 | 13.83 | 4.04 | 4.20 | 2.47 | 2.42 | 0.75
 
-The tree hashes are slightly slower for <= 8 byte inputs, but up to 3.8 times
-as fast for large inputs. The SSE4.1 variant is nearly as fast as the AVX-2
-version because it also processes 32 bytes at a time.
+Sip/HighwayTreeHash are slightly slower than SipHash for <= 8 byte inputs, but
+up to 5.7 times as fast for large inputs. SSE41Highway is almost as fast as the
+AVX-2 version because it also processes chunks of 32 bytes; it is actually the
+fastest on small inputs due to its highly optimized handling of partial vectors.
 
 ## Requirements
 
@@ -204,11 +205,11 @@ please first install [GTest](https://github.com/google/googletest).
 
 To build with Make : `make`
 
-Note on project structure: the highwayhash/ subdirectory allows users to
-`#include "highwayhash/sip_hash.h"` rather than just `"sip_hash.h"`. Keeping
-BUILD in the project root directory shortens the Bazel build command line.
-This requires "highwayhash/" prefixes in all Bazel and Makefile rules.
-Adding "." to the include path enables highwayhash/ prefixes in our cc files.
+Note: include directives are prefixed with "third_party/highwayhash/".
+This allows the same source code to be shared between Google and Github,
+without adding to the compiler's include path because that greatly slows down
+large builds. We recommend placing this repository into a
+third_party/highwayhash subdirectory.
 
 ## Third-party implementations / bindings
 
@@ -245,6 +246,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 * vec.h provides a similar class for 128-bit vectors.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-01-06
+<jyrki.alakuijala@gmail.com>, updated 2017-01-09
 
 This is not an official Google product.

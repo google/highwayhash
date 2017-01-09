@@ -30,13 +30,17 @@ HH_INLINE void PaddedUpdate(const uint64 size, const char* remaining_bytes,
                             const uint64 remaining_size, State* state) {
   alignas(32) char final_packet[State::kPacketSize] = {0};
 
-  // Unusual layout matches the AVX-2 specialization in highway_tree_hash.h.
-  const size_t remainder_mod4 = remaining_size & 3;
+  // This layout matches the AVX-2 specialization in highway_tree_hash.h.
   uint32 packet4 = static_cast<uint32>(size) << 24;
-  const char* final_bytes = remaining_bytes + remaining_size - remainder_mod4;
-  for (size_t i = 0; i < remainder_mod4; ++i) {
-    const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
-    packet4 += byte << (i * 8);
+
+  const size_t remainder_mod4 = remaining_size & 3;
+  if (remainder_mod4 != 0) {
+    const char* final_bytes = remaining_bytes + remaining_size - remainder_mod4;
+    packet4 += static_cast<uint32>(final_bytes[0]);
+    const int idx1 = remainder_mod4 >> 1;
+    const int idx2 = remainder_mod4 - 1;
+    packet4 += static_cast<uint32>(final_bytes[idx1]) << 8;
+    packet4 += static_cast<uint32>(final_bytes[idx2]) << 16;
   }
 
   memcpy(final_packet, remaining_bytes, remaining_size - remainder_mod4);

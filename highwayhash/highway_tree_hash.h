@@ -18,6 +18,7 @@
 #ifdef __AVX2__
 
 #include <cstddef>
+#include <cstdio>
 #include "third_party/highwayhash/highwayhash/state_helpers.h"
 #include "third_party/highwayhash/highwayhash/vec2.h"
 
@@ -64,23 +65,27 @@ def x(a,b,c):
     Update(packet);
   }
 
+  // Updates four hash lanes in parallel by injecting four 64-bit packets.
   HH_INLINE void Update(const V4x64U& packet) {
     v1 += packet;
     v1 += mul0;
-    mul0 ^= V4x64U(_mm256_mul_epu32(v0, v1 >> 32));
+    mul0 ^= MulLow32(v1, v0 >> 32);
+    HH_COMPILER_FENCE;
     v0 += mul1;
-    mul1 ^= V4x64U(_mm256_mul_epu32(v1, v0 >> 32));
+    mul1 ^= MulLow32(v0, v1 >> 32);
+    HH_COMPILER_FENCE;
     v0 += ZipperMerge(v1);
     v1 += ZipperMerge(v0);
   }
 
   // Returns 256 pseudo-random bits that pass the smhasher tests.
   HH_INLINE V4x64U Finalize256() {
-    // Mix together all lanes.
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    // Mix together all lanes. It is slightly better to permute v0 than v1;
+    // it will be added to v1.
+    Update(Permute(v0));
+    Update(Permute(v0));
+    Update(Permute(v0));
+    Update(Permute(v0));
 
     const V4x64U sum = v0 + v1 + mul0 + mul1;
     return sum;
@@ -95,6 +100,17 @@ def x(a,b,c):
   }
 
  private:
+  static void Print(const V4x64U& v) {
+    alignas(32) uint64 lanes[V4x64U::N];
+    Store(v, lanes);
+    printf("%016llX %016llX %016llX %016llX\n", lanes[3], lanes[2], lanes[1],
+           lanes[0]);
+  }
+
+  static HH_INLINE V4x64U MulLow32(const V4x64U& a, const V4x64U& b) {
+    return V4x64U(_mm256_mul_epu32(a, b));
+  }
+
   static HH_INLINE V4x64U ZipperMerge(const V4x64U& v) {
     // Multiplication mixes/scrambles bytes 0-7 of the 64-bit result to
     // varying degrees. In descending order of goodness, bytes
@@ -113,15 +129,11 @@ def x(a,b,c):
 
   static HH_INLINE V4x64U Permute(const V4x64U& v) {
     // For complete mixing, we need to swap the upper and lower 128-bit halves;
-    // we also swap all 32-bit halves.
+    // we also swap all 32-bit halves. This is faster than extracti128 plus
+    // inserti128 followed by Rotate32.
     const V4x64U indices(0x0000000200000003ull, 0x0000000000000001ull,
                          0x0000000600000007ull, 0x0000000400000005ull);
     return V4x64U(_mm256_permutevar8x32_epi32(v, indices));
-  }
-
-  HH_INLINE void PermuteAndUpdate() {
-    // It is slightly better to permute v0 than v1; it will be added to v1.
-    Update(Permute(v0));
   }
 
   V4x64U v0;
@@ -152,21 +164,31 @@ HH_INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
   const V4x64U packet28(_mm256_maskload_epi32(
       reinterpret_cast<const int*>(remaining_bytes), mask));
 
-  // Load any remaining bytes individually and combine into a uint32.
-  const int remainder_mod4 = remaining_size & 3;
+  __m128i packet28_hi = _mm256_extracti128_si256(packet28, 1);
+
   // Length padding ensures that zero-valued buffers of different lengths
   // result in different hashes.
   uint32 packet4 = static_cast<uint32>(size) << 24;
-  const char* final_bytes = remaining_bytes + (remaining_32 * 4);
-  for (int i = 0; i < remainder_mod4; ++i) {
-    const uint32 byte = static_cast<unsigned char>(final_bytes[i]);
-    packet4 += byte << (i * 8);
+
+  // Load any remaining bytes individually into packet4. This is nearly
+  // branch-free and much more efficient than a loop.
+  const uint32_t remainder_mod4 = remaining_size & 3;
+  if (remainder_mod4 != 0) {
+    const char* final_bytes = remaining_bytes + (remaining_32 * 4);
+    // The offsets [0, remainder_mod4) are a subset of {idx0=0, idx1 and idx2}.
+    // Loading from those offsets will not overrun final_bytes, but it does
+    // repeat bytes rather than zero-pad.
+    packet4 += static_cast<uint32>(final_bytes[0]);
+    const uint32_t idx1 = remainder_mod4 >> 1;
+    const uint32_t idx2 = remainder_mod4 - 1;
+    packet4 += static_cast<uint32>(final_bytes[idx1]) << 8;
+    packet4 += static_cast<uint32>(final_bytes[idx2]) << 16;
   }
 
   // The upper 4 bytes of packet28 are zero; replace with packet4 to
   // obtain the (length-padded) 32-byte packet.
-  const V4x64U v4(_mm256_broadcastd_epi32(_mm_cvtsi32_si128(packet4)));
-  const V4x64U packet(_mm256_blend_epi32(packet28, v4, 0x80));
+  packet28_hi = _mm_insert_epi32(packet28_hi, packet4, 3);
+  const V4x64U packet(_mm256_inserti128_si256(packet28, packet28_hi, 1));
   state->Update(packet);
 }
 
@@ -181,10 +203,13 @@ HH_INLINE void PaddedUpdate<HighwayTreeHashState>(const uint64 size,
 //
 // Returns a 64-bit hash of the given data bytes.
 //
-// Throughput: 11 GB/s for 1 KB inputs.
+// About 0.31 cycles per byte for 1 KB inputs.
 static HH_INLINE uint64 HighwayTreeHash(const HighwayTreeHashState::Key& key,
                                         const char* bytes, const uint64 size) {
-  return ComputeHash<HighwayTreeHashState>(key, bytes, size);
+  // For reasons unknown, this is faster than 'calling' ComputeHash.
+  HighwayTreeHashState state(key);
+  UpdateState(bytes, size, &state);
+  return state.Finalize();
 }
 
 // J-lanes tree hash based upon multiplication and "zipper merges".

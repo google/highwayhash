@@ -275,7 +275,7 @@ T EstimateResolution() {
   for (size_t i = 0; i < kNumSamples; ++i) {
     const volatile T t0 = Start<T>();
     const volatile T t1 = Stop<T>();
-    TSC_TIMER_CHECK(t0 < t1);
+    TSC_TIMER_CHECK(t0 <= t1);
     samples[i] = t1 - t0;
   }
   CountingSort(samples, samples + kNumSamples);

@@ -211,6 +211,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":code_annotation",
+        ":iaca",
         ":vector",
     ],
 )

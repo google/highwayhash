@@ -53,11 +53,11 @@ class ScalarHighwayTreeHashState {
 
     // (Loop is faster than unrolling)
     for (int lane = 0; lane < kNumLanes; ++lane) {
-      const uint32 v0_32 = static_cast<uint32>(v0[lane]);
       const uint32 v1_32 = static_cast<uint32>(v1[lane]);
-      mul0[lane] ^= v0_32 * (v1[lane] >> 32);
+      mul0[lane] ^= v1_32 * (v0[lane] >> 32);
       v0[lane] += mul1[lane];
-      mul1[lane] ^= v1_32 * (v0[lane] >> 32);
+      const uint32 v0_32 = static_cast<uint32>(v0[lane]);
+      mul1[lane] ^= v0_32 * (v1[lane] >> 32);
     }
 
     ZipperMergeAndAdd(v1[0], v1[1], &v0[0], &v0[1]);
@@ -76,7 +76,12 @@ class ScalarHighwayTreeHashState {
     return v0[0] + v1[0] + mul0[0] + mul1[0];
   }
 
-  // private:
+ private:
+  static void Print(const Lanes& lanes) {
+    printf("%016llX %016llX %016llX %016llX\n", lanes[3], lanes[2], lanes[1],
+           lanes[0]);
+  }
+
   static HH_INLINE void Copy(const Lanes& source, Lanes* dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] = source[lane];
@@ -131,10 +136,10 @@ class ScalarHighwayTreeHashState {
     Update(reinterpret_cast<const char*>(permuted));
   }
 
-  uint64 v0[kNumLanes];
-  uint64 v1[kNumLanes];
-  uint64 mul0[kNumLanes];
-  uint64 mul1[kNumLanes];
+  Lanes v0;
+  Lanes v1;
+  Lanes mul0;
+  Lanes mul1;
 };
 
 // J-lanes tree hash based upon multiplication and "zipper merges".

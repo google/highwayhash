@@ -44,8 +44,9 @@ class SSE41HighwayTreeHashState {
     const V2x64U keyH = LoadUnaligned128(key + 2);
     v0L = keyL ^ init0L;
     v0H = keyH ^ init0H;
-    v1L = Rot32(keyH) ^ init1L;
-    v1H = Rot32(keyL) ^ init1H;
+    // swapped 128-bit halves to match Permute().
+    v1L = Rotate32(keyH) ^ init1L;
+    v1H = Rotate32(keyL) ^ init1H;
     mul0L = init0L;
     mul0H = init0H;
     mul1L = init1L;
@@ -57,12 +58,12 @@ class SSE41HighwayTreeHashState {
     v1H += packetH;
     v1L += mul0L;
     v1H += mul0H;
-    mul0L ^= V2x64U(_mm_mul_epu32(v0L, v1L >> 32));
-    mul0H ^= V2x64U(_mm_mul_epu32(v0H, v1H >> 32));
+    mul0L ^= V2x64U(_mm_mul_epu32(v1L, Rotate32(v0L)));
+    mul0H ^= V2x64U(_mm_mul_epu32(v1H, v0H >> 32));
     v0L += mul1L;
     v0H += mul1H;
-    mul1L ^= V2x64U(_mm_mul_epu32(v1L, v0L >> 32));
-    mul1H ^= V2x64U(_mm_mul_epu32(v1H, v0H >> 32));
+    mul1L ^= V2x64U(_mm_mul_epu32(v0L, Rotate32(v1L)));
+    mul1H ^= V2x64U(_mm_mul_epu32(v0H, v1H >> 32));
     v0L += ZipperMerge(v1L);
     v0H += ZipperMerge(v1H);
     v1L += ZipperMerge(v0L);
@@ -89,7 +90,7 @@ class SSE41HighwayTreeHashState {
   }
 
  private:
-  void Print(const V2x64U& L, const V2x64U& H) {
+  static void Print(const V2x64U& L, const V2x64U& H) {
     alignas(16) uint64 lanesL[2] = {0};
     alignas(16) uint64 lanesH[2] = {0};
     Store(L, lanesL);
@@ -114,14 +115,14 @@ class SSE41HighwayTreeHashState {
   }
 
   // Swap 32-bit halves of each lane (caller swaps 128-bit halves)
-  static HH_INLINE V2x64U Rot32(const V2x64U& v) {
+  static HH_INLINE V2x64U Rotate32(const V2x64U& v) {
     return V2x64U(_mm_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
   }
 
   HH_INLINE void PermuteAndUpdate() {
     // It is slightly better to permute v0 than v1; it will be added to v1.
     // AVX-2 Permute also swaps 128-bit halves, so swap input operands.
-    Update(Rot32(v0H), Rot32(v0L));
+    Update(Rotate32(v0H), Rotate32(v0L));
   }
 
   V2x64U v0L;
@@ -133,6 +134,71 @@ class SSE41HighwayTreeHashState {
   V2x64U mul1L;
   V2x64U mul1H;
 };
+
+// Replacement for maskload_epi32. Returns zero-initialized vector with the
+// lower "size" = 0, 4, 8 or 12 bytes loaded from "bytes".
+HH_INLINE V2x64U LoadMultipleOfFour(const char* bytes, const uint64 size) {
+  const uint32_t* words = reinterpret_cast<const uint32_t*>(bytes);
+  // Mask of 1-bits where the final 4 bytes should be inserted (replacement for
+  // variable shift/insert using broadcast+blend).
+  V2x64U mask4(_mm_cvtsi32_si128(~0U));  // 'insert' into lane 0
+  V2x64U ret(0);
+  if (size & 8) {
+    ret = V2x64U(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(words)));
+    // mask4 = 0 ~0 0 0 ('insert' into lane 2)
+    mask4 = V2x64U(_mm_bslli_si128(mask4, 8));
+    words += 2;
+  }
+  // Final 4 (possibly after the 8 above); 'insert' into lane 0 or 2 of ret.
+  if (size & 4) {
+    const __m128i word2 = _mm_cvtsi32_si128(words[0]);
+    // = 0 word2 0 word2; mask4 will select which lane to keep.
+    const V2x64U broadcast(_mm_shuffle_epi32(word2, 0x00));
+    // (slightly faster than blendv_epi8)
+    ret |= V2x64U(broadcast & mask4);
+  }
+  return ret;
+}
+
+template <>
+HH_INLINE void PaddedUpdate<SSE41HighwayTreeHashState>(
+    const uint64 size, const char* remaining_bytes, const uint64 remaining_size,
+    SSE41HighwayTreeHashState* state) {
+  // Length padding ensures that zero-valued buffers of different lengths
+  // result in different hashes.
+  uint32 packet4 = static_cast<uint32>(size) << 24;
+
+  // Load any remaining bytes individually into packet4. This is nearly
+  // branch-free and much more efficient than a loop.
+  const uint32 remainder_mod4 = remaining_size & 3;
+  if (remainder_mod4 != 0) {
+    const char* final_bytes = remaining_bytes + remaining_size - remainder_mod4;
+    // The offsets [0, remainder_mod4) are a subset of {idx0=0, idx1 and idx2}.
+    // Loading from those offsets will not overrun final_bytes, but it does
+    // repeat bytes rather than zero-pad.
+    packet4 += static_cast<uint32>(final_bytes[0]);
+    const uint32_t idx1 = remainder_mod4 >> 1;
+    const uint32_t idx2 = remainder_mod4 - 1;
+    packet4 += static_cast<uint32>(final_bytes[idx1]) << 8;
+    packet4 += static_cast<uint32>(final_bytes[idx2]) << 16;
+  }
+
+  // Avoid memcpy because it saves/restores all XMM registers used by "state"!
+  // SSE4 lacks maskload, so we need branches to avoid overrunning the input.
+  // Update is called until remaining_size < 32, so we only need to test
+  // bits[0,4] of remaining_size, and bits[0,1] are checked via remainder_mod4.
+  if (HH_UNLIKELY(remaining_size & 16)) {
+    const V2x64U packetL =
+        LoadUnaligned128(reinterpret_cast<const uint64*>(remaining_bytes));
+    V2x64U packetH = LoadMultipleOfFour(remaining_bytes + 16, remaining_size);
+    packetH = V2x64U(_mm_insert_epi32(packetH, packet4, 3));
+    state->Update(packetL, packetH);
+  } else {
+    const V2x64U packetH(_mm_bslli_si128(_mm_cvtsi32_si128(packet4), 12));
+    const V2x64U packetL = LoadMultipleOfFour(remaining_bytes, remaining_size);
+    state->Update(packetL, packetH);
+  }
+}
 
 // J-lanes tree hash based upon multiplication and "zipper merges".
 //
@@ -146,11 +212,13 @@ class SSE41HighwayTreeHashState {
 // Returns a 64-bit hash of the given data bytes, the same value that
 // HighwayTreeHash would return (drop-in compatible).
 //
-// Throughput: 8.2 GB/s for 1 KB inputs (about 75% of the AVX-2 version).
+// About 0.36 cycles per byte for 1 KB inputs (86% of the AVX-2 version).
 static HH_INLINE uint64 SSE41HighwayTreeHash(const uint64 (&key)[4],
                                              const char* bytes,
                                              const uint64 size) {
-  return ComputeHash<SSE41HighwayTreeHashState>(key, bytes, size);
+  SSE41HighwayTreeHashState state(key);
+  UpdateState(bytes, size, &state);
+  return state.Finalize();
 }
 
 }  // namespace highwayhash
