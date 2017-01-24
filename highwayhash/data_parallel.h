@@ -1,9 +1,24 @@
-#ifndef HIGHWAYHASH_HIGHWAYHASH_DATA_PARALLEL_H_
-#define HIGHWAYHASH_HIGHWAYHASH_DATA_PARALLEL_H_
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef HIGHWAYHASH_DATA_PARALLEL_H_
+#define HIGHWAYHASH_DATA_PARALLEL_H_
 
 // Portable C++11 alternative to OpenMP for data-parallel computations:
 // provides low-overhead ThreadPool, plus PerThread with support for reduction.
 
+#include <stdio.h>
 #include <algorithm>  // find_if
 #include <atomic>
 #include <condition_variable>  //NOLINT
@@ -13,6 +28,7 @@
 #include <memory>
 #include <mutex>  //NOLINT
 #include <thread>  //NOLINT
+#include <utility>
 #include <vector>
 
 #define DATA_PARALLEL_CHECK(condition)                           \
@@ -320,4 +336,4 @@ class PerThread {
 
 }  // namespace data_parallel
 
-#endif  // HIGHWAYHASH_HIGHWAYHASH_DATA_PARALLEL_H_
+#endif  // HIGHWAYHASH_DATA_PARALLEL_H_

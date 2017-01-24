@@ -12,46 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_ARCH_SPECIFIC_H_
-#define HIGHWAYHASH_ARCH_SPECIFIC_H_
+#ifndef HIGHWAYHASH_HH_TYPES_H_
+#define HIGHWAYHASH_HH_TYPES_H_
 
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
 #include <stdint.h>
-#include <cstdlib>  // _byteswap_*
-#include "highwayhash/compiler_specific.h"
+#include "highwayhash/instruction_sets.h"
 
 namespace highwayhash {
 
-#if defined(__x86_64__) || defined(_M_X64)
-#define HH_ARCH_X64 1
-#else
-#define HH_ARCH_X64 0
-#endif
+// 256-bit secret key that should remain unknown to attackers.
+// We recommend initializing it to a random value.
+using HHKey = uint64_t[4];
 
-// TODO(janwas): add other platforms as needed.
-#if HH_ARCH_X64
-#define HH_LITTLE_ENDIAN 1
-#define HH_BIG_ENDIAN 0
-#else
-#define HH_LITTLE_ENDIAN 0
-#define HH_BIG_ENDIAN 1
-#endif
+// Hash 'return' types
+using HHResult64 = uint64_t;  // returned directly
+using HHResult128 = uint64_t[2];
+using HHResult256 = uint64_t[4];
 
-#ifdef _MSC_VER
-#define HH_BSWAP32(x) _byteswap_ulong(x)
-#define HH_BSWAP64(x) _byteswap_uint64(x)
-#else
-#define HH_BSWAP32(x) __builtin_bswap32(x)
-#define HH_BSWAP64(x) __builtin_bswap64(x)
-#endif
-
-#if HH_ARCH_X64
-void Cpuid(const uint32_t level, const uint32_t count,
-           uint32_t* HH_RESTRICT abcd);
-#endif
+// Primary template, specialized for TargetAVX2 etc.
+template <class Target>
+class HHState {};
 
 }  // namespace highwayhash
 
-#endif  // HIGHWAYHASH_ARCH_SPECIFIC_H_
+#endif  // HIGHWAYHASH_HH_TYPES_H_

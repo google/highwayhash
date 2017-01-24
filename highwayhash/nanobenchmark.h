@@ -1,12 +1,26 @@
-#ifndef HIGHWAYHASH_HIGHWAYHASH_NANOBENCHMARK_H_
-#define HIGHWAYHASH_HIGHWAYHASH_NANOBENCHMARK_H_
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef HIGHWAYHASH_NANOBENCHMARK_H_
+#define HIGHWAYHASH_NANOBENCHMARK_H_
 
 // Benchmarks functions of a single integer argument with realistic branch
 // prediction hit rates. Uses a robust estimator to summarize the measurements.
 // Measurements are precise to about 0.2 cycles.
 //
 // Example:
-// #include "third_party/highwayhash/highwayhash/nanobenchmark.h"
+// #include "highwayhash/nanobenchmark.h"
 // nanobenchmark::RaiseThreadPriority();
 // nanobenchmark::PinThreadToCPU();
 // const std::map<size_t, float> durations =
@@ -72,10 +86,10 @@
 #include <utility>
 #include <vector>
 
-#include "third_party/highwayhash/highwayhash/arch_specific.h"
-#include "third_party/highwayhash/highwayhash/code_annotation.h"
-#include "third_party/highwayhash/highwayhash/os_specific.h"
-#include "third_party/highwayhash/highwayhash/tsc_timer.h"
+#include "highwayhash/arch_specific.h"
+#include "highwayhash/compiler_specific.h"
+#include "highwayhash/os_specific.h"
+#include "highwayhash/tsc_timer.h"
 
 // Enables sanity checks that verify correct operation at the cost of
 // longer benchmark runs.
@@ -119,7 +133,7 @@ template <typename Condition>
 using EnableIf = typename std::enable_if<Condition::value>::type;
 
 // Simplifies the predicates below; we only special-case floats on x86.
-#if ARCH_X64
+#if HH_ARCH_X64
 #define NANOBENCHMARK_IS_FLOAT(T) std::is_floating_point<T>::value
 #else
 #define NANOBENCHMARK_IS_FLOAT(T) false
@@ -499,4 +513,4 @@ inline void PrintMedianAndVariability(
 
 }  // namespace nanobenchmark
 
-#endif  // HIGHWAYHASH_HIGHWAYHASH_NANOBENCHMARK_H_
+#endif  // HIGHWAYHASH_NANOBENCHMARK_H_

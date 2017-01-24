@@ -12,14 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Benchmark and verification for hashing algorithms. Output (cycles per byte):
-// Algo \          bytes: 8       31      32      63      64     1024
-//      HighwayHash     14.48    3.72    3.64    1.87    1.91    0.31
-// SSE41HighwayHash     13.95    3.63    3.62    1.89    1.88    0.36
-//          SipHash     20.67    6.60    6.57    3.96    4.01    1.76
-//        SipHash13     13.83    4.04    4.20    2.47    2.42    0.75
-//      SipTreeHash     23.33    6.22    6.00    3.17    3.19    0.62
-//    SipTreeHash13     19.63    5.32    4.81    2.61    2.54    0.37
+// Measures hash function throughput for various input sizes.
 
 #include <algorithm>
 #include <cassert>
@@ -31,54 +24,38 @@
 #include <utility>
 #include <vector>
 
-#include "third_party/highwayhash/highwayhash/nanobenchmark.h"
-#include "third_party/highwayhash/highwayhash/os_specific.h"
-#include "third_party/highwayhash/highwayhash/scalar_highway_tree_hash.h"
-#include "third_party/highwayhash/highwayhash/types.h"
-#include "third_party/highwayhash/highwayhash/vec2.h"
+#include "highwayhash/compiler_specific.h"
+#include "highwayhash/nanobenchmark.h"
+#include "highwayhash/os_specific.h"
 
+// Which functions to enable (includes check for compiler support)
 #define BENCHMARK_SIP 1
 #define BENCHMARK_SIP_TREE 1 && defined(__AVX2__)
-#define BENCHMARK_HIGHWAY 1 && defined(__AVX2__)
-#define BENCHMARK_SSE41_HIGHWAY 1 && defined(__SSE4_1__)
+#define BENCHMARK_HIGHWAY_AVX2 1 && defined(__AVX2__)
+#define BENCHMARK_HIGHWAY_SSE41 1 && defined(__SSE4_1__)
+#define BENCHMARK_HIGHWAY_PORTABLE 1
+#define BENCHMARK_FARM 0
 
-#if BENCHMARK_HIGHWAY
-#include "third_party/highwayhash/highwayhash/highway_tree_hash.h"
+#if BENCHMARK_HIGHWAY_AVX2 || BENCHMARK_HIGHWAY_SSE41 || \
+    BENCHMARK_HIGHWAY_PORTABLE
+#include "highwayhash/highwayhash.h"
 #endif
 #if BENCHMARK_SIP
-#include "third_party/highwayhash/highwayhash/sip_hash.h"
+#include "highwayhash/sip_hash.h"
 #endif
 #if BENCHMARK_SIP_TREE
-#include "third_party/highwayhash/highwayhash/scalar_sip_tree_hash.h"
-#include "third_party/highwayhash/highwayhash/sip_tree_hash.h"
+#include "highwayhash/scalar_sip_tree_hash.h"
+#include "highwayhash/sip_tree_hash.h"
 #endif
-#if BENCHMARK_SSE41_HIGHWAY
-#include "third_party/highwayhash/highwayhash/sse41_highway_tree_hash.h"
+#if BENCHMARK_FARM
+#include "third_party/farmhash/src/farmhash.h"
 #endif
 
 namespace highwayhash {
 namespace {
 
-template <class Function1, class Function2>
-static void VerifyEqual(const char* caption, const Function1& hash_function1,
-                        const Function2& hash_function2) {
-  const int kMaxSize = 128;
-  char in[kMaxSize] = {0};
-
-  const uint64 key[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
-                         0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
-
-  for (int size = 0; size < kMaxSize; ++size) {
-    in[size] = static_cast<char>(size);
-    const uint64 hash = hash_function1(key, in, size);
-    const uint64 hash2 = hash_function2(key, in, size);
-    if (hash != hash2) {
-      printf("Failed %s at length %d %llx %llx\n", caption, size, hash, hash2);
-      exit(1);
-    }
-  }
-  printf("Verified %s.\n", caption);
-}
+constexpr size_t kMaxInputSize = 1024;
+static_assert(kMaxInputSize >= sizeof(size_t), "Too small");
 
 // Stores time measurements from benchmarks, with support for printing them
 // as LaTeX figures or tables.
@@ -211,21 +188,21 @@ void AddMeasurements(const std::vector<size_t>& in_sizes, const char* caption,
   }
 }
 
-#define PRINT_PLOT 0
-
 void AddMeasurementsSip(const std::vector<size_t>& in_sizes,
                         Measurements* measurements) {
 #if BENCHMARK_SIP
-  uint64 key2[2] = {0, 1};
+  const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
   AddMeasurements(in_sizes, "SipHash", measurements,
                   [&key2](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
                     return SipHash(key2, in, size);
                   });
 
   AddMeasurements(in_sizes, "SipHash13", measurements,
                   [&key2](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
                     return SipHash13(key2, in, size);
                   });
 #endif
@@ -234,16 +211,18 @@ void AddMeasurementsSip(const std::vector<size_t>& in_sizes,
 void AddMeasurementsSipTree(const std::vector<size_t>& in_sizes,
                             Measurements* measurements) {
 #if BENCHMARK_SIP_TREE
-  uint64 key4[4] = {0, 1, 2, 3};
+  const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
   AddMeasurements(in_sizes, "SipTreeHash", measurements,
                   [&key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
                     return SipTreeHash(key4, in, size);
                   });
 
   AddMeasurements(in_sizes, "SipTreeHash13", measurements,
                   [&key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
                     return SipTreeHash13(key4, in, size);
                   });
 #endif
@@ -251,69 +230,95 @@ void AddMeasurementsSipTree(const std::vector<size_t>& in_sizes,
 
 void AddMeasurementsHighway(const std::vector<size_t>& in_sizes,
                             Measurements* measurements) {
-#if BENCHMARK_HIGHWAY
-  alignas(32) uint64 key4[4] = {0, 1, 2, 3};
-  AddMeasurements(in_sizes, "HighwayHash", measurements,
-                  [&key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
-                    return HighwayTreeHash(key4, in, size);
+#if BENCHMARK_HIGHWAY_AVX2 || BENCHMARK_HIGHWAY_SSE41 || \
+    BENCHMARK_HIGHWAY_PORTABLE
+  const HHKey key HH_ALIGNAS(32) = {0, 1, 2, 3};
+#endif
+#if BENCHMARK_HIGHWAY_AVX2
+  AddMeasurements(in_sizes, "HighwayHashAVX2", measurements,
+                  [&key](const size_t size) {
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
+                    HHResult64 result;
+                    HHState<TargetAVX2> state(key);
+                    HighwayHashT(&state, in, size, &result);
+                    return result;
+                  });
+#endif
+#if BENCHMARK_HIGHWAY_SSE41
+  AddMeasurements(in_sizes, "HighwayHashSSE41", measurements,
+                  [&key](const size_t size) {
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
+                    HHResult64 result;
+                    HHState<TargetSSE41> state(key);
+                    HighwayHashT(&state, in, size, &result);
+                    return result;
+                  });
+#endif
+#if BENCHMARK_HIGHWAY_PORTABLE
+  AddMeasurements(in_sizes, "HighwayHashPortable", measurements,
+                  [&key](const size_t size) {
+                    char in[kMaxInputSize];
+                    memcpy(in, &size, sizeof(size));
+                    HHResult64 result;
+                    HHState<TargetPortable> state(key);
+                    HighwayHashT(&state, in, size, &result);
+                    return result;
                   });
 #endif
 }
 
-void AddMeasurementsSSE41Highway(const std::vector<size_t>& in_sizes,
-                                 Measurements* measurements) {
-#if BENCHMARK_SSE41_HIGHWAY
-  alignas(32) uint64 key4[4] = {0, 1, 2, 3};
-  AddMeasurements(in_sizes, "SSE41HighwayHash", measurements,
-                  [&key4](const size_t size) {
-                    char in[1024] = {static_cast<char>(size)};
-                    return SSE41HighwayTreeHash(key4, in, size);
-                  });
+void AddMeasurementsFarm(const std::vector<size_t>& in_sizes,
+                         Measurements* measurements) {
+#if BENCHMARK_FARM
+  AddMeasurements(in_sizes, "Farm", measurements, [](const size_t size) {
+    char in[kMaxInputSize];
+    memcpy(in, &size, sizeof(size));
+    return farmhash::Fingerprint64(reinterpret_cast<const char*>(in), size);
+  });
 #endif
 }
 
-void RunTests(int argc, char* argv[]) {
-#if BENCHMARK_SSE41_HIGHWAY
-  VerifyEqual("SSE41HighwayTreeHash", ScalarHighwayTreeHash,
-              SSE41HighwayTreeHash);
-#endif
-#if BENCHMARK_SIP_TREE
-  VerifyEqual("SipTreeHash", ScalarSipTreeHash, SipTreeHash);
-  VerifyEqual("SipTreeHash13", ScalarSipTreeHash13, SipTreeHash13);
-#endif
-#if BENCHMARK_HIGHWAY
-  VerifyEqual("HighwayTreeHash", ScalarHighwayTreeHash, HighwayTreeHash);
-#endif
+void AddMeasurements(const std::vector<size_t>& in_sizes,
+                     Measurements* measurements) {
+  AddMeasurementsSip(in_sizes, measurements);
+  AddMeasurementsSipTree(in_sizes, measurements);
+  AddMeasurementsHighway(in_sizes, measurements);
+  AddMeasurementsFarm(in_sizes, measurements);
+}
 
-#if PRINT_PLOT
+void PrintTable() {
+  const std::vector<size_t> in_sizes = {8, 31, 32, 63, 64, kMaxInputSize};
+  Measurements measurements;
+  AddMeasurements(in_sizes, &measurements);
+  measurements.PrintTable(in_sizes);
+}
+
+void PrintPlots() {
   std::vector<size_t> in_sizes;
-  for (int i = 0; i < 256; i += 4) {
-    in_sizes.push_back(i);
+  for (int num_vectors = 0; num_vectors < 12; ++num_vectors) {
+    for (int remainder : {0, 9, 18, 27}) {
+      in_sizes.push_back(num_vectors * 32 + remainder);
+      assert(in_sizes.back() <= kMaxInputSize);
+    }
   }
-#else
-  const std::vector<size_t> in_sizes = {8, 31, 32, 63, 64, 1024};
-#endif
 
   Measurements measurements;
-  os_specific::PinThreadToRandomCPU();
-
-  AddMeasurementsSip(in_sizes, &measurements);
-  AddMeasurementsSipTree(in_sizes, &measurements);
-  AddMeasurementsHighway(in_sizes, &measurements);
-  AddMeasurementsSSE41Highway(in_sizes, &measurements);
-
-#if PRINT_PLOT
+  AddMeasurements(in_sizes, &measurements);
   measurements.PrintPlots();
-#else
-  measurements.PrintTable(in_sizes);
-#endif
 }
 
 }  // namespace
 }  // namespace highwayhash
 
 int main(int argc, char* argv[]) {
-  highwayhash::RunTests(argc, argv);
+  os_specific::PinThreadToRandomCPU();
+  // No argument or t => table
+  if (argc < 2 || argv[1][0] == 't') {
+    highwayhash::PrintTable();
+  } else if (argv[1][0] == 'p') {
+    highwayhash::PrintPlots();
+  }
   return 0;
 }

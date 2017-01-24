@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
-#define HIGHWAYHASH_HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
+#ifndef HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
+#define HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
 
 // Scalar (non-vector/SIMD) version for comparison purposes.
 
-#include "third_party/highwayhash/highwayhash/types.h"
+#include "highwayhash/state_helpers.h"
 
 #ifdef __cplusplus
 namespace highwayhash {
 extern "C" {
 #endif
 
-uint64 ScalarSipTreeHash(const uint64 (&key)[4], const char* bytes,
-                         const uint64 size);
-uint64 ScalarSipTreeHash13(const uint64 (&key)[4], const char* bytes,
-                           const uint64 size);
+HH_U64 ScalarSipTreeHash(const HH_U64 (&key)[4], const char* bytes,
+                         const HH_U64 size);
+HH_U64 ScalarSipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
+                           const HH_U64 size);
 
 #ifdef __cplusplus
 }  // extern "C"
 }  // namespace highwayhash
 #endif
 
-#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_

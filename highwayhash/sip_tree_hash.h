@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
-#define HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
+#ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
+#define HIGHWAYHASH_SIP_TREE_HASH_H_
 #ifdef __AVX2__
 
-#include "third_party/highwayhash/highwayhash/types.h"
+#include "highwayhash/state_helpers.h"
 
 #ifdef __cplusplus
 namespace highwayhash {
@@ -39,11 +39,11 @@ extern "C" {
 // "bytes" is the data to hash (possibly unaligned).
 // "size" is the number of bytes to hash; exactly that many bytes are read.
 // Returns a 64-bit hash of the given data bytes.
-uint64 SipTreeHash(const uint64 (&key)[4], const char* bytes,
-                   const uint64 size);
+HH_U64 SipTreeHash(const HH_U64 (&key)[4], const char* bytes,
+                   const HH_U64 size);
 
-uint64 SipTreeHash13(const uint64 (&key)[4], const char* bytes,
-                     const uint64 size);
+HH_U64 SipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
+                     const HH_U64 size);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -51,4 +51,4 @@ uint64 SipTreeHash13(const uint64 (&key)[4], const char* bytes,
 #endif
 
 #endif  // #ifdef __AVX2__
-#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_TREE_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_

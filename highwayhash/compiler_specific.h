@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
-#define HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
+#ifndef HIGHWAYHASH_COMPILER_SPECIFIC_H_
+#define HIGHWAYHASH_COMPILER_SPECIFIC_H_
+
+// WARNING: compiled with different flags => must not define/instantiate any
+// inline functions, nor include any headers that do - see instruction_sets.h.
 
 // Compiler
 
@@ -65,8 +68,10 @@
 
 #if HH_MSC_VERSION
 // Unsupported, __assume is not the same.
+#define HH_LIKELY(expr) expr
 #define HH_UNLIKELY(expr) expr
 #else
+#define HH_LIKELY(expr) __builtin_expect(!!(expr), 1)
 #define HH_UNLIKELY(expr) __builtin_expect(!!(expr), 0)
 #endif
 
@@ -80,12 +85,4 @@
 #define HH_COMPILER_FENCE
 #endif
 
-// Informs the compiler that the preceding function returns a pointer with the
-// specified alignment. This may improve code generation.
-#if HH_MSC_VERSION
-#define HH_CACHE_ALIGNED_RETURN /* not supported */
-#else
-#define HH_CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
-#endif
-
-#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_CODE_ANNOTATION_H_
+#endif  // #ifndef HIGHWAYHASH_COMPILER_SPECIFIC_H_

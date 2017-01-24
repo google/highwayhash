@@ -1,5 +1,19 @@
-#ifndef HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
-#define HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef HIGHWAYHASH_PROFILER_H_
+#define HIGHWAYHASH_PROFILER_H_
 
 // High precision, low overhead time measurements. Returns exact call counts and
 // total elapsed time for user-defined 'zones' (code regions, i.e. C++ scopes).
@@ -29,7 +43,6 @@
 #if PROFILER_ENABLED
 
 #include <emmintrin.h>
-
 #include <algorithm>  // min/max
 #include <atomic>
 #include <cassert>
@@ -51,8 +64,8 @@
 #include <x86intrin.h>
 #endif
 
-#include "third_party/highwayhash/highwayhash/code_annotation.h"
-#include "third_party/highwayhash/highwayhash/tsc_timer.h"
+#include "highwayhash/compiler_specific.h"
+#include "highwayhash/tsc_timer.h"
 
 #define PROFILER_CHECK(condition)                           \
   while (!(condition)) {                                    \
@@ -81,7 +94,7 @@ class CacheAligned {
   static constexpr size_t kPointerSize = sizeof(void*);
   static constexpr size_t kCacheLineSize = 64;
 
-  static void* Allocate(const size_t bytes) HH_CACHE_ALIGNED_RETURN {
+  static void* Allocate(const size_t bytes) {
     char* const allocated = static_cast<char*>(malloc(bytes + kCacheLineSize));
     if (allocated == nullptr) {
       return nullptr;
@@ -414,8 +427,8 @@ class Results {
   size_t depth_ = 0;      // Number of active zones.
   size_t num_zones_ = 0;  // Number of retired zones.
 
-  alignas(64) Node nodes_[kMaxDepth];         // Stack
-  alignas(64) Accumulator zones_[kMaxZones];  // Self-organizing list
+  HH_ALIGNAS(64) Node nodes_[kMaxDepth];         // Stack
+  HH_ALIGNAS(64) Accumulator zones_[kMaxZones];  // Self-organizing list
 };
 
 // Per-thread packet storage, allocated via CacheAligned.
@@ -535,7 +548,7 @@ class ThreadList {
 
  private:
   // Owning pointers.
-  alignas(64) ThreadSpecific* threads_[kMaxThreads];
+  HH_ALIGNAS(64) ThreadSpecific* threads_[kMaxThreads];
   std::atomic<uint32_t> num_threads_{0};
 };
 
@@ -674,4 +687,4 @@ inline void ThreadSpecific::ComputeOverhead() {
 #define PROFILER_PRINT_RESULTS()
 #endif
 
-#endif  // HIGHWAYHASH_HIGHWAYHASH_PROFILER_H_
+#endif  // HIGHWAYHASH_PROFILER_H_

@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_
-#define HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_
+#ifndef HIGHWAYHASH_SIP_HASH_H_
+#define HIGHWAYHASH_SIP_HASH_H_
 
 // Portable but fast SipHash implementation.
 
 #include <cstddef>
 #include <cstring>  // memcpy
 
-#include "third_party/highwayhash/highwayhash/arch_specific.h"
-#include "third_party/highwayhash/highwayhash/code_annotation.h"
-#include "third_party/highwayhash/highwayhash/state_helpers.h"
-#include "third_party/highwayhash/highwayhash/types.h"
+#include "highwayhash/arch_specific.h"
+#include "highwayhash/compiler_specific.h"
+#include "highwayhash/state_helpers.h"
 
 namespace highwayhash {
 
@@ -31,8 +30,8 @@ namespace highwayhash {
 template <int kUpdateIters, int kFinalizeIters>
 class SipHashStateT {
  public:
-  using Key = uint64[2];
-  static const size_t kPacketSize = sizeof(uint64);
+  using Key = HH_U64[2];
+  static const size_t kPacketSize = sizeof(HH_U64);
 
   explicit HH_INLINE SipHashStateT(const Key& key) {
     v0 = 0x736f6d6570736575ull ^ key[0];
@@ -42,7 +41,7 @@ class SipHashStateT {
   }
 
   HH_INLINE void Update(const char* bytes) {
-    uint64 packet;
+    HH_U64 packet;
     memcpy(&packet, bytes, sizeof(packet));
 #if HH_BIG_ENDIAN
     packet = HH_BSWAP64(packet);
@@ -55,7 +54,7 @@ class SipHashStateT {
     v0 ^= packet;
   }
 
-  HH_INLINE uint64 Finalize() {
+  HH_INLINE HH_U64 Finalize() {
     // Mix in bits to avoid leaking the key if all packets were zero.
     v2 ^= 0xFF;
 
@@ -65,10 +64,10 @@ class SipHashStateT {
   }
  private:
   // Rotate a 64-bit value "v" left by N bits.
-  template <uint64 bits>
-  static HH_INLINE uint64 RotateLeft(const uint64 v) {
-    const uint64 left = v << bits;
-    const uint64 right = v >> (64 - bits);
+  template <HH_U64 bits>
+  static HH_INLINE HH_U64 RotateLeft(const HH_U64 v) {
+    const HH_U64 left = v << bits;
+    const HH_U64 right = v >> (64 - bits);
     return left | right;
   }
 
@@ -96,10 +95,10 @@ class SipHashStateT {
     }
   }
 
-  uint64 v0;
-  uint64 v1;
-  uint64 v2;
-  uint64 v3;
+  HH_U64 v0;
+  HH_U64 v1;
+  HH_U64 v2;
+  HH_U64 v3;
 };
 
 using SipHashState = SipHashStateT<2, 4>;
@@ -108,9 +107,9 @@ using SipHash13State = SipHashStateT<1, 3>;
 // Override the HighwayTreeHash padding scheme with that of SipHash so that
 // the hash output matches the known-good values in sip_hash_test.
 template <>
-HH_INLINE void PaddedUpdate<SipHashState>(const uint64 size,
+HH_INLINE void PaddedUpdate<SipHashState>(const HH_U64 size,
                                           const char* remaining_bytes,
-                                          const uint64 remaining_size,
+                                          const HH_U64 remaining_size,
                                           SipHashState* state) {
   // Copy to avoid overrunning the input buffer.
   char final_packet[SipHashState::kPacketSize] = {0};
@@ -120,9 +119,9 @@ HH_INLINE void PaddedUpdate<SipHashState>(const uint64 size,
 }
 
 template <>
-HH_INLINE void PaddedUpdate<SipHash13State>(const uint64 size,
+HH_INLINE void PaddedUpdate<SipHash13State>(const HH_U64 size,
                                             const char* remaining_bytes,
-                                            const uint64 remaining_size,
+                                            const HH_U64 remaining_size,
                                             SipHash13State* state) {
   // Copy to avoid overrunning the input buffer.
   char final_packet[SipHash13State::kPacketSize] = {0};
@@ -144,21 +143,21 @@ HH_INLINE void PaddedUpdate<SipHash13State>(const uint64 size,
 // "bytes" is the data to hash; ceil(size / 8) * 8 bytes are read.
 // Returns a 64-bit hash of the given data bytes, which are swapped on
 // big-endian CPUs so the return value is the same as on little-endian CPUs.
-static HH_INLINE uint64 SipHash(const SipHashState::Key& key, const char* bytes,
-                                const uint64 size) {
+static HH_INLINE HH_U64 SipHash(const SipHashState::Key& key, const char* bytes,
+                                const HH_U64 size) {
   return ComputeHash<SipHashState>(key, bytes, size);
 }
 
 // Round-reduced SipHash version (1 update and 3 finalization rounds).
-static HH_INLINE uint64 SipHash13(const SipHash13State::Key& key,
-                                  const char* bytes, const uint64 size) {
+static HH_INLINE HH_U64 SipHash13(const SipHash13State::Key& key,
+                                  const char* bytes, const HH_U64 size) {
   return ComputeHash<SipHash13State>(key, bytes, size);
 }
 
 template <int kNumLanes, int kUpdateIters, int kFinalizeIters>
-static HH_INLINE uint64 ReduceSipTreeHash(
+static HH_INLINE HH_U64 ReduceSipTreeHash(
     const typename SipHashStateT<kUpdateIters, kFinalizeIters>::Key& key,
-    const uint64 (&hashes)[kNumLanes]) {
+    const uint64_t (&hashes)[kNumLanes]) {
   SipHashStateT<kUpdateIters, kFinalizeIters> state(key);
 
   for (int i = 0; i < kNumLanes; ++i) {
@@ -170,4 +169,4 @@ static HH_INLINE uint64 ReduceSipTreeHash(
 
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_SIP_HASH_H_
+#endif  // #ifndef HIGHWAYHASH_SIP_HASH_H_

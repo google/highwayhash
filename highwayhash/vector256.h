@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_VEC2_H_
-#define HIGHWAYHASH_HIGHWAYHASH_VEC2_H_
-
+#ifndef HIGHWAYHASH_VECTOR256_H_
+#define HIGHWAYHASH_VECTOR256_H_
 #ifdef __AVX2__
 
 // Defines SIMD vector classes ("V4x64U") with overloaded arithmetic operators:
@@ -30,8 +29,8 @@
 // Requires reasonable C++11 support (VC2015) and an AVX2-capable CPU.
 
 #include <immintrin.h>
-#include "third_party/highwayhash/highwayhash/code_annotation.h"
-#include "third_party/highwayhash/highwayhash/types.h"
+#include <stdint.h>
+#include "highwayhash/compiler_specific.h"
 
 namespace highwayhash {
 
@@ -40,9 +39,9 @@ template <typename T>
 class V256 {};
 
 template <>
-class V256<uint8> {
+class V256<uint8_t> {
  public:
-  using T = uint8;
+  using T = uint8_t;
   static constexpr size_t N = 32;
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -52,17 +51,22 @@ class V256<uint8> {
   HH_INLINE explicit V256(T i)
       : v_(_mm256_broadcastb_epi8(_mm_cvtsi32_si128(i))) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256i& v) : v_(v) {}
-  HH_INLINE operator __m256i() const { return v_; }
-  HH_INLINE V256& operator=(const __m256i& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
+
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256i& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256i& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256i() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -70,24 +74,24 @@ class V256<uint8> {
   }
 
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_epi8(v_, other);
+    v_ = _mm256_add_epi8(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_epi8(v_, other);
+    v_ = _mm256_sub_epi8(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_si256(v_, other);
+    v_ = _mm256_and_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_si256(v_, other);
+    v_ = _mm256_or_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_si256(v_, other);
+    v_ = _mm256_xor_si256(v_, other.v_);
     return *this;
   }
 
@@ -96,9 +100,9 @@ class V256<uint8> {
 };
 
 template <>
-class V256<uint16> {
+class V256<uint16_t> {
  public:
-  using T = uint16;
+  using T = uint16_t;
   static constexpr size_t N = 16;
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -114,17 +118,22 @@ class V256<uint16> {
   HH_INLINE explicit V256(T i)
       : v_(_mm256_broadcastw_epi16(_mm_cvtsi32_si128(i))) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256i& v) : v_(v) {}
-  HH_INLINE operator __m256i() const { return v_; }
-  HH_INLINE V256& operator=(const __m256i& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
+
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256i& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256i& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256i() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -132,24 +141,24 @@ class V256<uint16> {
   }
 
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_epi16(v_, other);
+    v_ = _mm256_add_epi16(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_epi16(v_, other);
+    v_ = _mm256_sub_epi16(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_si256(v_, other);
+    v_ = _mm256_and_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_si256(v_, other);
+    v_ = _mm256_or_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_si256(v_, other);
+    v_ = _mm256_xor_si256(v_, other.v_);
     return *this;
   }
 
@@ -157,17 +166,9 @@ class V256<uint16> {
     v_ = _mm256_slli_epi16(v_, count);
     return *this;
   }
-  HH_INLINE V256& operator<<=(const __m128i& count) {
-    v_ = _mm256_sll_epi16(v_, count);
-    return *this;
-  }
 
   HH_INLINE V256& operator>>=(const int count) {
     v_ = _mm256_srli_epi16(v_, count);
-    return *this;
-  }
-  HH_INLINE V256& operator>>=(const __m128i& count) {
-    v_ = _mm256_srl_epi16(v_, count);
     return *this;
   }
 
@@ -176,9 +177,9 @@ class V256<uint16> {
 };
 
 template <>
-class V256<uint32> {
+class V256<uint32_t> {
  public:
-  using T = uint32;
+  using T = uint32_t;
   static constexpr size_t N = 8;
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -192,17 +193,22 @@ class V256<uint32> {
   HH_INLINE explicit V256(T i)
       : v_(_mm256_broadcastd_epi32(_mm_cvtsi32_si128(i))) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256i& v) : v_(v) {}
-  HH_INLINE operator __m256i() const { return v_; }
-  HH_INLINE V256& operator=(const __m256i& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
+
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256i& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256i& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256i() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -210,24 +216,24 @@ class V256<uint32> {
   }
 
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_epi32(v_, other);
+    v_ = _mm256_add_epi32(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_epi32(v_, other);
+    v_ = _mm256_sub_epi32(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_si256(v_, other);
+    v_ = _mm256_and_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_si256(v_, other);
+    v_ = _mm256_or_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_si256(v_, other);
+    v_ = _mm256_xor_si256(v_, other.v_);
     return *this;
   }
 
@@ -235,17 +241,9 @@ class V256<uint32> {
     v_ = _mm256_slli_epi32(v_, count);
     return *this;
   }
-  HH_INLINE V256& operator<<=(const __m128i& count) {
-    v_ = _mm256_sll_epi32(v_, count);
-    return *this;
-  }
 
   HH_INLINE V256& operator>>=(const int count) {
     v_ = _mm256_srli_epi32(v_, count);
-    return *this;
-  }
-  HH_INLINE V256& operator>>=(const __m128i& count) {
-    v_ = _mm256_srl_epi32(v_, count);
     return *this;
   }
 
@@ -254,9 +252,9 @@ class V256<uint32> {
 };
 
 template <>
-class V256<uint64> {
+class V256<uint64_t> {
  public:
-  using T = uint64;
+  using T = uint64_t;
   static constexpr size_t N = 4;
 
   // Leaves v_ uninitialized - typically used for output parameters.
@@ -270,17 +268,22 @@ class V256<uint64> {
   HH_INLINE explicit V256(T i)
       : v_(_mm256_broadcastq_epi64(_mm_cvtsi64_si128(i))) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256i& v) : v_(v) {}
-  HH_INLINE operator __m256i() const { return v_; }
-  HH_INLINE V256& operator=(const __m256i& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
+
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256i& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256i& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256i() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -288,24 +291,24 @@ class V256<uint64> {
   }
 
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_epi64(v_, other);
+    v_ = _mm256_add_epi64(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_epi64(v_, other);
+    v_ = _mm256_sub_epi64(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_si256(v_, other);
+    v_ = _mm256_and_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_si256(v_, other);
+    v_ = _mm256_or_si256(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_si256(v_, other);
+    v_ = _mm256_xor_si256(v_, other.v_);
     return *this;
   }
 
@@ -313,17 +316,9 @@ class V256<uint64> {
     v_ = _mm256_slli_epi64(v_, count);
     return *this;
   }
-  HH_INLINE V256& operator<<=(const __m128i& count) {
-    v_ = _mm256_sll_epi64(v_, count);
-    return *this;
-  }
 
   HH_INLINE V256& operator>>=(const int count) {
     v_ = _mm256_srli_epi64(v_, count);
-    return *this;
-  }
-  HH_INLINE V256& operator>>=(const __m128i& count) {
-    v_ = _mm256_srl_epi64(v_, count);
     return *this;
   }
 
@@ -347,39 +342,60 @@ class V256<float> {
   // Broadcasts to all lanes.
   HH_INLINE explicit V256(T f) : v_(_mm256_set1_ps(f)) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256& v) : v_(v) {}
-  HH_INLINE operator __m256() const { return v_; }
-  HH_INLINE V256& operator=(const __m256& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
 
-  // There are too many comparison operators; use _mm256_cmp_ps instead.
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256() const { return v_; }
 
+  HH_INLINE V256 operator==(const V256& other) const {
+    return V256(_mm256_cmp_ps(v_, other.v_, 0));
+  }
+  HH_INLINE V256 operator<(const V256& other) const {
+    return V256(_mm256_cmp_ps(v_, other.v_, 1));
+  }
+  HH_INLINE V256 operator>(const V256& other) const {
+    return V256(_mm256_cmp_ps(other.v_, v_, 1));
+  }
+
+  HH_INLINE V256& operator*=(const V256& other) {
+    v_ = _mm256_mul_ps(v_, other.v_);
+    return *this;
+  }
+  HH_INLINE V256& operator/=(const V256& other) {
+    v_ = _mm256_div_ps(v_, other.v_);
+    return *this;
+  }
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_ps(v_, other);
+    v_ = _mm256_add_ps(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_ps(v_, other);
+    v_ = _mm256_sub_ps(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_ps(v_, other);
+    v_ = _mm256_and_ps(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_ps(v_, other);
+    v_ = _mm256_or_ps(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_ps(v_, other);
+    v_ = _mm256_xor_ps(v_, other.v_);
     return *this;
   }
 
@@ -403,39 +419,60 @@ class V256<double> {
   // Broadcasts to all lanes.
   HH_INLINE explicit V256(T f) : v_(_mm256_set1_pd(f)) {}
 
-  // Converts to/from intrinsics.
-  HH_INLINE explicit V256(const __m256d& v) : v_(v) {}
-  HH_INLINE operator __m256d() const { return v_; }
-  HH_INLINE V256& operator=(const __m256d& v) {
-    v_ = v;
-    return *this;
-  }
+  // Copy from other vector.
+  HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
+  template <typename U>
+  HH_INLINE explicit V256(const V256<U>& other) : v_(other) {}
   HH_INLINE V256& operator=(const V256& other) {
     v_ = other.v_;
     return *this;
   }
 
-  // There are too many comparison operators; use _mm256_cmp_pd instead.
+  // Convert from/to intrinsics.
+  HH_INLINE V256(const __m256d& v) : v_(v) {}
+  HH_INLINE V256& operator=(const __m256d& v) {
+    v_ = v;
+    return *this;
+  }
+  HH_INLINE operator __m256d() const { return v_; }
 
+  HH_INLINE V256 operator==(const V256& other) const {
+    return V256(_mm256_cmp_pd(v_, other.v_, 0));
+  }
+  HH_INLINE V256 operator<(const V256& other) const {
+    return V256(_mm256_cmp_pd(v_, other.v_, 1));
+  }
+  HH_INLINE V256 operator>(const V256& other) const {
+    return V256(_mm256_cmp_pd(other.v_, v_, 1));
+  }
+
+  HH_INLINE V256& operator*=(const V256& other) {
+    v_ = _mm256_mul_pd(v_, other.v_);
+    return *this;
+  }
+  HH_INLINE V256& operator/=(const V256& other) {
+    v_ = _mm256_div_pd(v_, other.v_);
+    return *this;
+  }
   HH_INLINE V256& operator+=(const V256& other) {
-    v_ = _mm256_add_pd(v_, other);
+    v_ = _mm256_add_pd(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator-=(const V256& other) {
-    v_ = _mm256_sub_pd(v_, other);
+    v_ = _mm256_sub_pd(v_, other.v_);
     return *this;
   }
 
   HH_INLINE V256& operator&=(const V256& other) {
-    v_ = _mm256_and_pd(v_, other);
+    v_ = _mm256_and_pd(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator|=(const V256& other) {
-    v_ = _mm256_or_pd(v_, other);
+    v_ = _mm256_or_pd(v_, other.v_);
     return *this;
   }
   HH_INLINE V256& operator^=(const V256& other) {
-    v_ = _mm256_xor_pd(v_, other);
+    v_ = _mm256_xor_pd(v_, other.v_);
     return *this;
   }
 
@@ -444,6 +481,18 @@ class V256<double> {
 };
 
 // Nonmember functions for any V256 via member functions.
+
+template <typename T>
+HH_INLINE V256<T> operator*(const V256<T>& left, const V256<T>& right) {
+  V256<T> t(left);
+  return t *= right;
+}
+
+template <typename T>
+HH_INLINE V256<T> operator/(const V256<T>& left, const V256<T>& right) {
+  V256<T> t(left);
+  return t /= right;
+}
 
 template <typename T>
 HH_INLINE V256<T> operator+(const V256<T>& left, const V256<T>& right) {
@@ -487,44 +536,90 @@ HH_INLINE V256<T> operator>>(const V256<T>& v, const int count) {
   return t >>= count;
 }
 
-template <typename T>
-HH_INLINE V256<T> operator<<(const V256<T>& v, const __m128i& count) {
-  V256<T> t(v);
-  return t <<= count;
-}
+// We do not provide operator<<(V, __m128i) because it has 4 cycle latency
+// (to broadcast the shift count). It is faster to use sllv_epi64 etc. instead.
 
-template <typename T>
-HH_INLINE V256<T> operator>>(const V256<T>& v, const __m128i& count) {
-  V256<T> t(v);
-  return t >>= count;
-}
+using V32x8U = V256<uint8_t>;
+using V16x16U = V256<uint16_t>;
+using V8x32U = V256<uint32_t>;
+using V4x64U = V256<uint64_t>;
+using V8x32F = V256<float>;
+using V4x64F = V256<double>;
 
 // Load/Store for any V256.
 
-// The function name requires a "256" suffix to differentiate from SSE4 loads.
-// "from" must be vector-aligned.
-template <typename T>
-HH_INLINE V256<T> Load256(const T* const HH_RESTRICT from) {
+// We differentiate between targets' vector types via template specialization.
+// Calling Load<V>(floats) is more natural than Load(V8x32F(), floats) and may
+// generate better code in unoptimized builds. The primary template can only
+// be defined once, even if multiple vector headers are included.
+#ifndef HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
+#define HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
+template <class V>
+HH_INLINE V Load(const typename V::T* const HH_RESTRICT from) {
+  return V();  // must specialize for each type.
+}
+template <class V>
+HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from) {
+  return V();  // must specialize for each type.
+}
+#endif
+
+template <>
+HH_INLINE V32x8U Load(const V32x8U::T* const HH_RESTRICT from) {
   const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
-  return V256<T>(_mm256_load_si256(p));
+  return V32x8U(_mm256_load_si256(p));
 }
-HH_INLINE V256<float> Load256(const float* const HH_RESTRICT from) {
-  return V256<float>(_mm256_load_ps(from));
+template <>
+HH_INLINE V16x16U Load(const V16x16U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V16x16U(_mm256_load_si256(p));
 }
-HH_INLINE V256<double> Load256(const double* const HH_RESTRICT from) {
-  return V256<double>(_mm256_load_pd(from));
+template <>
+HH_INLINE V8x32U Load(const V8x32U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V8x32U(_mm256_load_si256(p));
+}
+template <>
+HH_INLINE V4x64U Load(const V4x64U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V4x64U(_mm256_load_si256(p));
+}
+template <>
+HH_INLINE V8x32F Load(const V8x32F::T* const HH_RESTRICT from) {
+  return V8x32F(_mm256_load_ps(from));
+}
+template <>
+HH_INLINE V4x64F Load(const V4x64F::T* const HH_RESTRICT from) {
+  return V4x64F(_mm256_load_pd(from));
 }
 
-template <typename T>
-HH_INLINE V256<T> LoadUnaligned256(const T* const HH_RESTRICT from) {
+template <>
+HH_INLINE V32x8U LoadUnaligned(const V32x8U::T* const HH_RESTRICT from) {
   const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
-  return V256<T>(_mm256_loadu_si256(p));
+  return V32x8U(_mm256_loadu_si256(p));
 }
-HH_INLINE V256<float> LoadUnaligned256(const float* const HH_RESTRICT from) {
-  return V256<float>(_mm256_loadu_ps(from));
+template <>
+HH_INLINE V16x16U LoadUnaligned(const V16x16U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V16x16U(_mm256_loadu_si256(p));
 }
-HH_INLINE V256<double> LoadUnaligned256(const double* const HH_RESTRICT from) {
-  return V256<double>(_mm256_loadu_pd(from));
+template <>
+HH_INLINE V8x32U LoadUnaligned(const V8x32U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V8x32U(_mm256_loadu_si256(p));
+}
+template <>
+HH_INLINE V4x64U LoadUnaligned(const V4x64U::T* const HH_RESTRICT from) {
+  const __m256i* const HH_RESTRICT p = reinterpret_cast<const __m256i*>(from);
+  return V4x64U(_mm256_loadu_si256(p));
+}
+template <>
+HH_INLINE V8x32F LoadUnaligned(const V8x32F::T* const HH_RESTRICT from) {
+  return V8x32F(_mm256_loadu_ps(from));
+}
+template <>
+HH_INLINE V4x64F LoadUnaligned(const V4x64F::T* const HH_RESTRICT from) {
+  return V4x64F(_mm256_loadu_pd(from));
 }
 
 // "to" must be vector-aligned.
@@ -588,56 +683,57 @@ HH_INLINE V256<double> AndNot(const V256<double>& neg_mask,
   return V256<double>(_mm256_andnot_pd(neg_mask, values));
 }
 
-using V32x8U = V256<uint8>;
-using V16x16U = V256<uint16>;
-using V8x32U = V256<uint32>;
-using V4x64U = V256<uint64>;
-using V8x32F = V256<float>;
-using V4x64F = V256<double>;
-
-static HH_INLINE V32x8U UnpackLow(const V32x8U& low, const V32x8U& high) {
-  return V32x8U(_mm256_unpacklo_epi8(low, high));
-}
-static HH_INLINE V32x8U UnpackHigh(const V32x8U& low, const V32x8U& high) {
-  return V32x8U(_mm256_unpackhi_epi8(low, high));
+HH_INLINE V8x32F Select(const V8x32F& a, const V8x32F& b, const V8x32F& mask) {
+  return V8x32F(_mm256_blendv_ps(a, b, mask));
 }
 
-static HH_INLINE V16x16U UnpackLow(const V16x16U& low, const V16x16U& high) {
-  return V16x16U(_mm256_unpacklo_epi16(low, high));
-}
-static HH_INLINE V16x16U UnpackHigh(const V16x16U& low, const V16x16U& high) {
-  return V16x16U(_mm256_unpackhi_epi16(low, high));
+HH_INLINE V4x64F Select(const V4x64F& a, const V4x64F& b, const V4x64F& mask) {
+  return V4x64F(_mm256_blendv_pd(a, b, mask));
 }
 
-static HH_INLINE V8x32U UnpackLow(const V8x32U& low, const V8x32U& high) {
-  return V8x32U(_mm256_unpacklo_epi32(low, high));
-}
-static HH_INLINE V8x32U UnpackHigh(const V8x32U& low, const V8x32U& high) {
-  return V8x32U(_mm256_unpackhi_epi32(low, high));
+// Min/Max
+
+HH_INLINE V32x8U Min(const V32x8U& v0, const V32x8U& v1) {
+  return V32x8U(_mm256_min_epu8(v0, v1));
 }
 
-static HH_INLINE V4x64U UnpackLow(const V4x64U& low, const V4x64U& high) {
-  return V4x64U(_mm256_unpacklo_epi64(low, high));
-}
-static HH_INLINE V4x64U UnpackHigh(const V4x64U& low, const V4x64U& high) {
-  return V4x64U(_mm256_unpackhi_epi64(low, high));
+HH_INLINE V32x8U Max(const V32x8U& v0, const V32x8U& v1) {
+  return V32x8U(_mm256_max_epu8(v0, v1));
 }
 
-static HH_INLINE V8x32F UnpackLow(const V8x32F& low, const V8x32F& high) {
-  return V8x32F(_mm256_unpacklo_ps(low, high));
-}
-static HH_INLINE V8x32F UnpackHigh(const V8x32F& low, const V8x32F& high) {
-  return V8x32F(_mm256_unpackhi_ps(low, high));
+HH_INLINE V16x16U Min(const V16x16U& v0, const V16x16U& v1) {
+  return V16x16U(_mm256_min_epu16(v0, v1));
 }
 
-static HH_INLINE V4x64F UnpackLow(const V4x64F& low, const V4x64F& high) {
-  return V4x64F(_mm256_unpacklo_pd(low, high));
+HH_INLINE V16x16U Max(const V16x16U& v0, const V16x16U& v1) {
+  return V16x16U(_mm256_max_epu16(v0, v1));
 }
-static HH_INLINE V4x64F UnpackHigh(const V4x64F& low, const V4x64F& high) {
-  return V4x64F(_mm256_unpackhi_pd(low, high));
+
+HH_INLINE V8x32U Min(const V8x32U& v0, const V8x32U& v1) {
+  return V8x32U(_mm256_min_epu32(v0, v1));
+}
+
+HH_INLINE V8x32U Max(const V8x32U& v0, const V8x32U& v1) {
+  return V8x32U(_mm256_max_epu32(v0, v1));
+}
+
+HH_INLINE V8x32F Min(const V8x32F& v0, const V8x32F& v1) {
+  return V8x32F(_mm256_min_ps(v0, v1));
+}
+
+HH_INLINE V8x32F Max(const V8x32F& v0, const V8x32F& v1) {
+  return V8x32F(_mm256_max_ps(v0, v1));
+}
+
+HH_INLINE V4x64F Min(const V4x64F& v0, const V4x64F& v1) {
+  return V4x64F(_mm256_min_pd(v0, v1));
+}
+
+HH_INLINE V4x64F Max(const V4x64F& v0, const V4x64F& v1) {
+  return V4x64F(_mm256_max_pd(v0, v1));
 }
 
 }  // namespace highwayhash
 
 #endif  // #ifdef __AVX2__
-#endif  // #ifndef HIGHWAYHASH_HIGHWAYHASH_VEC2_H_
+#endif  // HIGHWAYHASH_VECTOR256_H_

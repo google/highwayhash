@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "third_party/highwayhash/highwayhash/sip_hash.h"
+#include "highwayhash/sip_hash.h"
 
-using highwayhash::uint64;
+using highwayhash::HH_U64;
 using highwayhash::SipHash;
 using highwayhash::SipHash13;
 using Key = highwayhash::SipHashState::Key;
@@ -22,11 +22,11 @@ using Key13 = highwayhash::SipHash13State::Key;
 
 extern "C" {
 
-uint64 SipHashC(const uint64* key, const char* bytes, const uint64 size) {
+HH_U64 SipHashC(const HH_U64* key, const char* bytes, const HH_U64 size) {
   return SipHash(*reinterpret_cast<const Key*>(key), bytes, size);
 }
 
-uint64 SipHash13C(const uint64* key, const char* bytes, const uint64 size) {
+HH_U64 SipHash13C(const HH_U64* key, const char* bytes, const HH_U64 size) {
   return SipHash13(*reinterpret_cast<const Key13*>(key), bytes, size);
 }
 
