@@ -207,6 +207,8 @@ denial-of-service attacks. Such data structures assign attacker-controlled
 input messages `m` to bin `H(s, m) % p` using a seed `s`, hash function `H`, and
 table size `p`. Choosing a prime `p` ensures all hash bits are used; the costly
 division can be avoided by multiplying with the inverse (https://goo.gl/l7ASm8).
+If `H` is a strong hash function, all its output bits are well-mixed, so `p` can
+also be a power of two, such that `% p` only requires a bitwise-AND.
 
 Attackers may attempt to trigger 'flooding' (excessive work in insertions or
 lookups) by finding 'collisions', i.e. many `m` assigned to the same bin. If the
@@ -237,7 +239,7 @@ conventional hash table.
 
 Even if the seed is somehow revealed and/or attackers manage to find collisions,
 there are two ways to prevent denial of service by limiting the work per
-request.
+request, without incurring much additional cost.
 
 1. Use augmented/de-amortized cuckoo hash tables (https://goo.gl/PFwwkx).
 These guarantee worst-case `log n` bounds, but only if the hash function is
@@ -245,10 +247,14 @@ These guarantee worst-case `log n` bounds, but only if the hash function is
 but certainly not for weak hashes.
 
 2. Use conventional separate chaining for collision resolution, but with trees
-instead of linked lists. Indexing the tree with `H(s, m)` rather than `m` avoids
-the space and time overhead of self-balancing algorithms such as
-AVL/splay/red-black/a,b trees. This relies on the equidistribution property of
-strong hashes. (Thanks to funny-falcon for proposing this!)
+instead of linked lists. This avoids having to store and check for each hash
+bucket whether it holds a list or tree. However, general tree data structures
+need to ensure they remain balanced. This requires additional bookkeeping -
+typically 3 pointers per node for red-black or 2-3 trees. We can reduce this
+overhead by realizing that `H(s, m)` is uniformly randomly distributed when `H`
+is a strong hash function. When storing such hashes in the tree rather than the
+original message `m`, we can use a simple unbalanced tree, which reduces space
+and time costs. Thanks to funny-falcon for proposing this approach!
 
 In both cases, attackers pay a high cost (likely at least proportional to `p`)
 to trigger only modest additional work (a factor of `log n`).
@@ -300,6 +306,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-01-24
+<jyrki.alakuijala@gmail.com>, updated 2017-01-25
 
 This is not an official Google product.

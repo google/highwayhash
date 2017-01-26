@@ -3,7 +3,9 @@
 # implementations supported by the compiler and CPU regardless of this flag.
 # By contrast, benchmark only measures implementations enabled by this flag so
 # that it can call HighwayHashT directly, which is slightly faster.
-CXXFLAGS := -std=c++11 -O3 -mavx2 -Wall -I.
+HH_ARCH := -mavx2
+HH_CXXFLAGS := 
+CXXFLAGS = -I. -std=c++11 -Wall -O3 $(HH_ARCH) $(HH_CXXFLAGS)
 
 PROFILER_OBJS := $(addprefix highwayhash/, \
 	profiler_example.o \

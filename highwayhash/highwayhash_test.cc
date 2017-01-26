@@ -19,6 +19,8 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <map>
+#include <string>
 
 #ifdef HH_GOOGLETEST
 #include "testing/base/public/gunit.h"
@@ -50,9 +52,22 @@ void Print(const HHResult64 (&result)[kNumLanes]) {
 }
 #endif  // PRINT_RESULTS
 
+// Keyed by Target::Name() so we can report which Targets were tested.
+using FailureCounts = std::map<std::string, int>;
+
+// Local static ensures init order is well-defined.
+FailureCounts& StaticFailureCounts() {
+  static FailureCounts counts;
+  return counts;
+}
+
+void NotifyResult(const char* target_name, const bool ok) {
+  StaticFailureCounts()[target_name] += !ok;
+}
+
 // Verifies every combination of implementation and input size.
 template <typename Result>
-void VerifyImplementations(const Result (&known_good)[kMaxSize + 1], bool* ok) {
+void VerifyImplementations(const Result (&known_good)[kMaxSize + 1]) {
   const HHKey key = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
                      0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
 
@@ -66,7 +81,8 @@ void VerifyImplementations(const Result (&known_good)[kMaxSize + 1], bool* ok) {
     Print(actual);
 #else
     const Result* expected = &known_good[size];
-    InstructionSets::RunAll<HighwayHashTest>(key, in, size, expected, ok);
+    InstructionSets::RunAll<HighwayHashTest>(key, in, size, expected,
+                                             &NotifyResult);
 #endif
   }
 }
@@ -295,12 +311,15 @@ const HHResult256 kExpected256[kMaxSize + 1] = {
      0x24CFDCA800C34770ull}};
 
 void VerifyImplementations() {
+  VerifyImplementations(kExpected64);
+  VerifyImplementations(kExpected128);
+  VerifyImplementations(kExpected256);
+
   bool ok = true;
-
-  VerifyImplementations(kExpected64, &ok);
-  VerifyImplementations(kExpected128, &ok);
-  VerifyImplementations(kExpected256, &ok);
-
+  for (const auto& pair : StaticFailureCounts()) {
+    printf("%s: %s\n", pair.first.c_str(), pair.second == 0 ? "OK" : "failed");
+    ok &= pair.second == 0;
+  }
 #ifdef HH_GOOGLETEST
   EXPECT_TRUE(ok);
 #endif
@@ -316,7 +335,6 @@ TEST(HighwayhashTest, OutputMatchesExpectations) { VerifyImplementations(); }
 #ifndef HH_GOOGLETEST
 int main(int argc, char* argv[]) {
   highwayhash::VerifyImplementations();
-  printf("Done.\n");
   return 0;
 }
 #endif

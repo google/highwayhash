@@ -14,7 +14,6 @@
 
 #ifndef HIGHWAYHASH_VECTOR256_H_
 #define HIGHWAYHASH_VECTOR256_H_
-#ifdef __AVX2__
 
 // Defines SIMD vector classes ("V4x64U") with overloaded arithmetic operators:
 // const V4x64U masked_sum = (a + b) & m;
@@ -32,6 +31,7 @@
 #include <stdint.h>
 #include "highwayhash/compiler_specific.h"
 
+#if HH_ENABLE_AVX2
 namespace highwayhash {
 
 // Primary template for 256-bit AVX2 vectors; only specializations are used.
@@ -735,5 +735,5 @@ HH_INLINE V4x64F Max(const V4x64F& v0, const V4x64F& v1) {
 
 }  // namespace highwayhash
 
-#endif  // #ifdef __AVX2__
+#endif  // #if HH_ENABLE_AVX2
 #endif  // HIGHWAYHASH_VECTOR256_H_

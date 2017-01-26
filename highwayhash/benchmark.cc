@@ -30,9 +30,9 @@
 
 // Which functions to enable (includes check for compiler support)
 #define BENCHMARK_SIP 1
-#define BENCHMARK_SIP_TREE 1 && defined(__AVX2__)
-#define BENCHMARK_HIGHWAY_AVX2 1 && defined(__AVX2__)
-#define BENCHMARK_HIGHWAY_SSE41 1 && defined(__SSE4_1__)
+#define BENCHMARK_SIP_TREE 1 && HH_ENABLE_AVX2
+#define BENCHMARK_HIGHWAY_AVX2 1 && HH_ENABLE_AVX2
+#define BENCHMARK_HIGHWAY_SSE41 1 && HH_ENABLE_SSE41
 #define BENCHMARK_HIGHWAY_PORTABLE 1
 #define BENCHMARK_FARM 0
 

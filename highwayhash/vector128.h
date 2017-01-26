@@ -25,19 +25,15 @@
 // number of bits per lane and T is the lane type: unsigned integer (U),
 // signed integer (I), or floating-point (F).
 //
-// Requires reasonable C++11 support (VC2015) and at least SSE2. Uses up to
-// SSE4.1, if enabled via compiler flags.
+// Requires reasonable C++11 support (VC2015) and SSE4.1.
 
-#ifdef __SSE4_1__
 #include <smmintrin.h>  // SSE4.1
-#else
-#include <emmintrin.h>  // SSE2
-#endif
 #include <stddef.h>
 #include <stdint.h>
 
 #include "highwayhash/compiler_specific.h"
 
+#if HH_ENABLE_SSE41
 namespace highwayhash {
 
 // Primary template for 128-bit SSE4.1 vectors; only specializations are used.
@@ -301,11 +297,9 @@ class V128<uint64_t> {
   HH_INLINE operator __m128i() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
-#ifdef __SSE4_1__
   HH_INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_epi64(v_, other.v_));
   }
-#endif
 
   HH_INLINE V128& operator+=(const V128& other) {
     v_ = _mm_add_epi64(v_, other.v_);
@@ -723,8 +717,6 @@ HH_INLINE V128<double> AndNot(const V128<double>& neg_mask,
   return V128<double>(_mm_andnot_pd(neg_mask, values));
 }
 
-#ifdef __SSE4_1__
-
 HH_INLINE V4x32F Select(const V4x32F& a, const V4x32F& b, const V4x32F& mask) {
   return V4x32F(_mm_blendv_ps(a, b, mask));
 }
@@ -732,8 +724,6 @@ HH_INLINE V4x32F Select(const V4x32F& a, const V4x32F& b, const V4x32F& mask) {
 HH_INLINE V2x64F Select(const V2x64F& a, const V2x64F& b, const V2x64F& mask) {
   return V2x64F(_mm_blendv_pd(a, b, mask));
 }
-
-#endif
 
 // Min/Max
 
@@ -744,8 +734,6 @@ HH_INLINE V16x8U Min(const V16x8U& v0, const V16x8U& v1) {
 HH_INLINE V16x8U Max(const V16x8U& v0, const V16x8U& v1) {
   return V16x8U(_mm_max_epu8(v0, v1));
 }
-
-#ifdef __SSE4_1__
 
 HH_INLINE V8x16U Min(const V8x16U& v0, const V8x16U& v1) {
   return V8x16U(_mm_min_epu16(v0, v1));
@@ -779,8 +767,7 @@ HH_INLINE V2x64F Max(const V2x64F& v0, const V2x64F& v1) {
   return V2x64F(_mm_max_pd(v0, v1));
 }
 
-#endif
-
 }  // namespace highwayhash
 
+#endif  // #if HH_ENABLE_SSE41
 #endif  // HIGHWAYHASH_VECTOR128_H_

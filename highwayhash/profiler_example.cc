@@ -23,12 +23,9 @@ namespace {
 
 void Spin(const double min_time) {
   const double t0 = os_specific::Now();
-  int iterations = 0;
   for (;;) {
-    ++iterations;
     const double elapsed = os_specific::Now() - t0;
     if (elapsed > min_time) {
-      assert(iterations > 2);
       break;
     }
   }

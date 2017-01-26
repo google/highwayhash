@@ -44,6 +44,18 @@
 
 //-----------------------------------------------------------------------------
 
+#if HH_MSC_VERSION || defined(__AVX2__)
+#define HH_ENABLE_AVX2 1
+#else
+#define HH_ENABLE_AVX2 0
+#endif
+
+#if HH_MSC_VERSION || defined(__SSE4_1__)
+#define HH_ENABLE_SSE41 1
+#else
+#define HH_ENABLE_SSE41 0
+#endif
+
 #if HH_GCC_VERSION && HH_GCC_VERSION < 408
 #define HH_ALIGNAS(multiple) __attribute__((aligned(multiple)))
 #else

@@ -62,13 +62,13 @@ struct HighwayHashTest {
   // prints a message to stdout.
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
                   const size_t size, const HHResult64* expected,
-                  bool* ok) const;
+                  void (*notify)(const char*, bool)) const;
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
                   const size_t size, const HHResult128* expected,
-                  bool* ok) const;
+                  void (*notify)(const char*, bool)) const;
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
                   const size_t size, const HHResult256* expected,
-                  bool* ok) const;
+                  void (*notify)(const char*, bool)) const;
 };
 
 }  // namespace highwayhash

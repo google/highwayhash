@@ -61,9 +61,12 @@ double Now() {
 #if OS_WIN
   LARGE_INTEGER counter;
   (void)QueryPerformanceCounter(&counter);
-  LARGE_INTEGER freq;
-  (void)QueryPerformanceFrequency(&freq);
-  return double(counter.QuadPart) / freq.QuadPart;
+  static const double rcp_freq = []() {
+    LARGE_INTEGER freq;
+    (void)QueryPerformanceFrequency(&freq);
+    return 1.0 / freq.QuadPart;
+  }();
+  return counter.QuadPart * rcp_freq;
 #elif OS_MAC
   const auto t = mach_absolute_time();
   // On OSX/iOS platform the elapsed time is cpu time unit
@@ -151,7 +154,6 @@ std::vector<int> AvailableCPUs() {
   cpus.reserve(64);
   const ThreadAffinity* const affinity = OriginalThreadAffinity();
 #if OS_WIN
-  CHECK(ok);
   for (int cpu = 0; cpu < 64; ++cpu) {
     if (affinity->mask & (1ULL << cpu)) {
       cpus.push_back(cpu);

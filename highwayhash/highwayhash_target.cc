@@ -94,43 +94,40 @@ bool VerifyResult(Target, const size_t size,
 }  // namespace
 
 template <class Target>
-void HighwayHashTest<Target>::operator()(const HHKey& key,
-                                         const char* HH_RESTRICT bytes,
-                                         const size_t size,
-                                         const HHResult64* expected,
-                                         bool* ok) const {
+void HighwayHashTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
+    const HHResult64* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
   HHResult64 actual;
   HighwayHashT(&state, bytes, size, &actual);
-  *ok &= VerifyResult(Target(), size, *expected, actual);
+  const bool ok = VerifyResult(Target(), size, *expected, actual);
+  (*notify)(Target::Name(), ok);
 }
 
 template <class Target>
-void HighwayHashTest<Target>::operator()(const HHKey& key,
-                                         const char* HH_RESTRICT bytes,
-                                         const size_t size,
-                                         const HHResult128* expected,
-                                         bool* ok) const {
+void HighwayHashTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
+    const HHResult128* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
   HHResult128 actual;
   HighwayHashT(&state, bytes, size, &actual);
-  *ok &= VerifyResult(Target(), size, *expected, actual);
+  const bool ok = VerifyResult(Target(), size, *expected, actual);
+  (*notify)(Target::Name(), ok);
 }
 
 template <class Target>
-void HighwayHashTest<Target>::operator()(const HHKey& key,
-                                         const char* HH_RESTRICT bytes,
-                                         const size_t size,
-                                         const HHResult256* expected,
-                                         bool* ok) const {
+void HighwayHashTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
+    const HHResult256* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
   HHResult256 actual;
   HighwayHashT(&state, bytes, size, &actual);
-  *ok &= VerifyResult(Target(), size, *expected, actual);
+  const bool ok = VerifyResult(Target(), size, *expected, actual);
+  (*notify)(Target::Name(), ok);
 }
 
 // Instantiate for the current target.
-template class HighwayHash<HH_TARGET>;
-template class HighwayHashTest<HH_TARGET>;
+template struct HighwayHash<HH_TARGET>;
+template struct HighwayHashTest<HH_TARGET>;
 
 }  // namespace highwayhash

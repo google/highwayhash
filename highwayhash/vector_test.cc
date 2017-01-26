@@ -155,7 +155,7 @@ void TestLoadStore() {
 }
 
 void TestVector() {
-#ifdef __SSE4_1__
+#if HH_ENABLE_SSE41
   TestMembersAndBinaryOperatorsExceptShifts<V16x8U, __m128i>();
   TestMembersAndBinaryOperatorsExceptShifts<V8x16U, __m128i>();
   TestMembersAndBinaryOperatorsExceptShifts<V4x32U, __m128i>();
@@ -171,7 +171,7 @@ void TestVector() {
   TestLoadStore<V2x64U>();
 #endif
 
-#ifdef __AVX2__
+#if HH_ENABLE_AVX2
   TestMembersAndBinaryOperatorsExceptShifts<V32x8U, __m256i>();
   TestMembersAndBinaryOperatorsExceptShifts<V16x16U, __m256i>();
   TestMembersAndBinaryOperatorsExceptShifts<V8x32U, __m256i>();

@@ -14,12 +14,13 @@
 
 #include "highwayhash/sip_tree_hash.h"
 
-#ifdef __AVX2__
 #include <cstring>  // memcpy
 
+#include "highwayhash/compiler_specific.h"
 #include "highwayhash/sip_hash.h"
 #include "highwayhash/vector256.h"
 
+#if HH_ENABLE_AVX2
 namespace highwayhash {
 namespace {
 
@@ -218,4 +219,4 @@ HH_U64 SipTreeHash13C(const HH_U64* key, const char* bytes, const HH_U64 size) {
 
 }  // extern "C"
 
-#endif  // #ifdef __AVX2__
+#endif  // #if HH_ENABLE_AVX2

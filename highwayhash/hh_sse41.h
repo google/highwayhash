@@ -14,7 +14,6 @@
 
 #ifndef HIGHWAYHASH_HH_SSE41_H_
 #define HIGHWAYHASH_HH_SSE41_H_
-#ifdef __SSE4_1__
 
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
@@ -23,9 +22,11 @@
 #include <cstdio>
 #include <cstring>  // memcpy
 
+#include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
 #include "highwayhash/vector128.h"
 
+#if HH_ENABLE_SSE41
 namespace highwayhash {
 
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
@@ -62,7 +63,7 @@ class HHState<TargetSSE41> {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
-    const V4x32U vsize_mod32(size_mod32);
+    const V4x32U vsize_mod32(static_cast<uint32_t>(size_mod32));
     // Equivalent to storing size_mod32 in packet.
     v0L += V2x64U(vsize_mod32);
     v0H += V2x64U(vsize_mod32);
@@ -299,5 +300,5 @@ class HHState<TargetSSE41> {
 
 }  // namespace highwayhash
 
-#endif  // #ifdef __SSE4_1__
+#endif  // #if HH_ENABLE_SSE41
 #endif  // #ifndef HIGHWAYHASH_HH_SSE41_H_

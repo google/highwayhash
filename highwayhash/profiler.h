@@ -53,6 +53,8 @@
 #include <cstring>  // memcpy
 #include <new>
 
+#include "highwayhash/compiler_specific.h"
+
 // Non-portable aspects:
 // - SSE2 128-bit load/store (write-combining, UpdateOrAdd)
 // - RDTSCP timestamps (serializing, high-resolution)
@@ -64,7 +66,6 @@
 #include <x86intrin.h>
 #endif
 
-#include "highwayhash/compiler_specific.h"
 #include "highwayhash/tsc_timer.h"
 
 #define PROFILER_CHECK(condition)                           \
@@ -632,7 +633,8 @@ inline void ThreadSpecific::ComputeOverhead() {
       for (size_t idx_duration = 0; idx_duration < kNumDurations;
            ++idx_duration) {
         { PROFILER_ZONE("Dummy Zone (never shown)"); }
-        durations[idx_duration] = results_.ZoneDuration(buffer_);
+        durations[idx_duration] =
+            static_cast<uint32_t>(results_.ZoneDuration(buffer_));
         buffer_size_ = 0;
         PROFILER_CHECK(num_packets_ == 0);
       }
@@ -668,7 +670,8 @@ inline void ThreadSpecific::ComputeOverhead() {
       num_packets_ = 0;
       buffer_size_ = 0;
       const uint64_t avg_duration = (t1 - t0 + kReps / 2) / kReps;
-      durations[idx_duration] = ClampedSubtract(avg_duration, self_overhead);
+      durations[idx_duration] =
+          static_cast<uint32_t>(ClampedSubtract(avg_duration, self_overhead));
     }
     tsc_timer::CountingSort(durations, durations + kNumDurations);
     samples[idx_sample] = tsc_timer::Mode(durations, kNumDurations);

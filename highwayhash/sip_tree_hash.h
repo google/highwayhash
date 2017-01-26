@@ -14,7 +14,6 @@
 
 #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
 #define HIGHWAYHASH_SIP_TREE_HASH_H_
-#ifdef __AVX2__
 
 #include "highwayhash/state_helpers.h"
 
@@ -50,5 +49,4 @@ HH_U64 SipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
 }  // namespace highwayhash
 #endif
 
-#endif  // #ifdef __AVX2__
 #endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_

@@ -14,7 +14,6 @@
 
 #ifndef HIGHWAYHASH_HH_AVX2_H_
 #define HIGHWAYHASH_HH_AVX2_H_
-#ifdef __AVX2__
 
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
@@ -22,10 +21,12 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
 #include "highwayhash/vector128.h"
 #include "highwayhash/vector256.h"
 
+#if HH_ENABLE_AVX2
 namespace highwayhash {
 
 template <>
@@ -289,5 +290,5 @@ def x(a,b,c):
 
 }  // namespace highwayhash
 
-#endif  // #ifdef __AVX2__
+#endif  // #if HH_ENABLE_AVX2
 #endif  // #ifndef HIGHWAYHASH_HH_AVX2_H_
