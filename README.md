@@ -28,7 +28,8 @@ ensure the implementations return known-good values for a given set of inputs.
     const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
-    HHState<TargetAVX2> state(key);  // or TargetSSE41 or TargetPortable
+    HHState<TargetAVX2> state(key);  // or TargetSSE41 or TargetPortable, or
+    // HH_TARGET_PREFERRED to choose based on compiler flags.
     HighwayHashT(&state, in, 8, &result);
 
 64, 128 or 256 bit HighwayHash for the *current* CPU:
@@ -202,6 +203,9 @@ extended by adding functions to the `Target*` traits classes.
 
 ## Defending against hash flooding
 
+To mitigate hash flooding attacks, we need to take both the hash function and
+the data structure into account.
+
 We wish to defend (web) services that utilize hash sets/maps against
 denial-of-service attacks. Such data structures assign attacker-controlled
 input messages `m` to a hash table bin `b` by computing the hash `H(s, m)`
@@ -216,13 +220,13 @@ they can already deny service, so we need only ensure the attacker's cost is
 sufficiently large compared to the service's provisioning.
 
 If the hash function is 'weak' (e.g. CityHash/Murmur), attackers can easily
-generate 'collisions' (inputs mapping to the same hash values) regardless of the
-seed. This causes `n^2` work for `n` requests to an unprotected hash table,
-which is unacceptable.
+generate 'hash collisions' (inputs mapping to the same hash values) regardless
+of the seed. This causes `n^2` work for `n` requests to an unprotected hash
+table, which is unacceptable.
 
 By contrast, 'strong' hashes such as SipHash or HighwayHash require infeasible
-attacker effort to find a collision (an expected 2^32 guesses of `m` per the
-birthday paradox) or recover the seed (2^63 requests). These security claims
+attacker effort to find a hash collision (an expected 2^32 guesses of `m` per
+the birthday paradox) or recover the seed (2^63 requests). These security claims
 assume the seed is secret. It is reasonable to suppose `s` is initially unknown
 to attackers, e.g. generated on startup or even per-connection. A timing attack
 by Wool/Bar-Yosef recovers 13-bit seeds by testing all 8K possibilities using
@@ -230,7 +234,7 @@ millions of requests, which takes several days (even assuming unrealistic 150 us
 round-trip times). It appears infeasible to recover 64-bit seeds in this way.
 
 However, attackers are only looking for multiple `m` mapping to the same bin
-rather than full hash collisions. We assume they know or are able to discover
+rather than identical hash values. We assume they know or are able to discover
 the hash table size `p`. It is common to choose `p = 2^i` to enable an efficient
 `R(h) := h & (p - 1)`, which simply retains the lower hash bits. It may be
 easier for attackers to compute partial collisions where only the lower `i` bits
@@ -244,34 +248,52 @@ slightly lower cost than the multiplicative inverse method, and still allows
 power-of-two table sizes.
 
 Summary thus far: given a strong hash function and secret seed, it appears
-infeasible for attackers to generate collisions because `s` and/or `R` are
+infeasible for attackers to generate hash collisions because `s` and/or `R` are
 unknown. However, they can still observe the timings of data structure
-operations for various `m`. With typical table sizes between 2^10 and 2^17
-entries, attackers can detect some collisions, but at a relatively high cost.
+operations for various `m`. With typical table sizes of 2^10 to 2^17 entries,
+attackers can detect some 'bin collisions' (inputs mapping to the same bin), but
+at a relatively high cost.
 
-The hash table data structure must therefore mitigate the effects of collisions;
-this also deals with the unlikely occurrence of a successful seed recovery or
-collision attack. We suggest two methods for defending against flooding while
-maintaining good average-case performance:
+We must assume that attackers can choose messages such that many are mapped to
+the same few bins. Hash tables with separate chaining typically store bin
+entries in a linked list, so this would lead to unacceptable linear-time lookup
+cost. We instead seek optimal asymptotic worst-case complexity for each
+operation (insertion, deletion and lookups), which is a constant factor times
+the logarithm of the data structure size. This naturally leads to a tree-like
+data structure for each bin. The Java8 HashMap only replaces its linked list
+with trees when needed. This leads to additional cost and complexity for
+deciding whether a bin is a list or tree.
 
-1. Use augmented/de-amortized cuckoo hash tables (https://goo.gl/PFwwkx).
-   These guarantee worst-case `log n` bounds, but only if the hash function is
-   'indistinguishable from random', which is claimed for SipHash and HighwayHash
-   but certainly not for weak hashes.
+Our first proposal (suggested by Github user funny-falcon) avoids this overhead
+by always storing one tree per bin. It may also be worthwhile to store the first
+entry directly in the bin, which avoids allocating any tree nodes in the common
+case where bins are sparsely populated. What kind of tree should be used?
+Scapegoat and splay trees only offer amortized complexity guarantees, whereas
+treaps require an entropy source and have higher constant factors in practice.
+Self-balancing structures such as 2-3 or red-black trees require additional
+bookkeeping information. We can hope to reduce rebalancing cost by realizing
+that the output bits of strong `H` functions are uniformly distributed. When
+using them as keys instead of the original message `m`, recent relaxed balancing
+schemes such as left-leaning red-black or weak AVL trees may require fewer tree
+rotations to maintain their invariants. Note that `H` already determines the
+bin, so we should only use the remaining bits. 64-bit hashes are likely
+sufficient for this purpose, and HighwayHash generates up to 256 bits. It seems
+unlikely that attackers can craft inputs resulting in worst cases for both the
+bin index and tree key without being able to generate hash collisions, which
+would contradict the security claims of strong hashes. Even if they succeed, the
+relaxed tree balancing still guarantees an upper bound on height and therefore
+the worst-case operation cost. For the AVL variant, the constant factors are
+slightly lower than for red-black trees.
 
-2. Use conventional separate chaining for collision resolution, but with trees
-   instead of linked lists. This avoids having to store and check for each hash
-   bucket whether it holds a list or tree. However, general tree data structures
-   need to ensure they remain balanced. This requires additional bookkeeping -
-   typically 3 pointers per node for red-black or 2-3 trees. We can reduce this
-   overhead by realizing that `H(s, m)` is uniformly randomly distributed when
-   `H` is a strong hash function. When storing such hashes in the tree rather
-   than the original message `m`, we can use a simple unbalanced tree, which
-   reduces space and time costs. Thanks to funny-falcon for proposing this
-   approach!
+The second proposed approach uses augmented/de-amortized cuckoo hash tables
+(https://goo.gl/PFwwkx). These guarantee worst-case `log n` bounds for all
+operations, but only if the hash function is 'indistinguishable from random'
+(uniformly distributed regardless of the input distribution), which is claimed
+for SipHash and HighwayHash but certainly not for weak hashes.
 
-In both cases, attackers pay a high cost (likely at least proportional to `p`)
-to trigger only modest additional work (a factor of `log n`).
+Both alternatives are able to defend against flooding by limiting the amount of
+extra work an attacker can cause (a modest factor of `log n`), while still
+retaining good average case performance.
 
 In summary, a strong hash function is not, by itself, sufficient to protect a
 chained hash table from flooding attacks. However, strong hash functions are
@@ -320,6 +342,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-01-25
+<jyrki.alakuijala@gmail.com>, updated 2017-01-27
 
 This is not an official Google product.
