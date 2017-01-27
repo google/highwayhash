@@ -7,8 +7,8 @@ Strong (well-distributed and unpredictable) hashes:
 
 ## Quick Start
 
-To build on a Linux or Mac platform, simply run `make`. We will soon provide a
-Visual Studio 2015 project for compiling on Windows.
+To build on a Linux or Mac platform, simply run `make`. For Windows, we provide
+a Visual Studio 2015 project in the `msvc` subdirectory.
 
 Run `benchmark` for speed measurements. `sip_hash_test` and `highwayhash_test`
 ensure the implementations return known-good values for a given set of inputs.
@@ -204,57 +204,71 @@ extended by adding functions to the `Target*` traits classes.
 
 We wish to defend (web) services that utilize hash sets/maps against
 denial-of-service attacks. Such data structures assign attacker-controlled
-input messages `m` to bin `H(s, m) % p` using a seed `s`, hash function `H`, and
-table size `p`. Choosing a prime `p` ensures all hash bits are used; the costly
-division can be avoided by multiplying with the inverse (https://goo.gl/l7ASm8).
-If `H` is a strong hash function, all its output bits are well-mixed, so `p` can
-also be a power of two, such that `% p` only requires a bitwise-AND.
+input messages `m` to a hash table bin `b` by computing the hash `H(s, m)`
+using a hash function `H` seeded by `s`, and mapping it to a bin with some
+narrowing function `b = R(h)`, discussed below.
 
 Attackers may attempt to trigger 'flooding' (excessive work in insertions or
-lookups) by finding 'collisions', i.e. many `m` assigned to the same bin. If the
-attacker has local access, they can do far worse, so we assume the attacker can
-only issue remote requests. If the attacker is able to send large numbers of
-requests, they can already deny service, so we need only ensure the attacker's
-cost is sufficiently large compared to the service's provisioning.
+lookups) by finding multiple `m` that map to the same bin. If the attacker has
+local access, they can do far worse, so we assume the attacker can only issue
+remote requests. If the attacker is able to send large numbers of requests,
+they can already deny service, so we need only ensure the attacker's cost is
+sufficiently large compared to the service's provisioning.
 
 If the hash function is 'weak' (e.g. CityHash/Murmur), attackers can easily
-generate collisions regardless of the seed. This causes `n^2` work for `n`
-requests to an unprotected hash table, which is unacceptable. If the seed is
-known, the attacker can find collisions for any `H` by computing `H(s, m) % p`
-for various `m`. This raises the attacker's cost by a factor of `p` (typically
-10^3..10^5), but we need a further increase in the cost/work ratio to be safe.
+generate 'collisions' (inputs mapping to the same hash values) regardless of the
+seed. This causes `n^2` work for `n` requests to an unprotected hash table,
+which is unacceptable.
 
-It is reasonable to assume `s` is a secret property of the service generated on
-startup or even per-connection, and therefore initially unknown to remote
-attackers. A timing attack by Wool/Bar-Yosef recovers 13-bit seeds by testing
-all 8K possibilities using millions of requests, which takes several days (even
-assuming unrealistic 150 us round-trip times). It appears infeasible to recover
-64-bit seeds in this way.
+By contrast, 'strong' hashes such as SipHash or HighwayHash require infeasible
+attacker effort to find a collision (an expected 2^32 guesses of `m` per the
+birthday paradox) or recover the seed (2^63 requests). These security claims
+assume the seed is secret. It is reasonable to suppose `s` is initially unknown
+to attackers, e.g. generated on startup or even per-connection. A timing attack
+by Wool/Bar-Yosef recovers 13-bit seeds by testing all 8K possibilities using
+millions of requests, which takes several days (even assuming unrealistic 150 us
+round-trip times). It appears infeasible to recover 64-bit seeds in this way.
 
-If the seed remains secret, the security claims of 'strong' hashes such as
-SipHash or HighwayHash imply attackers need 2^32 guesses of `m` before
-expecting a collision (birthday paradox), and 2^63 requests to guess the seed.
-These costs are large enough to consider the service safe, even when using a
-conventional hash table.
+However, attackers are only looking for multiple `m` mapping to the same bin
+rather than full hash collisions. We assume they know or are able to discover
+the hash table size `p`. It is common to choose `p = 2^i` to enable an efficient
+`R(h) := h & (p - 1)`, which simply retains the lower hash bits. It may be
+easier for attackers to compute partial collisions where only the lower `i` bits
+match. This can be prevented by choosing a prime `p` so that `R(h) := h % p`
+incorporates all hash bits. The costly modulo operation can be avoided by
+multiplying with the inverse (https://goo.gl/l7ASm8). An interesting alternative
+suggested by Kyoung Jae Seo chooses a random subset of the `h` bits. Such an `R`
+function can be computed in just 3 cycles using PEXT from the BMI2 instruction
+set. This is expected to defend against SAT-solver attacks on the hash bits at a
+slightly lower cost than the multiplicative inverse method, and still allows
+power-of-two table sizes.
 
-Even if the seed is somehow revealed and/or attackers manage to find collisions,
-there are two ways to prevent denial of service by limiting the work per
-request, without incurring much additional cost.
+Summary thus far: given a strong hash function and secret seed, it appears
+infeasible for attackers to generate collisions because `s` and/or `R` are
+unknown. However, they can still observe the timings of data structure
+operations for various `m`. With typical table sizes between 2^10 and 2^17
+entries, attackers can detect some collisions, but at a relatively high cost.
+
+The hash table data structure must therefore mitigate the effects of collisions;
+this also deals with the unlikely occurrence of a successful seed recovery or
+collision attack. We suggest two methods for defending against flooding while
+maintaining good average-case performance:
 
 1. Use augmented/de-amortized cuckoo hash tables (https://goo.gl/PFwwkx).
-These guarantee worst-case `log n` bounds, but only if the hash function is
-'indistinguishable from random', which is claimed for SipHash and HighwayHash
-but certainly not for weak hashes.
+   These guarantee worst-case `log n` bounds, but only if the hash function is
+   'indistinguishable from random', which is claimed for SipHash and HighwayHash
+   but certainly not for weak hashes.
 
 2. Use conventional separate chaining for collision resolution, but with trees
-instead of linked lists. This avoids having to store and check for each hash
-bucket whether it holds a list or tree. However, general tree data structures
-need to ensure they remain balanced. This requires additional bookkeeping -
-typically 3 pointers per node for red-black or 2-3 trees. We can reduce this
-overhead by realizing that `H(s, m)` is uniformly randomly distributed when `H`
-is a strong hash function. When storing such hashes in the tree rather than the
-original message `m`, we can use a simple unbalanced tree, which reduces space
-and time costs. Thanks to funny-falcon for proposing this approach!
+   instead of linked lists. This avoids having to store and check for each hash
+   bucket whether it holds a list or tree. However, general tree data structures
+   need to ensure they remain balanced. This requires additional bookkeeping -
+   typically 3 pointers per node for red-black or 2-3 trees. We can reduce this
+   overhead by realizing that `H(s, m)` is uniformly randomly distributed when
+   `H` is a strong hash function. When storing such hashes in the tree rather
+   than the original message `m`, we can use a simple unbalanced tree, which
+   reduces space and time costs. Thanks to funny-falcon for proposing this
+   approach!
 
 In both cases, attackers pay a high cost (likely at least proportional to `p`)
 to trigger only modest additional work (a factor of `log n`).
