@@ -39,6 +39,18 @@ namespace highwayhash {
 #define HH_BIG_ENDIAN 1
 #endif
 
+#if (HH_ARCH_X64 && HH_MSC_VERSION) || defined(__SSE4_1__)
+#define HH_ENABLE_SSE41 1
+#else
+#define HH_ENABLE_SSE41 0
+#endif
+
+#if (HH_ARCH_X64 && HH_MSC_VERSION) || defined(__AVX2__)
+#define HH_ENABLE_AVX2 1
+#else
+#define HH_ENABLE_AVX2 0
+#endif
+
 #ifdef _MSC_VER
 #define HH_BSWAP32(x) _byteswap_ulong(x)
 #define HH_BSWAP64(x) _byteswap_uint64(x)

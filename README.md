@@ -191,7 +191,7 @@ that do not support them. However, intrinsics, and therefore also any vector
 classes that use them, require a compiler flag that also enables the compiler to
 generate code for that CPU. This means the intrinsics must be placed in separate
 translation units that are compiled with the required flags. It is important
-that these source file and their headers not define any inline functions,
+that these source files and their headers not define any inline functions,
 because that might break the one definition rule and cause crashes.
 
 To minimize dispatch overhead when hashes are computed often (e.g. in a loop),
@@ -219,9 +219,14 @@ remote requests. If the attacker is able to send large numbers of requests,
 they can already deny service, so we need only ensure the attacker's cost is
 sufficiently large compared to the service's provisioning.
 
-If the hash function is 'weak' (e.g. CityHash/Murmur), attackers can easily
-generate 'hash collisions' (inputs mapping to the same hash values) regardless
-of the seed. This causes `n^2` work for `n` requests to an unprotected hash
+If the hash function is 'weak', attackers can easily generate 'hash collisions'
+(inputs mapping to the same hash values) that are independent of the seed. In
+other words, certain input messages will cause collisions regardless of the seed
+value. The author of SipHash has published C++ programs to generate such
+'universal (key-independent) multicollisions' for CityHash and Murmur. Similar
+'differential' attacks are likely possible for any hash function consisting only
+of reversible operations (e.g. addition/multiplication/rotation) with a constant
+operand. `n` requests with such inputs cause `n^2` work for an unprotected hash
 table, which is unacceptable.
 
 By contrast, 'strong' hashes such as SipHash or HighwayHash require infeasible
@@ -251,18 +256,18 @@ Summary thus far: given a strong hash function and secret seed, it appears
 infeasible for attackers to generate hash collisions because `s` and/or `R` are
 unknown. However, they can still observe the timings of data structure
 operations for various `m`. With typical table sizes of 2^10 to 2^17 entries,
-attackers can detect some 'bin collisions' (inputs mapping to the same bin), but
-at a relatively high cost.
+attackers can detect some 'bin collisions' (inputs mapping to the same bin).
+Although this will be costly for the attacker, they can then send many instances
+of such inputs, so we need to limit the resulting work for our data structure.
 
-We must assume that attackers can choose messages such that many are mapped to
-the same few bins. Hash tables with separate chaining typically store bin
-entries in a linked list, so this would lead to unacceptable linear-time lookup
-cost. We instead seek optimal asymptotic worst-case complexity for each
-operation (insertion, deletion and lookups), which is a constant factor times
-the logarithm of the data structure size. This naturally leads to a tree-like
-data structure for each bin. The Java8 HashMap only replaces its linked list
-with trees when needed. This leads to additional cost and complexity for
-deciding whether a bin is a list or tree.
+Hash tables with separate chaining typically store bin entries in a linked list,
+so worst-case inputs lead to unacceptable linear-time lookup cost. We instead
+seek optimal asymptotic worst-case complexity for each operation (insertion,
+deletion and lookups), which is a constant factor times the logarithm of the
+data structure size. This naturally leads to a tree-like data structure for each
+bin. The Java8 HashMap only replaces its linked list with trees when needed.
+This leads to additional cost and complexity for deciding whether a bin is a
+list or tree.
 
 Our first proposal (suggested by Github user funny-falcon) avoids this overhead
 by always storing one tree per bin. It may also be worthwhile to store the first
@@ -291,9 +296,10 @@ operations, but only if the hash function is 'indistinguishable from random'
 (uniformly distributed regardless of the input distribution), which is claimed
 for SipHash and HighwayHash but certainly not for weak hashes.
 
-Both alternatives are able to defend against flooding by limiting the amount of
-extra work an attacker can cause (a modest factor of `log n`), while still
-retaining good average case performance.
+Both alternatives retain good average case performance and defend against
+flooding by limiting the amount of extra work an attacker can cause. The first
+approach guarantees an upper bound of `log n` additional work even if the hash
+function is compromised.
 
 In summary, a strong hash function is not, by itself, sufficient to protect a
 chained hash table from flooding attacks. However, strong hash functions are
@@ -310,7 +316,7 @@ raise an issue and we'll add yours as well.
 
 By | Language | URL
 --- | --- | ---
-Damian Gryski | Go/SSE | https://github.com/dgryski/go-highway/
+Damian Gryski | Go and SSE | https://github.com/dgryski/go-highway/
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 
@@ -342,6 +348,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-01-27
+<jyrki.alakuijala@gmail.com>, updated 2017-01-28
 
 This is not an official Google product.

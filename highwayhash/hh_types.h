@@ -27,12 +27,16 @@ namespace highwayhash {
 // We recommend initializing it to a random value.
 using HHKey = uint64_t[4];
 
-// Hash 'return' types
+// How much input is hashed by one call to HHState::Update.
+using HHPacket = uint64_t[4];
+
+// Hash 'return' types.
 using HHResult64 = uint64_t;  // returned directly
 using HHResult128 = uint64_t[2];
 using HHResult256 = uint64_t[4];
 
-// Primary template, specialized for TargetAVX2 etc.
+// Primary template; hh_*.h provide specializations for Target*, which are
+// forward-declared in instruction_sets.h.
 template <class Target>
 class HHState {};
 

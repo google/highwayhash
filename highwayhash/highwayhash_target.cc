@@ -66,29 +66,84 @@ void HighwayHash<Target>::operator()(const HHKey& key,
 namespace {
 
 template <class Target>
-bool VerifyResult(Target, const uint64_t size, const HHResult64& expected,
-                  const HHResult64& actual) {
+void NotifyWhetherEqual(Target, const uint64_t size, const HHResult64& expected,
+                        const HHResult64& actual,
+                        void (*notify)(const char*, bool)) {
   if (expected != actual) {
     printf("%8s: mismatch at %zu: %016lX %016lX\n", Target::Name(), size,
            expected, actual);
-    return false;
+    (*notify)(Target::Name(), false);
+  } else {
+    (*notify)(Target::Name(), true);
   }
-  return true;
 }
 
 // Overload for HHResult128 or HHResult256 (arrays).
 template <class Target, size_t kNumLanes>
-bool VerifyResult(Target, const size_t size,
-                  const uint64_t (&expected)[kNumLanes],
-                  const uint64_t (&actual)[kNumLanes]) {
+void NotifyWhetherEqual(Target, const size_t size,
+                        const uint64_t (&expected)[kNumLanes],
+                        const uint64_t (&actual)[kNumLanes],
+                        void (*notify)(const char*, bool)) {
   for (size_t i = 0; i < kNumLanes; ++i) {
     if (expected[i] != actual[i]) {
       printf("%8s: mismatch at %zu[%zu]: %016lX %016lX\n", Target::Name(), size,
              i, expected[i], actual[i]);
-      return false;
+      (*notify)(Target::Name(), false);
+      return;
     }
   }
-  return true;
+  (*notify)(Target::Name(), true);
+}
+
+// Shared logic for all HighwayHashTest::operator() overloads.
+template <class Target, typename Result>
+void TestHighwayHash(HHState<Target>* state, const char* HH_RESTRICT bytes,
+                     const size_t size, const Result* expected,
+                     void (*notify)(const char*, bool)) {
+  Result actual;
+  HighwayHashT(state, bytes, size, &actual);
+  NotifyWhetherEqual(Target(), size, *expected, actual, notify);
+}
+
+// Shared logic for all HighwayHashCatTest::operator() overloads.
+template <class Target, typename Result>
+void TestHighwayHashCat(const HHKey& key, HHState<Target>* state,
+                        const char* HH_RESTRICT bytes, const size_t size,
+                        const Result* expected,
+                        void (*notify)(const char*, bool)) {
+  // Slightly faster to compute the expected prefix hashes only once.
+  // Use new instead of vector to avoid headers with inline functions.
+  Result* results = new Result[size];
+  for (size_t i = 0; i < size; ++i) {
+    HHState<Target> state_flat(key);
+    HighwayHashT(&state_flat, bytes, i, &results[i]);
+  }
+
+  // Splitting into three fragments/Append should cover all codepaths.
+  const size_t max_fragment_size = size / 3;
+  for (size_t size1 = 0; size1 < max_fragment_size; ++size1) {
+    for (size_t size2 = 0; size2 < max_fragment_size; ++size2) {
+      for (size_t size3 = 0; size3 < max_fragment_size; ++size3) {
+        HighwayHashCatT<Target> cat(key);
+        const char* pos = bytes;
+        cat.Append(pos, size1);
+        pos += size1;
+        cat.Append(pos, size2);
+        pos += size2;
+        cat.Append(pos, size3);
+        pos += size3;
+
+        Result result_cat;
+        cat.Finalize(&result_cat);
+
+        const size_t total_size = pos - bytes;
+        NotifyWhetherEqual(Target(), total_size, results[total_size],
+                           result_cat, notify);
+      }
+    }
+  }
+
+  delete[] results;
 }
 
 }  // namespace
@@ -98,10 +153,7 @@ void HighwayHashTest<Target>::operator()(
     const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
     const HHResult64* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
-  HHResult64 actual;
-  HighwayHashT(&state, bytes, size, &actual);
-  const bool ok = VerifyResult(Target(), size, *expected, actual);
-  (*notify)(Target::Name(), ok);
+  TestHighwayHash(&state, bytes, size, expected, notify);
 }
 
 template <class Target>
@@ -109,10 +161,7 @@ void HighwayHashTest<Target>::operator()(
     const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
     const HHResult128* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
-  HHResult128 actual;
-  HighwayHashT(&state, bytes, size, &actual);
-  const bool ok = VerifyResult(Target(), size, *expected, actual);
-  (*notify)(Target::Name(), ok);
+  TestHighwayHash(&state, bytes, size, expected, notify);
 }
 
 template <class Target>
@@ -120,14 +169,36 @@ void HighwayHashTest<Target>::operator()(
     const HHKey& key, const char* HH_RESTRICT bytes, const size_t size,
     const HHResult256* expected, void (*notify)(const char*, bool)) const {
   HHState<Target> state(key);
-  HHResult256 actual;
-  HighwayHashT(&state, bytes, size, &actual);
-  const bool ok = VerifyResult(Target(), size, *expected, actual);
-  (*notify)(Target::Name(), ok);
+  TestHighwayHash(&state, bytes, size, expected, notify);
+}
+
+template <class Target>
+void HighwayHashCatTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const uint64_t size,
+    const HHResult64* expected, void (*notify)(const char*, bool)) const {
+  HHState<Target> state(key);
+  TestHighwayHashCat(key, &state, bytes, size, expected, notify);
+}
+
+template <class Target>
+void HighwayHashCatTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const uint64_t size,
+    const HHResult128* expected, void (*notify)(const char*, bool)) const {
+  HHState<Target> state(key);
+  TestHighwayHashCat(key, &state, bytes, size, expected, notify);
+}
+
+template <class Target>
+void HighwayHashCatTest<Target>::operator()(
+    const HHKey& key, const char* HH_RESTRICT bytes, const uint64_t size,
+    const HHResult256* expected, void (*notify)(const char*, bool)) const {
+  HHState<Target> state(key);
+  TestHighwayHashCat(key, &state, bytes, size, expected, notify);
 }
 
 // Instantiate for the current target.
 template struct HighwayHash<HH_TARGET>;
 template struct HighwayHashTest<HH_TARGET>;
+template struct HighwayHashCatTest<HH_TARGET>;
 
 }  // namespace highwayhash

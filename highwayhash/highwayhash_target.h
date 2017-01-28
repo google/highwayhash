@@ -58,8 +58,8 @@ struct HighwayHash {
 // invocation via InstructionSets::RunAll.
 template <class Target>
 struct HighwayHashTest {
-  // Verifies the hash result matches "expected"; if not, sets "ok" to false and
-  // prints a message to stdout.
+  // Verifies the hash result matches "expected". Calls "notify" with
+  // Target::Name() and whether the comparison succeeded.
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
                   const size_t size, const HHResult64* expected,
                   void (*notify)(const char*, bool)) const;
@@ -70,6 +70,24 @@ struct HighwayHashTest {
                   const size_t size, const HHResult256* expected,
                   void (*notify)(const char*, bool)) const;
 };
+
+template <class Target>
+struct HighwayHashCatTest {
+  // Partitions "bytes" into zero to three fragments and ensures HighwayHashCat
+  // returns the same result as HighwayHashT(bytes, sum_fragment_size).
+  // Calls "notify" with Target::Name() and whether the comparison succeeded.
+  // The value of "expected" is ignored; it is only used for overloading.
+  void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
+                  const uint64_t size, const HHResult64* expected,
+                  void (*notify)(const char*, bool)) const;
+  void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
+                  const uint64_t size, const HHResult128* expected,
+                  void (*notify)(const char*, bool)) const;
+  void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
+                  const uint64_t size, const HHResult256* expected,
+                  void (*notify)(const char*, bool)) const;
+};
+
 
 }  // namespace highwayhash
 

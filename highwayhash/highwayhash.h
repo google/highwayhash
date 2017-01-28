@@ -19,20 +19,43 @@
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
 // Function template for direct invocation via CPU-specific templates (e.g.
-// template<class Target> CodeUsingHash() { HighwayHashT<Target>(...); }, or
-// when the entire binary is built with the required compiler flags. If run on
-// a CPU that might lack AVX2 or even SSE41, you should instead call
-// InstructionSets<HighwayHash>() - see highwayhash_target.h.
-
+// template<class Target> CodeUsingHash() { HighwayHashT<Target>(...); }, or if
+// Target matches the minimum CPU requirement (specified via compiler flag).
 #include <stddef.h>
 
+#include "highwayhash/arch_specific.h"  // HH_ENABLE_*
 #include "highwayhash/compiler_specific.h"
-#include "highwayhash/iaca.h"
-// These headers are empty if the requisite __AVX2__ etc. are undefined.
-#include "highwayhash/hh_avx2.h"
-#include "highwayhash/hh_portable.h"
-#include "highwayhash/hh_sse41.h"
 #include "highwayhash/hh_types.h"
+#include "highwayhash/iaca.h"
+
+// HH_TARGET_PREFERRED enables us to provide new specializations without
+// having to update each call site. Example usage:
+//
+// HHState<HH_TARGET_PREFERRED> state(key);
+// HighwayHashT(&state, in, size, &result);
+//
+// This is useful for binaries that target a lowest-common denominator CPU
+// without conditionally using newer instructions if available. Such binaries
+// are compiled with the same flags for each translation unit, which avoids
+// difficulties with inline functions mentioned in instruction_sets.h.
+//
+// If you want to select the best available specialization at runtime,
+// use InstructionSets<HighwayHash>() instead.
+
+#include "highwayhash/hh_portable.h"
+#define HH_TARGET_PREFERRED TargetPortable
+
+#if HH_ENABLE_SSE41
+#include "highwayhash/hh_sse41.h"
+#undef HH_TARGET_PREFERRED
+#define HH_TARGET_PREFERRED TargetSSE41
+#endif
+
+#if HH_ENABLE_AVX2
+#include "highwayhash/hh_avx2.h"
+#undef HH_TARGET_PREFERRED
+#define HH_TARGET_PREFERRED TargetAVX2
+#endif
 
 namespace highwayhash {
 
@@ -59,11 +82,10 @@ HH_INLINE void HighwayHashT(HHState<Target>* HH_RESTRICT state,
                             const char* HH_RESTRICT bytes, const size_t size,
                             Result* HH_RESTRICT hash) {
   BeginIACA();
-  const int kPacketSize = 32;
-  const size_t remainder = size & (kPacketSize - 1);
-  const size_t truncated = size & ~(kPacketSize - 1);
-  for (size_t i = 0; i < truncated; i += kPacketSize) {
-    state->Update(bytes + i);
+  const size_t remainder = size & (sizeof(HHPacket) - 1);
+  const size_t truncated = size & ~(sizeof(HHPacket) - 1);
+  for (size_t offset = 0; offset < truncated; offset += sizeof(HHPacket)) {
+    state->Update(*reinterpret_cast<const HHPacket*>(bytes + offset));
   }
 
   if (remainder != 0) {
@@ -73,6 +95,67 @@ HH_INLINE void HighwayHashT(HHState<Target>* HH_RESTRICT state,
   state->Finalize(hash);
   EndIACA();
 }
+
+// Wrapper class for incrementally hashing a series of data ranges. The final
+// result is the same as HighwayHashT of the concatenation of all the ranges.
+// This is useful for computing the hash of cords, iovecs, and similar
+// data structures.
+
+template <class Target>
+class HighwayHashCatT {
+ public:
+  HighwayHashCatT(const HHKey& key) : state_(key) {}
+
+  // Adds "bytes" to the internal buffer, feeding it to HHState::Update as
+  // required. Call this as often as desired. There are no alignment
+  // requirements. No effect if "num_bytes" == 0.
+  void Append(const char* HH_RESTRICT bytes, size_t num_bytes) {
+    char* buffer_bytes = reinterpret_cast<char*>(buffer_);
+    // Have prior bytes to flush.
+    if (buffer_usage_ != 0) {
+      const size_t capacity = sizeof(HHPacket) - buffer_usage_;
+      if (num_bytes < capacity) {
+        // New bytes fit within buffer, but still not enough to Update.
+        memcpy(buffer_bytes + buffer_usage_, bytes, num_bytes);
+        buffer_usage_ += num_bytes;
+        return;
+      }
+      memcpy(buffer_bytes + buffer_usage_, bytes, capacity);
+      state_.Update(*reinterpret_cast<const HHPacket*>(buffer_));
+      buffer_usage_ = 0;
+      bytes += capacity;
+      num_bytes -= capacity;
+    }
+
+    // Buffer currently empty => Update directly from the source.
+    while (num_bytes >= sizeof(HHPacket)) {
+      state_.Update(*reinterpret_cast<const HHPacket*>(bytes));
+      bytes += sizeof(HHPacket);
+      num_bytes -= sizeof(HHPacket);
+    }
+
+    // Store any remainders in buffer, no-op if multiple of a packet.
+    memcpy(buffer_bytes, bytes, num_bytes);
+    buffer_usage_ = num_bytes;
+  }
+
+  // Stores the resulting 64, 128 or 256-bit hash of all data passed to Append.
+  // Must be called exactly once.
+  template <typename Result>  // HHResult*
+  void Finalize(Result* HH_RESTRICT hash) {
+    if (buffer_usage_ != 0) {
+      const char* buffer_bytes = reinterpret_cast<const char*>(buffer_);
+      state_.UpdateRemainder(buffer_bytes, buffer_usage_);
+    }
+    state_.Finalize(hash);
+  }
+
+ private:
+  HHPacket buffer_ HH_ALIGNAS(64);
+  HHState<Target> state_;
+  // How many bytes in buffer_ (starting with offset 0) are valid.
+  size_t buffer_usage_ = 0;
+};
 
 }  // namespace highwayhash
 

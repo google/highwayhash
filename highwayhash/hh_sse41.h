@@ -26,7 +26,6 @@
 #include "highwayhash/hh_types.h"
 #include "highwayhash/vector128.h"
 
-#if HH_ENABLE_SSE41
 namespace highwayhash {
 
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
@@ -52,10 +51,9 @@ class HHState<TargetSSE41> {
     mul1H = init1H;
   }
 
-  HH_INLINE void Update(const char* bytes) {
-    const uint64_t* words = reinterpret_cast<const uint64_t*>(bytes);
-    const V2x64U packetL = LoadUnaligned<V2x64U>(words + 0);
-    const V2x64U packetH = LoadUnaligned<V2x64U>(words + 2);
+  HH_INLINE void Update(const HHPacket& packet) {
+    const V2x64U packetL = LoadUnaligned<V2x64U>(&packet[0]);
+    const V2x64U packetH = LoadUnaligned<V2x64U>(&packet[2]);
     Update(packetH, packetL);
   }
 
@@ -300,5 +298,4 @@ class HHState<TargetSSE41> {
 
 }  // namespace highwayhash
 
-#endif  // #if HH_ENABLE_SSE41
 #endif  // #ifndef HIGHWAYHASH_HH_SSE41_H_

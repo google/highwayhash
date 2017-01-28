@@ -26,7 +26,6 @@
 #include "highwayhash/vector128.h"
 #include "highwayhash/vector256.h"
 
-#if HH_ENABLE_AVX2
 namespace highwayhash {
 
 template <>
@@ -58,10 +57,8 @@ def x(a,b,c):
     mul1 = init1;
   }
 
-  HH_INLINE void Update(const char* bytes) {
-    const V4x64U packet =
-        LoadUnaligned<V4x64U>(reinterpret_cast<const uint64_t*>(bytes));
-    Update(packet);
+  HH_INLINE void Update(const HHPacket& packet) {
+    Update(LoadUnaligned<V4x64U>(&packet[0]));
   }
 
   HH_INLINE void UpdateRemainder(const char* bytes, const uint64_t size_mod32) {
@@ -290,5 +287,4 @@ def x(a,b,c):
 
 }  // namespace highwayhash
 
-#endif  // #if HH_ENABLE_AVX2
 #endif  // #ifndef HIGHWAYHASH_HH_AVX2_H_

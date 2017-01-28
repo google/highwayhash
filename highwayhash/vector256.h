@@ -27,11 +27,13 @@
 //
 // Requires reasonable C++11 support (VC2015) and an AVX2-capable CPU.
 
-#include <immintrin.h>
-#include <stdint.h>
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 
 #if HH_ENABLE_AVX2
+#include <immintrin.h>
+#include <stdint.h>
+
 namespace highwayhash {
 
 // Primary template for 256-bit AVX2 vectors; only specializations are used.
@@ -735,5 +737,5 @@ HH_INLINE V4x64F Max(const V4x64F& v0, const V4x64F& v1) {
 
 }  // namespace highwayhash
 
-#endif  // #if HH_ENABLE_AVX2
+#endif  // HH_ENABLE_AVX2
 #endif  // HIGHWAYHASH_VECTOR256_H_

@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <map>
 #include <string>
+#include <vector>
 
 #ifdef HH_GOOGLETEST
 #include "testing/base/public/gunit.h"
@@ -55,14 +56,15 @@ void Print(const HHResult64 (&result)[kNumLanes]) {
 // Keyed by Target::Name() so we can report which Targets were tested.
 using FailureCounts = std::map<std::string, int>;
 
-// Local static ensures init order is well-defined.
-FailureCounts& StaticFailureCounts() {
+// 'Global' data because the notify callbacks cannot accept state arguments.
+FailureCounts& ImplementationFailures() {
+  // Local static ensures init order is well-defined.
   static FailureCounts counts;
   return counts;
 }
 
-void NotifyResult(const char* target_name, const bool ok) {
-  StaticFailureCounts()[target_name] += !ok;
+void NotifyImplementationResult(const char* target_name, const bool ok) {
+  ImplementationFailures()[target_name] += !ok;
 }
 
 // Verifies every combination of implementation and input size.
@@ -82,8 +84,37 @@ void VerifyImplementations(const Result (&known_good)[kMaxSize + 1]) {
 #else
     const Result* expected = &known_good[size];
     InstructionSets::RunAll<HighwayHashTest>(key, in, size, expected,
-                                             &NotifyResult);
+                                             &NotifyImplementationResult);
 #endif
+  }
+}
+
+// Cat
+
+FailureCounts& CatFailures() {
+  static FailureCounts counts;
+  return counts;
+}
+
+void NotifyCatResult(const char* target_name, const bool ok) {
+  CatFailures()[target_name] += !ok;
+}
+
+template <typename Result>
+void VerifyCat() {
+  // Reversed order vs prior test.
+  const HHKey key = {0x1F1E1D1C1B1A1918ULL, 0x1716151413121110ULL,
+                     0x0F0E0D0C0B0A0908ULL, 0x0706050403020100ULL};
+
+  const size_t kMaxSize = 3 * 35;
+  std::vector<char> flat;
+  flat.reserve(kMaxSize);
+  srand(129);
+  for (size_t size = 0; size < kMaxSize; ++size) {
+    Result dummy;
+    InstructionSets::RunAll<HighwayHashCatTest>(key, flat.data(), size, &dummy,
+                                                &NotifyCatResult);
+    flat.push_back(static_cast<char>(rand() & 0xFF));
   }
 }
 
@@ -310,23 +341,34 @@ const HHResult256 kExpected256[kMaxSize + 1] = {
     {0x064DB5FE415126F5ull, 0x248AF8FB29A9C595ull, 0x508633A742B3FFF7ull,
      0x24CFDCA800C34770ull}};
 
-void VerifyImplementations() {
+void RunTests() {
+  bool ok = true;
+
   VerifyImplementations(kExpected64);
   VerifyImplementations(kExpected128);
   VerifyImplementations(kExpected256);
-
-  bool ok = true;
-  for (const auto& pair : StaticFailureCounts()) {
-    printf("%s: %s\n", pair.first.c_str(), pair.second == 0 ? "OK" : "failed");
+  for (const auto& pair : ImplementationFailures()) {
+    printf("%10s: %s\n", pair.first.c_str(),
+           pair.second == 0 ? "OK" : "failed");
     ok &= pair.second == 0;
   }
+
+  VerifyCat<HHResult64>();
+  VerifyCat<HHResult128>();
+  VerifyCat<HHResult256>();
+  for (const auto& pair : CatFailures()) {
+    printf("%10s: %s\n", pair.first.c_str(),
+           pair.second == 0 ? "OK" : "failed");
+    ok &= pair.second == 0;
+  }
+
 #ifdef HH_GOOGLETEST
   EXPECT_TRUE(ok);
 #endif
 }
 
 #ifdef HH_GOOGLETEST
-TEST(HighwayhashTest, OutputMatchesExpectations) { VerifyImplementations(); }
+TEST(HighwayhashTest, OutputMatchesExpectations) { RunTests(); }
 #endif
 
 }  // namespace
@@ -334,7 +376,7 @@ TEST(HighwayhashTest, OutputMatchesExpectations) { VerifyImplementations(); }
 
 #ifndef HH_GOOGLETEST
 int main(int argc, char* argv[]) {
-  highwayhash::VerifyImplementations();
+  highwayhash::RunTests();
   return 0;
 }
 #endif

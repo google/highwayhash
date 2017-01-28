@@ -27,13 +27,15 @@
 //
 // Requires reasonable C++11 support (VC2015) and SSE4.1.
 
+#include "highwayhash/arch_specific.h"
+#include "highwayhash/compiler_specific.h"
+
+#if HH_ENABLE_SSE41
+
 #include <smmintrin.h>  // SSE4.1
 #include <stddef.h>
 #include <stdint.h>
 
-#include "highwayhash/compiler_specific.h"
-
-#if HH_ENABLE_SSE41
 namespace highwayhash {
 
 // Primary template for 128-bit SSE4.1 vectors; only specializations are used.
@@ -769,5 +771,5 @@ HH_INLINE V2x64F Max(const V2x64F& v0, const V2x64F& v1) {
 
 }  // namespace highwayhash
 
-#endif  // #if HH_ENABLE_SSE41
+#endif  // HH_ENABLE_SSE41
 #endif  // HIGHWAYHASH_VECTOR128_H_
