@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <cstdio>
 
 #ifdef HH_GOOGLETEST
 #include "testing/base/public/gmock.h"
