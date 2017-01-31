@@ -1,3 +1,11 @@
 OWNERS
 README.google
 README.security
+*.a
+*.o
+benchmark
+nanobenchmark_example
+profiler_example
+sip_hash_test
+vector_test
+highwayhash_test
