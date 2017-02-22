@@ -19,27 +19,30 @@
 #include "highwayhash/nanobenchmark.h"
 #include "highwayhash/os_specific.h"
 
-namespace nanobenchmark {
+namespace highwayhash {
 namespace {
 
-void TestMemcpy() {
-  os_specific::PinThreadToRandomCPU();
+uint64_t RegionToMeasure(FuncInput size) {
+  char from[8] = {static_cast<char>(size)};
+  char to[8];
+  memcpy(to, from, size);
+  return to[0];
+}
 
-  for (const auto& size_samples : RepeatedMeasureWithArguments(
-           {3, 3, 4, 4, 7, 7, 8, 8}, [](const size_t size) {
-             char from[8] = {static_cast<char>(size)};
-             char to[8];
-             memcpy(to, from, size);
-             return to[0];
-           })) {
-    PrintMedianAndVariability(size_samples);
+void TestMemcpy() {
+  PinThreadToRandomCPU();
+  static const size_t distribution[] = {3, 3, 4, 4, 7, 7, 8, 8};
+  DurationsForInputs input_map = MakeDurationsForInputs(distribution, 10);
+  MeasureDurations(&RegionToMeasure, &input_map);
+  for (size_t i = 0; i < input_map.num_items; ++i) {
+    input_map.items[i].PrintMedianAndVariability();
   }
 }
 
 }  // namespace
-}  // namespace nanobenchmark
+}  // namespace highwayhash
 
 int main(int argc, char* argv[]) {
-  nanobenchmark::TestMemcpy();
+  highwayhash::TestMemcpy();
   return 0;
 }

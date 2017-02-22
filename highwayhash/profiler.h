@@ -42,7 +42,6 @@
 
 #if PROFILER_ENABLED
 
-#include <emmintrin.h>
 #include <algorithm>  // min/max
 #include <atomic>
 #include <cassert>
@@ -53,6 +52,7 @@
 #include <cstring>  // memcpy
 #include <new>
 
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 
 // Non-portable aspects:
@@ -60,12 +60,16 @@
 // - RDTSCP timestamps (serializing, high-resolution)
 // - assumes string literals are stored within an 8 MiB range
 // - compiler-specific annotations (restrict, alignment, fences)
+#if HH_ARCH_X64
+#include <emmintrin.h>
 #if HH_MSC_VERSION
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
+#endif
 
+#include "highwayhash/robust_statistics.h"
 #include "highwayhash/tsc_timer.h"
 
 #define PROFILER_CHECK(condition)                           \
@@ -74,7 +78,7 @@
     abort();                                                \
   }
 
-namespace profiler {
+namespace highwayhash {
 
 // Upper bounds for various fixed-size data structures (guarded via assert):
 
@@ -125,36 +129,27 @@ class CacheAligned {
     free(allocated);
   }
 
+#if HH_ARCH_X64
   // Overwrites "to" without loading it into the cache (read-for-ownership).
   template <typename T>
-  static void StreamCacheLine(const T* from, T* to) {
-    static_assert(sizeof(__m128i) % sizeof(T) == 0, "Cannot divide");
-    const size_t kLanes = sizeof(__m128i) / sizeof(T);
+  static void StreamCacheLine(const T* from_items, T* to_items) {
+    const __m128i* const from = reinterpret_cast<const __m128i*>(from_items);
+    __m128i* const to = reinterpret_cast<__m128i*>(to_items);
     HH_COMPILER_FENCE;
-    const __m128i v0 = LoadVector(from + 0 * kLanes);
-    const __m128i v1 = LoadVector(from + 1 * kLanes);
-    const __m128i v2 = LoadVector(from + 2 * kLanes);
-    const __m128i v3 = LoadVector(from + 3 * kLanes);
+    const __m128i v0 = _mm_load_si128(from + 0);
+    const __m128i v1 = _mm_load_si128(from + 1);
+    const __m128i v2 = _mm_load_si128(from + 2);
+    const __m128i v3 = _mm_load_si128(from + 3);
     // Fences prevent the compiler from reordering loads/stores, which may
     // interfere with write-combining.
     HH_COMPILER_FENCE;
-    StreamVector(v0, to + 0 * kLanes);
-    StreamVector(v1, to + 1 * kLanes);
-    StreamVector(v2, to + 2 * kLanes);
-    StreamVector(v3, to + 3 * kLanes);
+    _mm_stream_si128(to + 0, v0);
+    _mm_stream_si128(to + 1, v1);
+    _mm_stream_si128(to + 2, v2);
+    _mm_stream_si128(to + 3, v3);
     HH_COMPILER_FENCE;
   }
-
- private:
-  // Loads 128-bit vector from memory.
-  static __m128i LoadVector(const void* from) {
-    return _mm_load_si128(reinterpret_cast<const __m128i*>(from));
-  }
-
-  // Adds a 128-bit vector to the CPU's write-combine buffer.
-  static void StreamVector(const __m128i& v, void* to) {
-    _mm_stream_si128(reinterpret_cast<__m128i*>(to), v);
-  }
+#endif
 };
 
 // Represents zone entry/exit events. Stores a full-resolution timestamp plus
@@ -218,7 +213,9 @@ struct Accumulator {
   uint64_t num_calls = 0;  // upper bits = biased_offset.
   uint64_t total_duration = 0;
 };
+#if HH_ARCH_X64
 static_assert(sizeof(Accumulator) == sizeof(__m128i), "Wrong Accumulator size");
+#endif
 
 template <typename T>
 static inline T ClampedSubtract(const T minuend, const T subtrahend) {
@@ -261,8 +258,7 @@ class Results {
   // Draw all required information from the packets, which can be discarded
   // afterwards. Called whenever this thread's storage is full.
   void AnalyzePackets(const Packet* packets, const size_t num_packets) {
-    const uint64_t t0 = tsc_timer::Start<uint64_t>();
-    const __m128i one_64 = _mm_set1_epi64x(1);
+    const uint64_t t0 = Start<uint64_t>();
 
     for (size_t i = 0; i < num_packets; ++i) {
       const Packet p = packets[i];
@@ -283,7 +279,7 @@ class Results {
       const uint64_t self_duration = ClampedSubtract(
           duration, self_overhead_ + child_overhead_ + node.child_total);
 
-      UpdateOrAdd(node.packet.BiasedOffset(), self_duration, one_64);
+      UpdateOrAdd(node.packet.BiasedOffset(), self_duration);
       --depth_;
 
       // Deduct this nested node's time from its parent's self_duration.
@@ -291,29 +287,29 @@ class Results {
         nodes_[depth_ - 1].child_total += duration + child_overhead_;
       }
     }
-    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
+
+    const uint64_t t1 = Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0;
   }
 
   // Incorporates results from another thread. Call after all threads have
   // exited any zones.
   void Assimilate(const Results& other) {
-    const uint64_t t0 = tsc_timer::Start<uint64_t>();
+    const uint64_t t0 = Start<uint64_t>();
     assert(depth_ == 0);
     assert(other.depth_ == 0);
 
-    const __m128i one_64 = _mm_set1_epi64x(1);
     for (size_t i = 0; i < other.num_zones_; ++i) {
       const Accumulator& zone = other.zones_[i];
-      UpdateOrAdd(zone.BiasedOffset(), zone.total_duration, one_64);
+      UpdateOrAdd(zone.BiasedOffset(), zone.total_duration);
     }
-    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
+    const uint64_t t1 = Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0 + other.analyze_elapsed_;
   }
 
   // Single-threaded.
   void Print() {
-    const uint64_t t0 = tsc_timer::Start<uint64_t>();
+    const uint64_t t0 = Start<uint64_t>();
     MergeDuplicates();
 
     // Sort by decreasing total (self) cost.
@@ -330,26 +326,29 @@ class Results {
              num_calls, r.total_duration / num_calls, r.total_duration);
     }
 
-    const uint64_t t1 = tsc_timer::Stop<uint64_t>();
+    const uint64_t t1 = Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0;
     printf("Total clocks during analysis: %zu\n", analyze_elapsed_);
   }
 
  private:
+#if HH_ARCH_X64
   static bool SameOffset(const __m128i& zone, const size_t biased_offset) {
     const uint64_t num_calls = _mm_cvtsi128_si64(zone);
     return (num_calls >> Accumulator::kNumCallBits) == biased_offset;
   }
+#endif
 
   // Updates an existing Accumulator (uniquely identified by biased_offset) or
   // adds one if this is the first time this thread analyzed that zone.
   // Uses a self-organizing list data structure, which avoids dynamic memory
   // allocations and is far faster than unordered_map. Loads, updates and
   // stores the entire Accumulator with vector instructions.
-  void UpdateOrAdd(const size_t biased_offset, const uint64_t duration,
-                   const __m128i& one_64) {
+  void UpdateOrAdd(const size_t biased_offset, const uint64_t duration) {
     assert(biased_offset < (1ULL << Packet::kOffsetBits));
 
+#if HH_ARCH_X64
+    const __m128i one_64 = _mm_set1_epi64x(1);
     const __m128i duration_64 = _mm_cvtsi64_si128(duration);
     const __m128i add_duration_call = _mm_unpacklo_epi64(one_64, duration_64);
 
@@ -388,6 +387,38 @@ class Results {
     assert(num_zones_ < kMaxZones);
     _mm_store_si128(zones + num_zones_, zone);
     ++num_zones_;
+#else
+    // Special case for first zone: (maybe) update, without swapping.
+    if (zones_[0].BiasedOffset() == biased_offset) {
+      zones_[0].total_duration += duration;
+      zones_[0].num_calls += 1;
+      assert(zones_[0].BiasedOffset() == biased_offset);
+      return;
+    }
+
+    // Look for a zone with the same offset.
+    for (size_t i = 1; i < num_zones_; ++i) {
+      if (zones_[i].BiasedOffset() == biased_offset) {
+        zones_[i].total_duration += duration;
+        zones_[i].num_calls += 1;
+        assert(zones_[i].BiasedOffset() == biased_offset);
+        // Swap with predecessor (more conservative than move to front,
+        // but at least as successful).
+        const Accumulator prev = zones_[i - 1];
+        zones_[i - 1] = zones_[i];
+        zones_[i] = prev;
+        return;
+      }
+    }
+
+    // Not found; create a new Accumulator.
+    assert(num_zones_ < kMaxZones);
+    Accumulator* HH_RESTRICT zone = zones_ + num_zones_;
+    zone->num_calls = (biased_offset << Accumulator::kNumCallBits) + 1;
+    zone->total_duration = duration;
+    assert(zone->BiasedOffset() == biased_offset);
+    ++num_zones_;
+#endif
   }
 
   // Each instantiation of a function template seems to get its own copy of
@@ -440,8 +471,7 @@ class ThreadSpecific {
  public:
   // "name" is used to sanity-check offsets fit in kOffsetBits.
   explicit ThreadSpecific(const char* name)
-      : buffer_size_(0),
-        packets_(static_cast<Packet*>(
+      : packets_(static_cast<Packet*>(
             CacheAligned::Allocate(PROFILER_THREAD_STORAGE << 20))),
         num_packets_(0),
         max_packets_(PROFILER_THREAD_STORAGE << 17),
@@ -471,6 +501,7 @@ class ThreadSpecific {
   }
 
   void AnalyzeRemainingPackets() {
+#if HH_ARCH_X64
     // Ensures prior weakly-ordered streaming stores are globally visible.
     _mm_sfence();
 
@@ -481,6 +512,8 @@ class ThreadSpecific {
     }
     memcpy(packets_ + num_packets_, buffer_, buffer_size_ * sizeof(Packet));
     num_packets_ += buffer_size_;
+#endif
+
     results_.AnalyzePackets(packets_, num_packets_);
     num_packets_ = 0;
   }
@@ -490,6 +523,7 @@ class ThreadSpecific {
  private:
   // Write packet to buffer/storage, emptying them as needed.
   void Write(const Packet packet) {
+#if HH_ARCH_X64
     // Buffer full => copy to storage.
     if (buffer_size_ == kBufferCapacity) {
       // Storage full => empty it.
@@ -505,12 +539,23 @@ class ThreadSpecific {
     }
     buffer_[buffer_size_] = packet;
     ++buffer_size_;
+#else
+    // Write directly to storage.
+    if (num_packets_ >= max_packets_) {
+      results_.AnalyzePackets(packets_, num_packets_);
+      num_packets_ = 0;
+    }
+    packets_[num_packets_] = packet;
+    ++num_packets_;
+#endif
   }
 
   // Write-combining buffer to avoid cache pollution. Must be the first
   // non-static member to ensure cache-line alignment.
+#if HH_ARCH_X64
   Packet buffer_[kBufferCapacity];
-  size_t buffer_size_;
+  size_t buffer_size_ = 0;
+#endif
 
   // Contiguous storage for zone enter/exit packets.
   Packet* const HH_RESTRICT packets_;
@@ -572,13 +617,13 @@ class Zone {
 
     // (Capture timestamp ASAP, not inside WriteEntry.)
     HH_COMPILER_FENCE;
-    const uint64_t timestamp = tsc_timer::Start<uint64_t>();
+    const uint64_t timestamp = Start<uint64_t>();
     thread_specific->WriteEntry(name, timestamp);
   }
 
   HH_NOINLINE ~Zone() {
     HH_COMPILER_FENCE;
-    const uint64_t timestamp = tsc_timer::Stop<uint64_t>();
+    const uint64_t timestamp = Stop<uint64_t>();
     StaticThreadSpecific()->WriteExit(timestamp);
     HH_COMPILER_FENCE;
   }
@@ -606,17 +651,17 @@ class Zone {
 // "name" must be a string literal, which is ensured by merging with "".
 #define PROFILER_ZONE(name)           \
   HH_COMPILER_FENCE;                  \
-  const profiler::Zone zone("" name); \
+  const Zone zone("" name); \
   HH_COMPILER_FENCE
 
 // Creates a zone for an entire function (when placed at its beginning).
 // Shorter/more convenient than ZONE.
 #define PROFILER_FUNC                  \
   HH_COMPILER_FENCE;                   \
-  const profiler::Zone zone(__func__); \
+  const Zone zone(__func__); \
   HH_COMPILER_FENCE
 
-#define PROFILER_PRINT_RESULTS profiler::Zone::PrintResults
+#define PROFILER_PRINT_RESULTS Zone::PrintResults
 
 inline void ThreadSpecific::ComputeOverhead() {
   // Delay after capturing timestamps before/after the actual zone runs. Even
@@ -633,16 +678,21 @@ inline void ThreadSpecific::ComputeOverhead() {
       for (size_t idx_duration = 0; idx_duration < kNumDurations;
            ++idx_duration) {
         { PROFILER_ZONE("Dummy Zone (never shown)"); }
-        durations[idx_duration] =
-            static_cast<uint32_t>(results_.ZoneDuration(buffer_));
+#if HH_ARCH_X64
+        const uint64_t duration = results_.ZoneDuration(buffer_);
         buffer_size_ = 0;
+#else
+        const uint64_t duration = results_.ZoneDuration(packets_);
+        num_packets_ = 0;
+#endif
+        durations[idx_duration] = static_cast<uint32_t>(duration);
         PROFILER_CHECK(num_packets_ == 0);
       }
-      tsc_timer::CountingSort(durations, durations + kNumDurations);
-      samples[idx_sample] = tsc_timer::Mode(durations, kNumDurations);
+      CountingSort(durations, durations + kNumDurations);
+      samples[idx_sample] = Mode(durations, kNumDurations);
     }
     // Median.
-    tsc_timer::CountingSort(samples, samples + kNumSamples);
+    CountingSort(samples, samples + kNumSamples);
     self_overhead = samples[kNumSamples / 2];
     printf("Overhead: %zu\n", self_overhead);
     results_.SetSelfOverhead(self_overhead);
@@ -659,30 +709,38 @@ inline void ThreadSpecific::ComputeOverhead() {
       const size_t kReps = 10000;
       // Analysis time should not be included => must fit within buffer.
       PROFILER_CHECK(kReps * 2 < max_packets_);
+#if HH_ARCH_X64
       _mm_mfence();
-      const uint64_t t0 = tsc_timer::Start<uint64_t>();
+#endif
+      const uint64_t t0 = Start<uint64_t>();
       for (size_t i = 0; i < kReps; ++i) {
         PROFILER_ZONE("Dummy");
       }
+#if HH_ARCH_X64
       _mm_sfence();
-      const uint64_t t1 = tsc_timer::Stop<uint64_t>();
+#endif
+      const uint64_t t1 = Stop<uint64_t>();
+#if HH_ARCH_X64
       PROFILER_CHECK(num_packets_ + buffer_size_ == kReps * 2);
-      num_packets_ = 0;
       buffer_size_ = 0;
+#else
+      PROFILER_CHECK(num_packets_ == kReps * 2);
+#endif
+      num_packets_ = 0;
       const uint64_t avg_duration = (t1 - t0 + kReps / 2) / kReps;
       durations[idx_duration] =
           static_cast<uint32_t>(ClampedSubtract(avg_duration, self_overhead));
     }
-    tsc_timer::CountingSort(durations, durations + kNumDurations);
-    samples[idx_sample] = tsc_timer::Mode(durations, kNumDurations);
+    CountingSort(durations, durations + kNumDurations);
+    samples[idx_sample] = Mode(durations, kNumDurations);
   }
-  tsc_timer::CountingSort(samples, samples + kNumSamples);
+  CountingSort(samples, samples + kNumSamples);
   const uint64_t child_overhead = samples[9 * kNumSamples / 10];
   printf("Child overhead: %zu\n", child_overhead);
   results_.SetChildOverhead(child_overhead);
 }
 
-}  // namespace profiler
+}  // namespace highwayhash
 
 #else  // !PROFILER_ENABLED
 #define PROFILER_ZONE(name)

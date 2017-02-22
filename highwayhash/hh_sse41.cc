@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define HH_TARGET TargetSSE41
-#define HH_TARGET_SSE41
+#define HH_TARGET_NAME SSE41
 #include "highwayhash/highwayhash_target.cc"

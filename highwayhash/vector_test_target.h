@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
-#define HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
+#ifndef HIGHWAYHASH_VECTOR_TEST_TARGET_H_
+#define HIGHWAYHASH_VECTOR_TEST_TARGET_H_
 
-// Scalar (non-vector/SIMD) version for comparison purposes.
+// WARNING: compiled with different flags => must not define/instantiate any
+// inline functions, nor include any headers that do - see instruction_sets.h.
 
-#include "highwayhash/state_helpers.h"
+#include "highwayhash/arch_specific.h"
+#include "highwayhash/hh_types.h"
 
-#ifdef __cplusplus
 namespace highwayhash {
-extern "C" {
-#endif
 
-HH_U64 ScalarSipTreeHash(const HH_U64 (&key)[4], const char* bytes,
-                         const HH_U64 size);
-HH_U64 ScalarSipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
-                           const HH_U64 size);
+// Usage: InstructionSets::RunAll<VectorTest>(). Calls "notify" for each test
+// failure.
+template <TargetBits Target>
+struct VectorTest {
+  void operator()(const HHNotify notify) const;
+};
 
-#ifdef __cplusplus
-}  // extern "C"
 }  // namespace highwayhash
-#endif
 
-#endif  // HIGHWAYHASH_SCALAR_SIP_TREE_HASH_H_
+#endif  // HIGHWAYHASH_VECTOR_TEST_TARGET_H_

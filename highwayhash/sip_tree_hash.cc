@@ -16,12 +16,14 @@
 
 #include <cstring>  // memcpy
 
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/sip_hash.h"
-#include "highwayhash/vector256.h"
 
-#if HH_ENABLE_AVX2
+#if HH_TARGET == HH_TARGET_AVX2
+#include "highwayhash/vector256.h"
 namespace highwayhash {
+namespace HH_TARGET_NAME {
 namespace {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
@@ -161,10 +163,12 @@ static HH_INLINE V4x64U LoadFinalPacket32(const char* bytes, const HH_U64 size,
 }
 
 }  // namespace
+}  // namespace HH_TARGET_NAME
 
 template <size_t kUpdateRounds, size_t kFinalizeRounds>
-HH_U64 SipTreeHashT(const HH_U64 (&key)[kNumLanes], const char* bytes,
+HH_U64 SipTreeHashT(const HH_U64 (&key)[4], const char* bytes,
                     const HH_U64 size) {
+  using namespace HH_TARGET_NAME;
   SipTreeHashStateT<kUpdateRounds, kFinalizeRounds> state(key);
 
   const size_t remainder = size & (kPacketSize - 1);
@@ -191,15 +195,16 @@ HH_U64 SipTreeHashT(const HH_U64 (&key)[kNumLanes], const char* bytes,
       reduce_key, hashes);
 }
 
-HH_U64 SipTreeHash(const HH_U64 (&key)[kNumLanes], const char* bytes,
+HH_U64 SipTreeHash(const HH_U64 (&key)[4], const char* bytes,
                    const HH_U64 size) {
   return SipTreeHashT<2, 4>(key, bytes, size);
 }
 
-HH_U64 SipTreeHash13(const HH_U64 (&key)[kNumLanes], const char* bytes,
+HH_U64 SipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
                      const HH_U64 size) {
   return SipTreeHashT<1, 3>(key, bytes, size);
 }
+
 }  // namespace highwayhash
 
 using highwayhash::HH_U64;
@@ -219,4 +224,4 @@ HH_U64 SipTreeHash13C(const HH_U64* key, const char* bytes, const HH_U64 size) {
 
 }  // extern "C"
 
-#endif  // #if HH_ENABLE_AVX2
+#endif  // HH_TARGET == HH_TARGET_AVX2

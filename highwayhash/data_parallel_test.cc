@@ -18,7 +18,7 @@
 #include "testing/base/public/gunit.h"
 #include "highwayhash/data_parallel.h"
 
-namespace data_parallel {
+namespace highwayhash {
 namespace {
 
 int PopulationCount(uint64_t bits) {
@@ -172,4 +172,4 @@ TEST(DataParallelTest, TestPerThread) {
 }
 
 }  // namespace
-}  // namespace data_parallel
+}  // namespace highwayhash

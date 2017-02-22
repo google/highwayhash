@@ -24,19 +24,36 @@
 // The naming convention is VNxBBT where N is the number of lanes, BB the
 // number of bits per lane and T is the lane type: unsigned integer (U),
 // signed integer (I), or floating-point (F).
-//
-// Requires reasonable C++11 support (VC2015) and SSE4.1.
+
+// WARNING: compiled with different flags => must not define/instantiate any
+// inline functions, nor include any headers that do - see instruction_sets.h.
+
+#include <stddef.h>
+#include <stdint.h>
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 
-#if HH_ENABLE_SSE41
+// For auto-dependency generation, we need to include all headers but not their
+// contents (otherwise compilation fails because -msse4.1 is not specified).
+#ifndef HH_DISABLE_TARGET_SPECIFIC
 
+// WARNING: smmintrin.h will also be included through immintrin.h in the AVX2
+// translation unit, which is compiled with different flags. This risks ODR
+// violations, and can cause crashes when functions are not inlined and the
+// linker selects the AVX2 version. Unfortunately this include cannot reside
+// within a namespace due to conflicts with other system headers. We need to
+// assume all the intrinsic functions (defined as static inline by Clang's
+// library and as extern inline by GCC) are in fact inlined. targets.bzl
+// generates a test that verifies this by detecting duplicate symbols.
 #include <smmintrin.h>  // SSE4.1
-#include <stddef.h>
-#include <stdint.h>
 
 namespace highwayhash {
+// To prevent ODR violations when including this from multiple translation
+// units (TU) that are compiled with different flags, the contents must reside
+// in a namespace whose name is unique to the TU. NOTE: this behavior is
+// incompatible with precompiled modules and requires textual inclusion instead.
+namespace HH_TARGET_NAME {
 
 // Primary template for 128-bit SSE4.1 vectors; only specializations are used.
 template <typename T>
@@ -45,6 +62,7 @@ class V128 {};
 template <>
 class V128<uint8_t> {
  public:
+  using Intrinsic = __m128i;
   using T = uint8_t;
   static constexpr size_t N = 16;
 
@@ -64,12 +82,12 @@ class V128<uint8_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128i& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128i& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V128 operator==(const V128& other) const {
@@ -99,12 +117,13 @@ class V128<uint8_t> {
   }
 
  private:
-  __m128i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V128<uint16_t> {
  public:
+  using Intrinsic = __m128i;
   using T = uint16_t;
   static constexpr size_t N = 8;
 
@@ -128,12 +147,12 @@ class V128<uint16_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128i& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128i& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V128 operator==(const V128& other) const {
@@ -166,7 +185,7 @@ class V128<uint16_t> {
     v_ = _mm_slli_epi16(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator<<=(const __m128i& count) {
+  HH_INLINE V128& operator<<=(const Intrinsic& count) {
     v_ = _mm_sll_epi16(v_, count);
     return *this;
   }
@@ -175,18 +194,19 @@ class V128<uint16_t> {
     v_ = _mm_srli_epi16(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator>>=(const __m128i& count) {
+  HH_INLINE V128& operator>>=(const Intrinsic& count) {
     v_ = _mm_srl_epi16(v_, count);
     return *this;
   }
 
  private:
-  __m128i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V128<uint32_t> {
  public:
+  using Intrinsic = __m128i;
   using T = uint32_t;
   static constexpr size_t N = 4;
 
@@ -210,12 +230,12 @@ class V128<uint32_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128i& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128i& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V128 operator==(const V128& other) const {
@@ -248,7 +268,7 @@ class V128<uint32_t> {
     v_ = _mm_slli_epi32(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator<<=(const __m128i& count) {
+  HH_INLINE V128& operator<<=(const Intrinsic& count) {
     v_ = _mm_sll_epi32(v_, count);
     return *this;
   }
@@ -257,18 +277,19 @@ class V128<uint32_t> {
     v_ = _mm_srli_epi32(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator>>=(const __m128i& count) {
+  HH_INLINE V128& operator>>=(const Intrinsic& count) {
     v_ = _mm_srl_epi32(v_, count);
     return *this;
   }
 
  private:
-  __m128i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V128<uint64_t> {
  public:
+  using Intrinsic = __m128i;
   using T = uint64_t;
   static constexpr size_t N = 2;
 
@@ -291,12 +312,12 @@ class V128<uint64_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128i& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128i& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V128 operator==(const V128& other) const {
@@ -329,7 +350,7 @@ class V128<uint64_t> {
     v_ = _mm_slli_epi64(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator<<=(const __m128i& count) {
+  HH_INLINE V128& operator<<=(const Intrinsic& count) {
     v_ = _mm_sll_epi64(v_, count);
     return *this;
   }
@@ -338,18 +359,19 @@ class V128<uint64_t> {
     v_ = _mm_srli_epi64(v_, count);
     return *this;
   }
-  HH_INLINE V128& operator>>=(const __m128i& count) {
+  HH_INLINE V128& operator>>=(const Intrinsic& count) {
     v_ = _mm_srl_epi64(v_, count);
     return *this;
   }
 
  private:
-  __m128i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V128<float> {
  public:
+  using Intrinsic = __m128;
   using T = float;
   static constexpr size_t N = 4;
 
@@ -373,12 +395,12 @@ class V128<float> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   HH_INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_ps(v_, other.v_));
@@ -421,12 +443,13 @@ class V128<float> {
   }
 
  private:
-  __m128 v_;
+  Intrinsic v_;
 };
 
 template <>
 class V128<double> {
  public:
+  using Intrinsic = __m128d;
   using T = double;
   static constexpr size_t N = 2;
 
@@ -449,12 +472,12 @@ class V128<double> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V128(const __m128d& v) : v_(v) {}
-  HH_INLINE V128& operator=(const __m128d& v) {
+  HH_INLINE V128(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V128& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m128d() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   HH_INLINE V128 operator==(const V128& other) const {
     return V128(_mm_cmpeq_pd(v_, other.v_));
@@ -497,7 +520,7 @@ class V128<double> {
   }
 
  private:
-  __m128d v_;
+  Intrinsic v_;
 };
 
 // Nonmember functions for any V128 via member functions.
@@ -579,19 +602,14 @@ using V2x64F = V128<double>;
 
 // We differentiate between targets' vector types via template specialization.
 // Calling Load<V>(floats) is more natural than Load(V8x32F(), floats) and may
-// generate better code in unoptimized builds. The primary template can only
-// be defined once, even if multiple vector headers are included.
-#ifndef HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
-#define HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
+// generate better code in unoptimized builds. Only declare the primary
+// templates to avoid needing mutual exclusion with vector256.
+
 template <class V>
-HH_INLINE V Load(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
+HH_INLINE V Load(const typename V::T* const HH_RESTRICT from);
+
 template <class V>
-HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
-#endif
+HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from);
 
 // "from" must be vector-aligned.
 template <>
@@ -769,7 +787,8 @@ HH_INLINE V2x64F Max(const V2x64F& v0, const V2x64F& v1) {
   return V2x64F(_mm_max_pd(v0, v1));
 }
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
-#endif  // HH_ENABLE_SSE41
+#endif  // HH_DISABLE_TARGET_SPECIFIC
 #endif  // HIGHWAYHASH_VECTOR128_H_

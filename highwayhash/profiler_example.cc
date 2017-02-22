@@ -19,12 +19,13 @@
 #include "highwayhash/os_specific.h"
 #include "highwayhash/profiler.h"
 
+namespace highwayhash {
 namespace {
 
 void Spin(const double min_time) {
-  const double t0 = os_specific::Now();
+  const double t0 = Now();
   for (;;) {
-    const double elapsed = os_specific::Now() - t0;
+    const double elapsed = Now() - t0;
     if (elapsed > min_time) {
       break;
     }
@@ -75,10 +76,8 @@ void Level1() {
   Level2();
 }
 
-}  // namespace
-
-int main(int argc, char* argv[]) {
-  os_specific::PinThreadToRandomCPU();
+void ProfilerExample() {
+  PinThreadToRandomCPU();
   {
     PROFILER_FUNC;
     Spin10();
@@ -87,5 +86,12 @@ int main(int argc, char* argv[]) {
     Level1();
   }
   PROFILER_PRINT_RESULTS();
+}
+
+}  // namespace
+}  // namespace highwayhash
+
+int main(int argc, char* argv[]) {
+  highwayhash::ProfilerExample();
   return 0;
 }

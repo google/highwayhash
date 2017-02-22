@@ -18,20 +18,28 @@
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
-#include <cstddef>
-#include <cstdio>
-#include <cstring>
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/hh_buffer.h"
 #include "highwayhash/hh_types.h"
+#include "highwayhash/load3.h"
 #include "highwayhash/vector128.h"
 #include "highwayhash/vector256.h"
 
-namespace highwayhash {
+// For auto-dependency generation, we need to include all headers but not their
+// contents (otherwise compilation fails because -mavx2 is not specified).
+#ifndef HH_DISABLE_TARGET_SPECIFIC
 
-template <>
-class HHState<TargetAVX2> {
+namespace highwayhash {
+// See vector128.h for why this namespace is necessary; matching it here makes
+// it easier use the vector128 symbols, but requires textual inclusion.
+namespace HH_TARGET_NAME {
+
+class HHStateAVX2 {
  public:
-  explicit HH_INLINE HHState(const HHKey& key_lanes) {
+  explicit HH_INLINE HHStateAVX2(const HHKey key_lanes) { Reset(key_lanes); }
+
+  HH_INLINE void Reset(const HHKey key_lanes) {
     // "Nothing up my sleeve" numbers, concatenated hex digits of Pi from
     // http://www.numberworld.org/digits/Pi/, retrieved Feb 22, 2016.
     //
@@ -57,72 +65,51 @@ def x(a,b,c):
     mul1 = init1;
   }
 
-  HH_INLINE void Update(const HHPacket& packet) {
-    Update(LoadUnaligned<V4x64U>(&packet[0]));
+  HH_INLINE void Update(const HHPacket& packet_bytes) {
+    const uint64_t* HH_RESTRICT packet =
+        reinterpret_cast<const uint64_t * HH_RESTRICT>(packet_bytes);
+    Update(LoadUnaligned<V4x64U>(packet));
   }
 
-  HH_INLINE void UpdateRemainder(const char* bytes, const uint64_t size_mod32) {
+  HH_INLINE void UpdateRemainder(const char* bytes, const size_t size_mod32) {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
-    const V8x32U vsize_mod32(
+    const V8x32U size256(
         _mm256_broadcastd_epi32(_mm_cvtsi64_si128(size_mod32)));
     // Equivalent to storing size_mod32 in packet.
-    v0 += V4x64U(vsize_mod32);
+    v0 += V4x64U(size256);
     // Boosts the avalanche effect of mod32.
-    v1 = Rotate32By(v1, vsize_mod32);
+    v1 = Rotate32By(v1, size256);
 
-    const uint64_t size_mod4 = size_mod32 & 3;
+    const char* remainder = bytes + (size_mod32 & ~3);
+    const size_t size_mod4 = size_mod32 & 3;
 
-    // (Branching is faster than a single _mm256_maskload_epi32 and is
-    // similar to what is required for SSE41.)
+    const V4x32U size(_mm256_castsi256_si128(size256));
+
+    // (Branching is faster than a single _mm256_maskload_epi32.)
     if (HH_UNLIKELY(size_mod32 & 16)) {  // 16..31 bytes left
       const V4x32U packetL =
           LoadUnaligned<V4x32U>(reinterpret_cast<const uint32_t*>(bytes));
 
-      // 0..15 bytes left; a masked load prevents reading past the end.
-      // We can read int n=0..3 if size_mod32 >= 16 + (n + 1) * 4; subtract
-      // one because we only have > comparisons.
-      const V4x32U min_minus_one(31, 27, 23, 19);
-      const V4x32U whole_ints(
-          _mm_cmpgt_epi32(_mm256_castsi256_si128(vsize_mod32), min_minus_one));
-      V4x32U packetH(_mm_maskload_epi32(
-          reinterpret_cast<const int*>(bytes + 16), whole_ints));
-
-      // Read the last 0..3 bytes into the most significant bytes.
-      uint32_t last4;
-      memcpy(&last4, bytes + size_mod32 - 4, 4);
+      const V4x32U int_mask = IntMask<16>()(size);
+      const V4x32U int_lanes = MaskedLoadInt(bytes + 16, int_mask);
+      const uint32_t last4 =
+          Load3()(Load3::AllowReadBeforeAndReturn(), remainder, size_mod4);
 
       // The upper four bytes of packetH are zero, so insert there.
-      packetH = V4x32U(_mm_insert_epi32(packetH, last4, 3));
-      Update(V256From128(packetH, packetL));
+      const V4x32U packetH(_mm_insert_epi32(int_lanes, last4, 3));
+      Update(packetH, packetL);
     } else {  // size_mod32 < 16
-      const V4x32U min_minus_one(15, 11, 7, 3);
-      const V4x32U whole_ints(
-          _mm_cmpgt_epi32(_mm256_castsi256_si128(vsize_mod32), min_minus_one));
-      const V4x32U packetL(
-          _mm_maskload_epi32(reinterpret_cast<const int*>(bytes), whole_ints));
-
-      // Read the last 0..3 bytes into the most significant bytes (faster than
-      // two conditional branches with 16/8 bit loads).
-      uint64_t last4 = 0;
-      if (size_mod4 != 0) {
-        // {idx0, idx1, idx2} is a subset of [0, size_mod4), so it is
-        // safe to read final_bytes at those offsets.
-        const char* final_bytes = bytes + (size_mod32 & ~3);
-        const uint64_t idx0 = 0;
-        const uint64_t idx1 = size_mod4 >> 1;
-        const uint64_t idx2 = size_mod4 - 1;
-        // Store into least significant bytes (avoids one shift).
-        last4 = static_cast<uint64_t>(final_bytes[idx0]);
-        last4 += static_cast<uint64_t>(final_bytes[idx1]) << 8;
-        last4 += static_cast<uint64_t>(final_bytes[idx2]) << 16;
-      }
+      const V4x32U int_mask = IntMask<0>()(size);
+      const V4x32U packetL = MaskedLoadInt(bytes, int_mask);
+      const uint64_t last3 =
+          Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
-      const V4x32U packetH(_mm_cvtsi64_si128(last4));
-      Update(V256From128(packetH, packetL));
+      const V4x32U packetH(_mm_cvtsi64_si128(last3));
+      Update(packetH, packetL);
     }
   }
 
@@ -165,9 +152,113 @@ def x(a,b,c):
     StoreUnaligned(hash, &(*result)[0]);
   }
 
+  // "buffer" must be 32-byte aligned.
+  static HH_INLINE void ZeroInitialize(char* HH_RESTRICT buffer) {
+    const __m256i zero = _mm256_setzero_si256();
+    _mm256_store_si256(reinterpret_cast<__m256i*>(buffer), zero);
+  }
+
+  // "buffer" must be 32-byte aligned.
+  static HH_INLINE void CopyPartial(const char* HH_RESTRICT from,
+                                    const size_t size_mod32,
+                                    char* HH_RESTRICT buffer) {
+    const V4x32U size(size_mod32);
+    const uint32_t* const HH_RESTRICT from_u32 =
+        reinterpret_cast<const uint32_t * HH_RESTRICT>(from);
+    uint32_t* const HH_RESTRICT buffer_u32 =
+        reinterpret_cast<uint32_t * HH_RESTRICT>(buffer);
+    if (HH_UNLIKELY(size_mod32 & 16)) {  // Copying 16..31 bytes
+      const V4x32U inL = LoadUnaligned<V4x32U>(from_u32);
+      Store(inL, buffer_u32);
+      const V4x32U inH = Load0To16<16, Load3::AllowReadBefore>(
+          from + 16, size_mod32 - 16, size);
+      Store(inH, buffer_u32 + V4x32U::N);
+    } else {  // Copying 0..15 bytes
+      const V4x32U inL = Load0To16<>(from, size_mod32, size);
+      Store(inL, buffer_u32);
+      // No need to change upper 16 bytes of buffer.
+    }
+  }
+
+  // "buffer" must be 32-byte aligned.
+  static HH_INLINE void AppendPartial(const char* HH_RESTRICT from,
+                                      const size_t size_mod32,
+                                      char* HH_RESTRICT buffer,
+                                      const size_t buffer_valid) {
+    const V4x32U size(size_mod32);
+    uint32_t* const HH_RESTRICT buffer_u32 =
+        reinterpret_cast<uint32_t * HH_RESTRICT>(buffer);
+    // buffer_valid + size <= 32 => appending 0..16 bytes inside upper 16 bytes.
+    if (HH_UNLIKELY(buffer_valid & 16)) {
+      const V4x32U suffix = Load0To16<>(from, size_mod32, size);
+      const V4x32U bufferH = Load<V4x32U>(buffer_u32 + V4x32U::N);
+      const V4x32U outH = Concatenate(bufferH, buffer_valid - 16, suffix);
+      Store(outH, buffer_u32 + V4x32U::N);
+    } else {  // Appending 0..32 bytes starting at offset 0..15.
+      const V4x32U bufferL = Load<V4x32U>(buffer_u32);
+      const V4x32U suffixL = Load0To16<>(from, size_mod32, size);
+      const V4x32U outL = Concatenate(bufferL, buffer_valid, suffixL);
+      Store(outL, buffer_u32);
+      const size_t offsetH = sizeof(V4x32U) - buffer_valid;
+      // Do we have enough input to start filling the upper 16 buffer bytes?
+      if (size_mod32 > offsetH) {
+        const size_t sizeH = size_mod32 - offsetH;
+        const V4x32U outH = Load0To16<>(from + offsetH, sizeH, V4x32U(sizeH));
+        Store(outH, buffer_u32 + V4x32U::N);
+      }
+    }
+  }
+
+  // "buffer" must be 32-byte aligned.
+  HH_INLINE void AppendAndUpdate(const char* HH_RESTRICT from,
+                                 const size_t size_mod32,
+                                 const char* HH_RESTRICT buffer,
+                                 const size_t buffer_valid) {
+    const V4x32U size(size_mod32);
+    const uint32_t* const HH_RESTRICT buffer_u32 =
+        reinterpret_cast<const uint32_t * HH_RESTRICT>(buffer);
+    // buffer_valid + size <= 32 => appending 0..16 bytes inside upper 16 bytes.
+    if (HH_UNLIKELY(buffer_valid & 16)) {
+      const V4x32U suffix = Load0To16<>(from, size_mod32, size);
+      const V4x32U packetL = Load<V4x32U>(buffer_u32);
+      const V4x32U bufferH = Load<V4x32U>(buffer_u32 + V4x32U::N);
+      const V4x32U packetH = Concatenate(bufferH, buffer_valid - 16, suffix);
+      Update(packetH, packetL);
+    } else {  // Appending 0..32 bytes starting at offset 0..15.
+      const V4x32U bufferL = Load<V4x32U>(buffer_u32);
+      const V4x32U suffixL = Load0To16<>(from, size_mod32, size);
+      const V4x32U packetL = Concatenate(bufferL, buffer_valid, suffixL);
+      const size_t offsetH = sizeof(V4x32U) - buffer_valid;
+      V4x32U packetH = packetL - packetL;
+      // Do we have enough input to start filling the upper 16 packet bytes?
+      if (size_mod32 > offsetH) {
+        const size_t sizeH = size_mod32 - offsetH;
+        packetH = Load0To16<>(from + offsetH, sizeH, V4x32U(sizeH));
+      }
+
+      Update(packetH, packetL);
+    }
+  }
+
  private:
-  static HH_INLINE V4x64U V256From128(const V4x32U& hi, const V4x32U& lo) {
-    return V4x64U(_mm256_inserti128_si256(_mm256_castsi128_si256(lo), hi, 1));
+  static HH_INLINE V4x32U MaskedLoadInt(const char* from,
+                                        const V4x32U& int_mask) {
+    // No faults will be raised when reading n=0..3 ints from "from" provided
+    // int_mask[n] = 0.
+    const int* HH_RESTRICT int_from = reinterpret_cast<const int*>(from);
+    return V4x32U(_mm_maskload_epi32(int_from, int_mask));
+  }
+
+  // Loads <= 16 bytes without accessing any byte outside [from, from + size).
+  // from[i] is loaded into lane i; from[i >= size] is undefined.
+  template <uint32_t kSizeOffset = 0, class Load3Policy = Load3::AllowNone>
+  static HH_INLINE V4x32U Load0To16(const char* from, const size_t size_mod32,
+                                    const V4x32U& size) {
+    const char* remainder = from + (size_mod32 & ~3);
+    const uint64_t last3 = Load3()(Load3Policy(), remainder, size_mod32 & 3);
+    const V4x32U int_mask = IntMask<kSizeOffset>()(size);
+    const V4x32U int_lanes = MaskedLoadInt(from, int_mask);
+    return Insert4AboveMask(last3, int_mask, int_lanes);
   }
 
   static HH_INLINE V4x64U Rotate64By32(const V4x64U& v) {
@@ -225,6 +316,11 @@ def x(a,b,c):
     v1 += ZipperMerge(v0);
   }
 
+  HH_INLINE void Update(const V4x32U& packetH, const V4x32U& packetL) {
+    const __m256i packetL256 = _mm256_castsi128_si256(packetL);
+    Update(V4x64U(_mm256_inserti128_si256(packetL256, packetH, 1)));
+  }
+
   // XORs a << 1 and a << 2 into *out after clearing the upper two bits of a.
   // Also does the same for the upper 128 bit lane "b". Bit shifts are only
   // possible on independent 64-bit lanes. We therefore insert the upper bits
@@ -272,19 +368,14 @@ def x(a,b,c):
     return out;
   }
 
-  static void Print(const V4x64U& v) {
-    uint64_t lanes[V4x64U::N] HH_ALIGNAS(32);
-    Store(v, lanes);
-    printf("A: %016lX %016lX %016lX %016lX\n", lanes[3], lanes[2], lanes[1],
-           lanes[0]);
-  }
-
   V4x64U v0;
   V4x64U v1;
   V4x64U mul0;
   V4x64U mul1;
 };
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_HH_AVX2_H_
+#endif  // HH_DISABLE_TARGET_SPECIFIC
+#endif  // HIGHWAYHASH_HH_AVX2_H_

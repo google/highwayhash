@@ -18,27 +18,30 @@
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
-#include <stddef.h>
-#include <cstdio>
-#include <cstring>  // memcpy
-
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/endianess.h"
 #include "highwayhash/hh_types.h"
+#include "highwayhash/load3.h"
 
 namespace highwayhash {
+// See vector128.h for why this namespace is necessary; we match it here for
+// consistency. As a result, this header requires textual inclusion.
+namespace HH_TARGET_NAME {
 
-template <>
-class HHState<TargetPortable> {
+class HHStatePortable {
  public:
   static const int kNumLanes = 4;
-  explicit HH_INLINE HHState(const HHKey& keys) {
-    static const HHPacket init0 = {0xdbe6d5d5fe4cce2full, 0xa4093822299f31d0ull,
-                                   0x13198a2e03707344ull,
-                                   0x243f6a8885a308d3ull};
-    static const HHPacket init1 = {0x3bd39e10cb0ef593ull, 0xc0acf169b5f18a8cull,
-                                   0xbe5466cf34e90c6cull,
-                                   0x452821e638d01377ull};
-    HHPacket rotated_keys;
+  using Lanes = uint64_t[kNumLanes];
+
+  explicit HH_INLINE HHStatePortable(const HHKey keys) { Reset(keys); }
+
+  HH_INLINE void Reset(const HHKey keys) {
+    static const Lanes init0 = {0xdbe6d5d5fe4cce2full, 0xa4093822299f31d0ull,
+                                0x13198a2e03707344ull, 0x243f6a8885a308d3ull};
+    static const Lanes init1 = {0x3bd39e10cb0ef593ull, 0xc0acf169b5f18a8cull,
+                                0xbe5466cf34e90c6cull, 0x452821e638d01377ull};
+    Lanes rotated_keys;
     Rotate64By32(keys, &rotated_keys);
     Copy(init0, &mul0);
     Copy(init1, &mul1);
@@ -47,26 +50,16 @@ class HHState<TargetPortable> {
   }
 
   HH_INLINE void Update(const HHPacket& packet) {
-    Add(packet, &v1);
-    Add(mul0, &v1);
-
-    // (Loop is faster than unrolling)
+    Lanes packet_lanes;
+    CopyPartial(&packet[0], sizeof(HHPacket),
+                reinterpret_cast<char*>(&packet_lanes));
     for (int lane = 0; lane < kNumLanes; ++lane) {
-      const uint32_t v1_32 = static_cast<uint32_t>(v1[lane]);
-      mul0[lane] ^= v1_32 * (v0[lane] >> 32);
-      v0[lane] += mul1[lane];
-      const uint32_t v0_32 = static_cast<uint32_t>(v0[lane]);
-      mul1[lane] ^= v0_32 * (v1[lane] >> 32);
+      packet_lanes[lane] = host_from_le64(packet_lanes[lane]);
     }
-
-    ZipperMergeAndAdd(v1[1], v1[0], &v0[1], &v0[0]);
-    ZipperMergeAndAdd(v1[3], v1[2], &v0[3], &v0[2]);
-
-    ZipperMergeAndAdd(v0[1], v0[0], &v1[1], &v1[0]);
-    ZipperMergeAndAdd(v0[3], v0[2], &v1[3], &v1[2]);
+    Update(packet_lanes);
   }
 
-  HH_INLINE void UpdateRemainder(const char* bytes, const uint64_t size_mod32) {
+  HH_INLINE void UpdateRemainder(const char* bytes, const size_t size_mod32) {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
@@ -76,38 +69,25 @@ class HHState<TargetPortable> {
     }
     Rotate32By(reinterpret_cast<uint32_t*>(&v1), size_mod32);
 
-    const uint64_t size_mod4 = size_mod32 & 3;
+    const size_t size_mod4 = size_mod32 & 3;
+    const char* remainder = bytes + (size_mod32 & ~3);
 
     HHPacket packet HH_ALIGNAS(32) = {0};
-    memcpy(packet, bytes, size_mod32 & ~3);
+    CopyPartial(bytes, remainder - bytes, &packet[0]);
 
     if (size_mod32 & 16) {  // 16..31 bytes left
       // Read the last 0..3 bytes and previous 1..4 into the upper bits.
-      uint32_t last4;
-      memcpy(&last4, bytes + size_mod32 - 4, 4);
-
-      // The upper four bytes of packet are zero, so insert there.
-      packet[3] |= static_cast<uint64_t>(last4) << 32;
+      // Insert into the upper four bytes of packet, which are zero.
+      uint32_t last4 =
+          Load3()(Load3::AllowReadBeforeAndReturn(), remainder, size_mod4);
+      CopyPartial(reinterpret_cast<const char*>(&last4), 4, &packet[28]);
     } else {  // size_mod32 < 16
-      // Read the last 0..3 bytes into the least significant bytes (faster than
-      // two conditional branches with 16/8 bit loads).
-      uint64_t last4 = 0;
-      if (size_mod4 != 0) {
-        // {idx0, idx1, idx2} is a subset of [0, size_mod4), so it is
-        // safe to read final_bytes at those offsets.
-        const char* final_bytes = bytes + (size_mod32 & ~3);
-        const uint64_t idx0 = 0;
-        const uint64_t idx1 = size_mod4 >> 1;
-        const uint64_t idx2 = size_mod4 - 1;
-        // Store into least significant bytes (avoids one shift).
-        last4 = static_cast<uint64_t>(final_bytes[idx0]);
-        last4 += static_cast<uint64_t>(final_bytes[idx1]) << 8;
-        last4 += static_cast<uint64_t>(final_bytes[idx2]) << 16;
-      }
+      uint64_t last4 = Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
-      // Rather than insert at packet + 12, it is faster to initialize
+      // Rather than insert at packet + 28, it is faster to initialize
       // the otherwise empty packet + 16 with up to 64 bits of padding.
-      packet[2] = last4;
+      CopyPartial(reinterpret_cast<const char*>(&last4), sizeof(last4),
+                  &packet[16]);
     }
     Update(packet);
   }
@@ -143,23 +123,59 @@ class HHState<TargetPortable> {
                      v0[2] + mul0[2], &(*result)[3], &(*result)[2]);
   }
 
+  static HH_INLINE void ZeroInitialize(char* HH_RESTRICT buffer) {
+    for (size_t i = 0; i < sizeof(HHPacket); ++i) {
+      buffer[i] = 0;
+    }
+  }
+
+  static HH_INLINE void CopyPartial(const char* HH_RESTRICT from,
+                                    const size_t size_mod32,
+                                    char* HH_RESTRICT buffer) {
+    for (size_t i = 0; i < size_mod32; ++i) {
+      buffer[i] = from[i];
+    }
+  }
+
+  static HH_INLINE void AppendPartial(const char* HH_RESTRICT from,
+                                      const size_t size_mod32,
+                                      char* HH_RESTRICT buffer,
+                                      const size_t buffer_valid) {
+    for (size_t i = 0; i < size_mod32; ++i) {
+      buffer[buffer_valid + i] = from[i];
+    }
+  }
+
+  HH_INLINE void AppendAndUpdate(const char* HH_RESTRICT from,
+                                 const size_t size_mod32,
+                                 const char* HH_RESTRICT buffer,
+                                 const size_t buffer_valid) {
+    HHPacket tmp HH_ALIGNAS(32);
+    for (size_t i = 0; i < buffer_valid; ++i) {
+      tmp[i] = buffer[i];
+    }
+    for (size_t i = 0; i < size_mod32; ++i) {
+      tmp[buffer_valid + i] = from[i];
+    }
+    Update(tmp);
+  }
+
  private:
-  static HH_INLINE void Copy(const HHPacket& source,
-                             HHPacket* HH_RESTRICT dest) {
+  static HH_INLINE void Copy(const Lanes& source, Lanes* HH_RESTRICT dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] = source[lane];
     }
   }
 
-  static HH_INLINE void Add(const HHPacket& source,
-                            HHPacket* HH_RESTRICT dest) {
+  static HH_INLINE void Add(const Lanes& source, Lanes* HH_RESTRICT dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] += source[lane];
     }
   }
 
-  static HH_INLINE void Xor(const HHPacket& op1, const HHPacket& op2,
-                            HHPacket* HH_RESTRICT dest) {
+  template <typename LanesOrPointer>
+  static HH_INLINE void Xor(const Lanes& op1, const LanesOrPointer& op2,
+                            Lanes* HH_RESTRICT dest) {
     for (int lane = 0; lane < kNumLanes; ++lane) {
       (*dest)[lane] = op1[lane] ^ op2[lane];
     }
@@ -184,12 +200,34 @@ class HHState<TargetPortable> {
 
 #undef MASK
 
+  // For inputs that are already in native byte order (e.g. PermuteAndAdd)
+  HH_INLINE void Update(const Lanes& packet_lanes) {
+    Add(packet_lanes, &v1);
+    Add(mul0, &v1);
+
+    // (Loop is faster than unrolling)
+    for (int lane = 0; lane < kNumLanes; ++lane) {
+      const uint32_t v1_32 = static_cast<uint32_t>(v1[lane]);
+      mul0[lane] ^= v1_32 * (v0[lane] >> 32);
+      v0[lane] += mul1[lane];
+      const uint32_t v0_32 = static_cast<uint32_t>(v0[lane]);
+      mul1[lane] ^= v0_32 * (v1[lane] >> 32);
+    }
+
+    ZipperMergeAndAdd(v1[1], v1[0], &v0[1], &v0[0]);
+    ZipperMergeAndAdd(v1[3], v1[2], &v0[3], &v0[2]);
+
+    ZipperMergeAndAdd(v0[1], v0[0], &v1[1], &v1[0]);
+    ZipperMergeAndAdd(v0[3], v0[2], &v1[3], &v1[2]);
+  }
+
   static HH_INLINE uint64_t Rotate64By32(const uint64_t x) {
     return (x >> 32) | (x << 32);
   }
 
-  static HH_INLINE void Rotate64By32(const HHPacket& v,
-                                     HHPacket* HH_RESTRICT rotated) {
+  template <typename LanesOrPointer>
+  static HH_INLINE void Rotate64By32(const LanesOrPointer& v,
+                                     Lanes* HH_RESTRICT rotated) {
     for (int i = 0; i < kNumLanes; ++i) {
       (*rotated)[i] = Rotate64By32(v[i]);
     }
@@ -202,8 +240,7 @@ class HHState<TargetPortable> {
     }
   }
 
-  static HH_INLINE void Permute(const HHPacket& v,
-                                HHPacket* HH_RESTRICT permuted) {
+  static HH_INLINE void Permute(const Lanes& v, Lanes* HH_RESTRICT permuted) {
     (*permuted)[0] = Rotate64By32(v[2]);
     (*permuted)[1] = Rotate64By32(v[3]);
     (*permuted)[2] = Rotate64By32(v[0]);
@@ -211,7 +248,7 @@ class HHState<TargetPortable> {
   }
 
   HH_INLINE void PermuteAndUpdate() {
-    HHPacket permuted;
+    Lanes permuted;
     Permute(v0, &permuted);
     Update(permuted);
   }
@@ -250,17 +287,13 @@ class HHState<TargetPortable> {
     *m0 = a0 ^ a2_shl1 ^ a2_shl2;
   }
 
-  static void Print(const HHPacket& lanes) {
-    printf("P: %016lX %016lX %016lX %016lX\n", lanes[3], lanes[2], lanes[1],
-           lanes[0]);
-  }
-
-  HHPacket v0;
-  HHPacket v1;
-  HHPacket mul0;
-  HHPacket mul1;
+  Lanes v0;
+  Lanes v1;
+  Lanes mul0;
+  Lanes mul1;
 };
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
 #endif  // HIGHWAYHASH_HH_PORTABLE_H_

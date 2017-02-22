@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define HH_TARGET TargetPortable
-#define HH_TARGET_PORTABLE
+#define HH_TARGET_NAME Portable
 #include "highwayhash/highwayhash_target.cc"

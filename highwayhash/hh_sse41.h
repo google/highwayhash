@@ -18,23 +18,30 @@
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
-#include <stdint.h>
-#include <cstdio>
-#include <cstring>  // memcpy
-
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/hh_buffer.h"
 #include "highwayhash/hh_types.h"
+#include "highwayhash/load3.h"
 #include "highwayhash/vector128.h"
 
+// For auto-dependency generation, we need to include all headers but not their
+// contents (otherwise compilation fails because -msse4.1 is not specified).
+#ifndef HH_DISABLE_TARGET_SPECIFIC
+
 namespace highwayhash {
+// See vector128.h for why this namespace is necessary; matching it here makes
+// it easier use the vector128 symbols, but requires textual inclusion.
+namespace HH_TARGET_NAME {
 
 // J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
 // Uses pairs of SSE4.1 instructions to emulate the AVX-2 algorithm.
-template <>
-class HHState<TargetSSE41> {
+class HHStateSSE41 {
  public:
-  explicit HH_INLINE HHState(const uint64_t (&key)[4]) {
-    // "Nothing up my sleeve numbers"; see HHStateAVX2.
+  explicit HH_INLINE HHStateSSE41(const HHKey key) { Reset(key); }
+
+  HH_INLINE void Reset(const HHKey key) {
+    // "Nothing up my sleeve numbers"; see HHStateTAVX2.
     const V2x64U init0L(0xa4093822299f31d0ull, 0xdbe6d5d5fe4cce2full);
     const V2x64U init0H(0x243f6a8885a308d3ull, 0x13198a2e03707344ull);
     const V2x64U init1L(0xc0acf169b5f18a8cull, 0x3bd39e10cb0ef593ull);
@@ -51,13 +58,15 @@ class HHState<TargetSSE41> {
     mul1H = init1H;
   }
 
-  HH_INLINE void Update(const HHPacket& packet) {
-    const V2x64U packetL = LoadUnaligned<V2x64U>(&packet[0]);
-    const V2x64U packetH = LoadUnaligned<V2x64U>(&packet[2]);
+  HH_INLINE void Update(const HHPacket& packet_bytes) {
+    const uint64_t* HH_RESTRICT packet =
+        reinterpret_cast<const uint64_t * HH_RESTRICT>(packet_bytes);
+    const V2x64U packetL = LoadUnaligned<V2x64U>(packet + 0);
+    const V2x64U packetH = LoadUnaligned<V2x64U>(packet + 2);
     Update(packetH, packetL);
   }
 
-  HH_INLINE void UpdateRemainder(const char* bytes, const uint64_t size_mod32) {
+  HH_INLINE void UpdateRemainder(const char* bytes, const size_t size_mod32) {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
@@ -68,7 +77,8 @@ class HHState<TargetSSE41> {
     // Boosts the avalanche effect of mod32.
     Rotate32By(&v1H, &v1L, size_mod32);
 
-    const uint64_t size_mod4 = size_mod32 & 3;
+    const size_t size_mod4 = size_mod32 & 3;
+    const char* HH_RESTRICT remainder = bytes + (size_mod32 & ~3);
 
     if (HH_UNLIKELY(size_mod32 & 16)) {  // 16..31 bytes left
       const V2x64U packetL =
@@ -76,9 +86,8 @@ class HHState<TargetSSE41> {
 
       V2x64U packetH = LoadMultipleOfFour(bytes + 16, size_mod32);
 
-      // Read the last 0..3 bytes into the most significant bytes.
-      uint32_t last4;
-      memcpy(&last4, bytes + size_mod32 - 4, 4);
+      const uint32_t last4 =
+          Load3()(Load3::AllowReadBeforeAndReturn(), remainder, size_mod4);
 
       // The upper four bytes of packetH are zero, so insert there.
       packetH = V2x64U(_mm_insert_epi32(packetH, last4, 3));
@@ -86,21 +95,8 @@ class HHState<TargetSSE41> {
     } else {  // size_mod32 < 16
       const V2x64U packetL = LoadMultipleOfFour(bytes, size_mod32);
 
-      // Read the last 0..3 bytes into the most significant bytes (faster than
-      // two conditional branches with 16/8 bit loads).
-      uint64_t last4 = 0;
-      if (size_mod4 != 0) {
-        // {idx0, idx1, idx2} is a subset of [0, size_mod4), so it is
-        // safe to read final_bytes at those offsets.
-        const char* final_bytes = bytes + (size_mod32 & ~3);
-        const uint64_t idx0 = 0;
-        const uint64_t idx1 = size_mod4 >> 1;
-        const uint64_t idx2 = size_mod4 - 1;
-        // Store into least significant bytes (avoids one shift).
-        last4 = static_cast<uint64_t>(final_bytes[idx0]);
-        last4 += static_cast<uint64_t>(final_bytes[idx1]) << 8;
-        last4 += static_cast<uint64_t>(final_bytes[idx2]) << 16;
-      }
+      const uint64_t last4 =
+          Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
@@ -148,6 +144,44 @@ class HHState<TargetSSE41> {
     const V2x64U hashH = ModularReduction(sum1H, sum0H);
     StoreUnaligned(hashL, &(*result)[0]);
     StoreUnaligned(hashH, &(*result)[2]);
+  }
+
+  static HH_INLINE void ZeroInitialize(char* HH_RESTRICT buffer_bytes) {
+    __m128i* buffer = reinterpret_cast<__m128i*>(buffer_bytes);
+    const __m128i zero = _mm_setzero_si128();
+    _mm_store_si128(buffer + 0, zero);
+    _mm_store_si128(buffer + 1, zero);
+  }
+
+  static HH_INLINE void CopyPartial(const char* HH_RESTRICT from,
+                                    const size_t size_mod32,
+                                    char* HH_RESTRICT buffer) {
+    for (size_t i = 0; i < size_mod32; ++i) {
+      buffer[i] = from[i];
+    }
+  }
+
+  static HH_INLINE void AppendPartial(const char* HH_RESTRICT from,
+                                      const size_t size_mod32,
+                                      char* HH_RESTRICT buffer,
+                                      const size_t buffer_valid) {
+    for (size_t i = 0; i < size_mod32; ++i) {
+      buffer[buffer_valid + i] = from[i];
+    }
+  }
+
+  HH_INLINE void AppendAndUpdate(const char* HH_RESTRICT from,
+                                 const size_t size_mod32,
+                                 const char* HH_RESTRICT buffer,
+                                 const size_t buffer_valid) {
+    HHPacket tmp HH_ALIGNAS(32);
+    for (size_t i = 0; i < buffer_valid; ++i) {
+      tmp[i] = buffer[i];
+    }
+    for (size_t i = 0; i < size_mod32; ++i) {
+      tmp[buffer_valid + i] = from[i];
+    }
+    Update(tmp);
   }
 
  private:
@@ -213,7 +247,7 @@ class HHState<TargetSSE41> {
   // Returns zero-initialized vector with the lower "size" = 0, 4, 8 or 12
   // bytes loaded from "bytes". Serves as a replacement for AVX2 maskload_epi32.
   static HH_INLINE V2x64U LoadMultipleOfFour(const char* bytes,
-                                             const uint64_t size) {
+                                             const size_t size) {
     const uint32_t* words = reinterpret_cast<const uint32_t*>(bytes);
     // Mask of 1-bits where the final 4 bytes should be inserted (replacement
     // for variable shift/insert using broadcast+blend).
@@ -277,15 +311,6 @@ class HHState<TargetSSE41> {
     return out;
   }
 
-  static void Print(const V2x64U& H, const V2x64U& L) {
-    uint64_t lanesL[2] HH_ALIGNAS(16) = {0};
-    uint64_t lanesH[2] HH_ALIGNAS(16) = {0};
-    Store(L, lanesL);
-    Store(H, lanesH);
-    printf("S: %016lX %016lX %016lX %016lX\n", lanesH[1], lanesH[0], lanesL[1],
-           lanesL[0]);
-  }
-
   V2x64U v0L;
   V2x64U v0H;
   V2x64U v1L;
@@ -296,6 +321,8 @@ class HHState<TargetSSE41> {
   V2x64U mul1H;
 };
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_HH_SSE41_H_
+#endif  // HH_DISABLE_TARGET_SPECIFIC
+#endif  // HIGHWAYHASH_HH_SSE41_H_

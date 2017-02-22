@@ -21,18 +21,17 @@ ensure the implementations return known-good values for a given set of inputs.
     char in[8] = {1};
     return SipHash(key2, in, 8);
 
-64, 128 or 256 bit HighwayHash for a specified CPU (AVX2, SSE41 or any):
+64, 128 or 256 bit HighwayHash for the CPU determined by compiler flags:
 
     #include "highwayhash/highwayhash.h"
     using namespace highwayhash;
     const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
-    HHState<TargetAVX2> state(key);  // or TargetSSE41 or TargetPortable, or
-    // HH_TARGET_PREFERRED to choose based on compiler flags.
+    HHStateT<HH_TARGET> state(key);
     HighwayHashT(&state, in, 8, &result);
 
-64, 128 or 256 bit HighwayHash for the *current* CPU:
+64, 128 or 256 bit HighwayHash for the CPU on which we're currently running:
 
     #include "highwayhash/highwayhash_target.h"
     #include "highwayhash/instruction_sets.h"
@@ -40,14 +39,14 @@ ensure the implementations return known-good values for a given set of inputs.
     const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
-    InstructionSets::Run<HighwayHash>(key, in, 8, &result, /*unused=*/0);
+    InstructionSets::Run<HighwayHash>(key, in, 8, &result);
 
-C-callable 64-bit HighwayHash for the *current* CPU:
+C-callable 64-bit HighwayHash for the CPU on which we're currently running:
 
     #include "highwayhash/c_bindings.h"
     const uint64_t key[4] = {1, 2, 3, 4};
     char in[8] = {1};
-    return HighwayHash64_Dispatcher(key, in, 8);
+    return HighwayHash64(key, in, 8);
 
 ## Introduction
 
@@ -197,9 +196,7 @@ because that might break the one definition rule and cause crashes.
 To minimize dispatch overhead when hashes are computed often (e.g. in a loop),
 we can inline the hash function into its caller using templates. The dispatch
 overhead will only be paid once (e.g. before the loop). The template mechanism
-also avoids duplicating code in each CPU-specific implementation - basic SIMD
-operations are expressed using the same notation/operators, which can be
-extended by adding functions to the `Target*` traits classes.
+also avoids duplicating code in each CPU-specific implementation.
 
 ## Defending against hash flooding
 
@@ -348,6 +345,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-01-28
+<jyrki.alakuijala@gmail.com>, updated 2017-02-07
 
 This is not an official Google product.

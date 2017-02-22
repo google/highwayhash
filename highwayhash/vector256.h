@@ -24,17 +24,30 @@
 // The naming convention is VNxBBT where N is the number of lanes, BB the
 // number of bits per lane and T is the lane type: unsigned integer (U),
 // signed integer (I), or floating-point (F).
-//
-// Requires reasonable C++11 support (VC2015) and an AVX2-capable CPU.
+
+// WARNING: compiled with different flags => must not define/instantiate any
+// inline functions, nor include any headers that do - see instruction_sets.h.
+
+#include <stddef.h>
+#include <stdint.h>
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 
-#if HH_ENABLE_AVX2
+// For auto-dependency generation, we need to include all headers but not their
+// contents (otherwise compilation fails because -mavx2 is not specified).
+#ifndef HH_DISABLE_TARGET_SPECIFIC
+
+// (This include cannot be moved within a namespace due to conflicts with
+// other system headers; see the comment in hh_sse41.h.)
 #include <immintrin.h>
-#include <stdint.h>
 
 namespace highwayhash {
+// To prevent ODR violations when including this from multiple translation
+// units (TU) that are compiled with different flags, the contents must reside
+// in a namespace whose name is unique to the TU. NOTE: this behavior is
+// incompatible with precompiled modules and requires textual inclusion instead.
+namespace HH_TARGET_NAME {
 
 // Primary template for 256-bit AVX2 vectors; only specializations are used.
 template <typename T>
@@ -43,6 +56,7 @@ class V256 {};
 template <>
 class V256<uint8_t> {
  public:
+  using Intrinsic = __m256i;
   using T = uint8_t;
   static constexpr size_t N = 32;
 
@@ -63,12 +77,12 @@ class V256<uint8_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256i& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256i& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -98,12 +112,13 @@ class V256<uint8_t> {
   }
 
  private:
-  __m256i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V256<uint16_t> {
  public:
+  using Intrinsic = __m256i;
   using T = uint16_t;
   static constexpr size_t N = 16;
 
@@ -130,12 +145,12 @@ class V256<uint16_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256i& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256i& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -175,12 +190,13 @@ class V256<uint16_t> {
   }
 
  private:
-  __m256i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V256<uint32_t> {
  public:
+  using Intrinsic = __m256i;
   using T = uint32_t;
   static constexpr size_t N = 8;
 
@@ -205,12 +221,12 @@ class V256<uint32_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256i& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256i& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -250,12 +266,13 @@ class V256<uint32_t> {
   }
 
  private:
-  __m256i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V256<uint64_t> {
  public:
+  using Intrinsic = __m256i;
   using T = uint64_t;
   static constexpr size_t N = 4;
 
@@ -280,12 +297,12 @@ class V256<uint64_t> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256i& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256i& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256i() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   // There are no greater-than comparison instructions for unsigned T.
   HH_INLINE V256 operator==(const V256& other) const {
@@ -325,12 +342,13 @@ class V256<uint64_t> {
   }
 
  private:
-  __m256i v_;
+  Intrinsic v_;
 };
 
 template <>
 class V256<float> {
  public:
+  using Intrinsic = __m256;
   using T = float;
   static constexpr size_t N = 8;
 
@@ -354,12 +372,12 @@ class V256<float> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   HH_INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmp_ps(v_, other.v_, 0));
@@ -402,12 +420,13 @@ class V256<float> {
   }
 
  private:
-  __m256 v_;
+  Intrinsic v_;
 };
 
 template <>
 class V256<double> {
  public:
+  using Intrinsic = __m256d;
   using T = double;
   static constexpr size_t N = 4;
 
@@ -431,12 +450,12 @@ class V256<double> {
   }
 
   // Convert from/to intrinsics.
-  HH_INLINE V256(const __m256d& v) : v_(v) {}
-  HH_INLINE V256& operator=(const __m256d& v) {
+  HH_INLINE V256(const Intrinsic& v) : v_(v) {}
+  HH_INLINE V256& operator=(const Intrinsic& v) {
     v_ = v;
     return *this;
   }
-  HH_INLINE operator __m256d() const { return v_; }
+  HH_INLINE operator Intrinsic() const { return v_; }
 
   HH_INLINE V256 operator==(const V256& other) const {
     return V256(_mm256_cmp_pd(v_, other.v_, 0));
@@ -479,7 +498,7 @@ class V256<double> {
   }
 
  private:
-  __m256d v_;
+  Intrinsic v_;
 };
 
 // Nonmember functions for any V256 via member functions.
@@ -552,19 +571,14 @@ using V4x64F = V256<double>;
 
 // We differentiate between targets' vector types via template specialization.
 // Calling Load<V>(floats) is more natural than Load(V8x32F(), floats) and may
-// generate better code in unoptimized builds. The primary template can only
-// be defined once, even if multiple vector headers are included.
-#ifndef HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
-#define HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
+// generate better code in unoptimized builds. Only declare the primary
+// templates to avoid needing mutual exclusion with vector128.
+
 template <class V>
-HH_INLINE V Load(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
+HH_INLINE V Load(const typename V::T* const HH_RESTRICT from);
+
 template <class V>
-HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
-#endif
+HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from);
 
 template <>
 HH_INLINE V32x8U Load(const V32x8U::T* const HH_RESTRICT from) {
@@ -735,7 +749,8 @@ HH_INLINE V4x64F Max(const V4x64F& v0, const V4x64F& v1) {
   return V4x64F(_mm256_max_pd(v0, v1));
 }
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
-#endif  // HH_ENABLE_AVX2
+#endif  // HH_DISABLE_TARGET_SPECIFIC
 #endif  // HIGHWAYHASH_VECTOR256_H_

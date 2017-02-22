@@ -19,25 +19,33 @@
 
 #include <stdint.h>
 
+#include "hh_types.h"
+
 #ifdef __cplusplus
 extern "C" {
+
+// Bring the symbols out of the namespace.
+using highwayhash::HHKey;
+using highwayhash::HHPacket;
+using highwayhash::HHResult64;
+using highwayhash::HHResult128;
+using highwayhash::HHResult256;
 #endif
 
 uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
 uint64_t SipHash13C(const uint64_t* key, const char* bytes,
                     const uint64_t size);
 
-// Defined by highwayhash_target.cc, which requires a _Target* suffix.
-uint64_t HighwayHash64_TargetPortable(const uint64_t* key, const char* bytes,
-                                      const uint64_t size);
-uint64_t HighwayHash64_TargetSSE41(const uint64_t* key, const char* bytes,
-                                   const uint64_t size);
-uint64_t HighwayHash64_TargetAVX2(const uint64_t* key, const char* bytes,
-                                  const uint64_t size);
+// Uses the best implementation of HighwayHash for the current CPU and
+// calculates 64-bit hash of given data.
+uint64_t HighwayHash64(const HHKey key, const char* bytes, const uint64_t size);
 
-// Detects current CPU (once) and invokes the best _Target* variant.
-// "key" points to an array of four 64-bit values.
-uint64_t HighwayHash64_Dispatcher(const uint64_t* key, const char* bytes,
+// Defined by highwayhash_target.cc, which requires a _Target* suffix.
+uint64_t HighwayHash64_TargetPortable(const HHKey key, const char* bytes,
+                                      const uint64_t size);
+uint64_t HighwayHash64_TargetSSE41(const HHKey key, const char* bytes,
+                                   const uint64_t size);
+uint64_t HighwayHash64_TargetAVX2(const HHKey key, const char* bytes,
                                   const uint64_t size);
 
 #ifdef __cplusplus

@@ -18,50 +18,59 @@
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
-// Function template for direct invocation via CPU-specific templates (e.g.
-// template<class Target> CodeUsingHash() { HighwayHashT<Target>(...); }, or if
-// Target matches the minimum CPU requirement (specified via compiler flag).
-#include <stddef.h>
+// This header's templates are useful for inlining into other CPU-specific code:
+// template<TargetBits Target> CodeUsingHash() { HighwayHashT<Target>(...); },
+// and can also be instantiated with HH_TARGET when callers don't care about the
+// exact implementation. Otherwise, they are implementation details of the
+// highwayhash_target wrapper. Use that instead if you need to detect the best
+// available implementation at runtime.
 
-#include "highwayhash/arch_specific.h"  // HH_ENABLE_*
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
 #include "highwayhash/iaca.h"
 
-// HH_TARGET_PREFERRED enables us to provide new specializations without
-// having to update each call site. Example usage:
-//
-// HHState<HH_TARGET_PREFERRED> state(key);
-// HighwayHashT(&state, in, size, &result);
-//
-// This is useful for binaries that target a lowest-common denominator CPU
-// without conditionally using newer instructions if available. Such binaries
-// are compiled with the same flags for each translation unit, which avoids
-// difficulties with inline functions mentioned in instruction_sets.h.
-//
-// If you want to select the best available specialization at runtime,
-// use InstructionSets<HighwayHash>() instead.
-
-#include "highwayhash/hh_portable.h"
-#define HH_TARGET_PREFERRED TargetPortable
-
-#if HH_ENABLE_SSE41
-#include "highwayhash/hh_sse41.h"
-#undef HH_TARGET_PREFERRED
-#define HH_TARGET_PREFERRED TargetSSE41
-#endif
-
-#if HH_ENABLE_AVX2
+// Include exactly one (see arch_specific.h) header, which defines a state
+// object in a target-specific namespace, e.g. AVX2::HHStateAVX2.
+// Attempts to use "computed includes" (#define MACRO "path/or_just_filename",
+// #include MACRO) fail with 'file not found', so we need an #if chain.
+#if HH_TARGET == HH_TARGET_AVX2
 #include "highwayhash/hh_avx2.h"
-#undef HH_TARGET_PREFERRED
-#define HH_TARGET_PREFERRED TargetAVX2
+#elif HH_TARGET == HH_TARGET_SSE41
+#include "highwayhash/hh_sse41.h"
+#elif HH_TARGET == HH_TARGET_Portable
+#include "highwayhash/hh_portable.h"
+#else
+#error "Unknown target, add its hh_*.h include here."
 #endif
 
+#ifndef HH_DISABLE_TARGET_SPECIFIC
 namespace highwayhash {
 
-// Computes HighwayHash of "bytes" using the implementation for "Target" CPU.
+// Alias templates (HHStateT) cannot be specialized, so we need a helper struct.
+// Note that hh_*.h don't just specialize HHStateT directly because vector128.h
+// must reside in a distinct namespace (to allow including it from multiple
+// translation units), and it is easier if its users, i.e. the concrete HHState,
+// also reside in that same namespace, which precludes specialization.
+template <TargetBits Target>
+struct HHStateForTarget {};
+
+template <>
+struct HHStateForTarget<HH_TARGET> {
+  // (The namespace is sufficient and the additional HH_TARGET_NAME suffix is
+  // technically redundant, but it makes searching easier.)
+  using type = HH_TARGET_NAME::HH_ADD_TARGET_SUFFIX(HHState);
+};
+
+// Typically used as HHStateT<HH_TARGET>. It would be easier to just have a
+// concrete type HH_STATE, but this alias template is required by the
+// templates in highwayhash_target.cc.
+template <TargetBits Target>
+using HHStateT = typename HHStateForTarget<Target>::type;
+
+// Computes HighwayHash of "bytes" using the implementation chosen by "State".
 //
-// "state" is a HHState<> initialized with a key.
+// "state" is a HHStateT<> initialized with a key.
 // "bytes" is the data to hash (possibly unaligned).
 // "size" is the number of bytes to hash; we do not read any additional bytes.
 // "hash" is a HHResult* (either 64, 128 or 256 bits).
@@ -76,12 +85,12 @@ namespace highwayhash {
 // the wrapper in highwayhash_target.h instead.
 //
 // Callers wanting to hash multiple pieces of data should duplicate this
-// function, calling HHState::Update for each input and only Finalizing once.
-template <class Target, typename Result>
-HH_INLINE void HighwayHashT(HHState<Target>* HH_RESTRICT state,
+// function, calling HHStateT::Update for each input and only Finalizing once.
+template <class State, typename Result>
+HH_INLINE void HighwayHashT(State* HH_RESTRICT state,
                             const char* HH_RESTRICT bytes, const size_t size,
                             Result* HH_RESTRICT hash) {
-  BeginIACA();
+  // BeginIACA();
   const size_t remainder = size & (sizeof(HHPacket) - 1);
   const size_t truncated = size & ~(sizeof(HHPacket) - 1);
   for (size_t offset = 0; offset < truncated; offset += sizeof(HHPacket)) {
@@ -93,70 +102,99 @@ HH_INLINE void HighwayHashT(HHState<Target>* HH_RESTRICT state,
   }
 
   state->Finalize(hash);
-  EndIACA();
+  // EndIACA();
 }
 
 // Wrapper class for incrementally hashing a series of data ranges. The final
 // result is the same as HighwayHashT of the concatenation of all the ranges.
 // This is useful for computing the hash of cords, iovecs, and similar
 // data structures.
-
-template <class Target>
+template <TargetBits Target>
 class HighwayHashCatT {
  public:
-  HighwayHashCatT(const HHKey& key) : state_(key) {}
+  HH_INLINE HighwayHashCatT(const HHKey& key) : state_(key) {
+    // Avoids msan uninitialized-memory warnings.
+    HHStateT<Target>::ZeroInitialize(buffer_);
+  }
 
-  // Adds "bytes" to the internal buffer, feeding it to HHState::Update as
-  // required. Call this as often as desired. There are no alignment
-  // requirements. No effect if "num_bytes" == 0.
-  void Append(const char* HH_RESTRICT bytes, size_t num_bytes) {
-    char* buffer_bytes = reinterpret_cast<char*>(buffer_);
+  // Resets the state of the hasher so it can be used to hash a new string.
+  HH_INLINE void Reset(const HHKey& key) {
+    state_.Reset(key);
+    buffer_usage_ = 0;
+  }
+
+  // Adds "bytes" to the internal buffer, feeding it to HHStateT::Update as
+  // required. Call this as often as desired. Only reads bytes within the
+  // interval [bytes, bytes + num_bytes). "num_bytes" == 0 has no effect.
+  // There are no alignment requirements.
+  HH_INLINE void Append(const char* HH_RESTRICT bytes, size_t num_bytes) {
+    // BeginIACA();
+    const size_t capacity = sizeof(HHPacket) - buffer_usage_;
+    // New bytes fit within buffer, but still not enough to Update.
+    if (HH_UNLIKELY(num_bytes < capacity)) {
+      HHStateT<Target>::AppendPartial(bytes, num_bytes, buffer_, buffer_usage_);
+      buffer_usage_ += num_bytes;
+      return;
+    }
+
+    // HACK: ensures the state is kept in SIMD registers; otherwise, Update
+    // constantly load/stores its operands, which is much slower.
+    // Restrict-qualified pointers to external state or the state_ member are
+    // not sufficient for keeping this in registers.
+    HHStateT<Target> state_copy = state_;
+
     // Have prior bytes to flush.
-    if (buffer_usage_ != 0) {
-      const size_t capacity = sizeof(HHPacket) - buffer_usage_;
-      if (num_bytes < capacity) {
-        // New bytes fit within buffer, but still not enough to Update.
-        memcpy(buffer_bytes + buffer_usage_, bytes, num_bytes);
-        buffer_usage_ += num_bytes;
-        return;
-      }
-      memcpy(buffer_bytes + buffer_usage_, bytes, capacity);
-      state_.Update(*reinterpret_cast<const HHPacket*>(buffer_));
-      buffer_usage_ = 0;
+    const size_t buffer_usage = buffer_usage_;
+    if (HH_LIKELY(buffer_usage != 0)) {
+      // Calls update with prior buffer contents plus new data. Does not modify
+      // the buffer because some implementations can load into SIMD registers
+      // and Append to them directly.
+      state_copy.AppendAndUpdate(bytes, capacity, buffer_, buffer_usage);
       bytes += capacity;
       num_bytes -= capacity;
     }
 
     // Buffer currently empty => Update directly from the source.
     while (num_bytes >= sizeof(HHPacket)) {
-      state_.Update(*reinterpret_cast<const HHPacket*>(bytes));
+      state_copy.Update(*reinterpret_cast<const HHPacket*>(bytes));
       bytes += sizeof(HHPacket);
       num_bytes -= sizeof(HHPacket);
     }
 
-    // Store any remainders in buffer, no-op if multiple of a packet.
-    memcpy(buffer_bytes, bytes, num_bytes);
+    // Unconditionally assign even if zero because we didn't reset to zero
+    // after the AppendAndUpdate above.
     buffer_usage_ = num_bytes;
+
+    state_ = state_copy;
+
+    // Store any remainders in buffer, no-op if multiple of a packet.
+    if (HH_LIKELY(num_bytes != 0)) {
+      HHStateT<Target>::CopyPartial(bytes, num_bytes, buffer_);
+    }
+    // EndIACA();
   }
 
   // Stores the resulting 64, 128 or 256-bit hash of all data passed to Append.
-  // Must be called exactly once.
+  // Must be called exactly once, or after a prior Reset.
   template <typename Result>  // HHResult*
-  void Finalize(Result* HH_RESTRICT hash) {
-    if (buffer_usage_ != 0) {
-      const char* buffer_bytes = reinterpret_cast<const char*>(buffer_);
-      state_.UpdateRemainder(buffer_bytes, buffer_usage_);
+  HH_INLINE void Finalize(Result* HH_RESTRICT hash) {
+    // BeginIACA();
+    HHStateT<Target> state_copy = state_;
+    const size_t buffer_usage = buffer_usage_;
+    if (HH_LIKELY(buffer_usage != 0)) {
+      state_copy.UpdateRemainder(buffer_, buffer_usage);
     }
-    state_.Finalize(hash);
+    state_copy.Finalize(hash);
+    // EndIACA();
   }
 
  private:
   HHPacket buffer_ HH_ALIGNAS(64);
-  HHState<Target> state_;
+  HHStateT<Target> state_ HH_ALIGNAS(32);
   // How many bytes in buffer_ (starting with offset 0) are valid.
   size_t buffer_usage_ = 0;
 };
 
 }  // namespace highwayhash
-
+#endif  // HH_DISABLE_TARGET_SPECIFIC
 #endif  // HIGHWAYHASH_HIGHWAYHASH_H_

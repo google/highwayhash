@@ -21,115 +21,66 @@
 // argument, add a source file defining its operator() and instantiating
 // Functor<HH_TARGET>, add a cc_library_for_targets rule for that source file,
 // and call InstructionSets::Run<Functor>(/*args*/).
-//
-// WARNING: any source or header file that is compiled with special flags
-// (i.e. *_target.cc and its transitive dependencies, including this header)
-// must not define inline functions also used from other code.
-//
-// Background: AVX2 intrinsics require a compiler flag that also allows the
-// compiler to generate AVX2 code. Compiling inline functions with differing
-// flags violates the one definition rule because the generated code may differ.
-// This can lead to crashes if the linker chooses the AVX2 version and uses it
-// outside the codepaths guarded by the CPU capability checks in Run().
-//
-// Workaround: please ensure such source/header files do NOT include any
-// headers containing inline functions, nor define/instantiate any inline
-// functions themselves that might be used in other code. Note that Run* below
-// are only instantiated from normal code, so they are safe.
 
-#include <stdint.h>
+#include <utility>  // std::forward
 
-#include "highwayhash/arch_specific.h"
+#include "highwayhash/arch_specific.h"  // HH_TARGET_*
 #include "highwayhash/compiler_specific.h"
 
 namespace highwayhash {
 
-// Forward declarations because the definitions require target-specific copts.
-#if HH_ARCH_X64
-struct TargetAVX2;
-struct TargetSSE41;
-#endif
-struct TargetPortable;
-
-// Detects instruction sets and dispatches to the best available specialization
-// of a user-defined functor.
+// Detects TargetBits and calls specializations of a user-defined functor.
 class InstructionSets {
  public:
-  // Chooses the best available Target* for the current CPU and returns
-  // Func<Target>::operator()(a1..a5). Dispatch overhead is low, about 4 cycles,
-  // but this should be called infrequently (by hoisting it out of loops).
-  // We cannot use variadic arguments because std::forward is defined by
-  // <utility>, which also defines other inline functions.
-  template <template <class Target> class Func, typename T1, typename T2,
-            typename T3, typename T4, typename T5>
-  static HH_INLINE void Run(const T1& a1, const T2 a2, const T3 a3, const T4 a4,
-                            const T5 a5) {
-    const uint64_t flags = Supported();
-
+// Returns bit array of HH_TARGET_* supported by the current CPU.
+// The HH_TARGET_Portable bit is guaranteed to be set.
 #if HH_ARCH_X64
-    if (HH_LIKELY((flags & kGroupAVX2) == kGroupAVX2)) {
-      return Func<TargetAVX2>()(a1, a2, a3, a4, a5);
-    } else if (HH_LIKELY((flags & kGroupSSE41) == kGroupSSE41)) {
-      return Func<TargetSSE41>()(a1, a2, a3, a4, a5);
-    } else
-#endif  // HH_ARCH_X64
-    {
-      return Func<TargetPortable>()(a1, a2, a3, a4, a5);
+  static TargetBits Supported();
+#else
+  static HH_INLINE TargetBits Supported() { return HH_TARGET_Portable; }
+#endif
+
+  // Chooses the best available "Target" for the current CPU, runs the
+  // corresponding Func<Target>::operator()(args) and returns that Target
+  // (a single bit). The overhead of dispatching is low, about 4 cycles, but
+  // this should only be called infrequently (e.g. hoisting it out of loops).
+  template <template <TargetBits> class Func, typename... Args>
+  static HH_INLINE TargetBits Run(Args&&... args) {
+#if HH_ARCH_X64
+    const TargetBits supported = Supported();
+    if (supported & HH_TARGET_AVX2) {
+      Func<HH_TARGET_AVX2>()(std::forward<Args>(args)...);
+      return HH_TARGET_AVX2;
     }
+    if (supported & HH_TARGET_SSE41) {
+      Func<HH_TARGET_SSE41>()(std::forward<Args>(args)...);
+      return HH_TARGET_SSE41;
+    }
+#endif  // HH_ARCH_X64
+
+    Func<HH_TARGET_Portable>()(std::forward<Args>(args)...);
+    return HH_TARGET_Portable;
   }
 
-  // Calls Func<Target>::operator()(a1..a5) for all targets supported by the
-  // current CPU. We cannot use variadic arguments because std::forward is
-  // defined by <utility>, which also defines other inline functions.
-  template <template <class Target> class Func, typename T1, typename T2,
-            typename T3, typename T4, typename T5>
-  static HH_INLINE void RunAll(const T1& a1, const T2 a2, const T3 a3,
-                               const T4 a4, const T5 a5) {
-    const uint64_t flags = Supported();
-
+  // Calls Func<Target>::operator()(args) for all Target supported by the
+  // current CPU, and returns their HH_TARGET_* bits.
+  template <template <TargetBits> class Func, typename... Args>
+  static HH_INLINE TargetBits RunAll(Args&&... args) {
 #if HH_ARCH_X64
-    if (HH_LIKELY((flags & kGroupAVX2) == kGroupAVX2)) {
-      Func<TargetAVX2>()(a1, a2, a3, a4, a5);
+    const TargetBits supported = Supported();
+    if (supported & HH_TARGET_AVX2) {
+      Func<HH_TARGET_AVX2>()(std::forward<Args>(args)...);
     }
-    if (HH_LIKELY((flags & kGroupSSE41) == kGroupSSE41)) {
-      Func<TargetSSE41>()(a1, a2, a3, a4, a5);
+    if (supported & HH_TARGET_SSE41) {
+      Func<HH_TARGET_SSE41>()(std::forward<Args>(args)...);
     }
+#else
+    const TargetBits supported = HH_TARGET_Portable;
 #endif  // HH_ARCH_X64
 
-    Func<TargetPortable>()(a1, a2, a3, a4, a5);
+    Func<HH_TARGET_Portable>()(std::forward<Args>(args)...);
+    return supported;  // i.e. all that were run
   }
-
- private:
-  // Bits indicating which instruction set extensions are supported.
-  // This enables compact/fast implementations of Has*() below.
-  enum {
-    // Always set so we can distinguish between "not yet initialized" and
-    // "no extensions available".
-    kInitialized = 1,
-
-#if HH_ARCH_X64
-    kSSE = 2,
-    kSSE2 = 4,
-    kSSE3 = 8,
-    kSSSE3 = 0x10,
-    kSSE41 = 0x20,
-    kSSE42 = 0x40,
-    kPOPCNT = 0x80,
-    kAVX = 0x100,
-    kAVX2 = 0x200,
-    kFMA = 0x400,
-    kLZCNT = 0x800,
-    kBMI = 0x1000,
-    kBMI2 = 0x2000,
-
-    kGroupAVX2 = kAVX | kAVX2 | kFMA | kLZCNT | kBMI | kBMI2,
-    kGroupSSE41 = kSSE | kSSE2 | kSSE3 | kSSSE3 | kSSE41 | kPOPCNT
-#endif  // HH_ARCH_X64
-  };
-
-  // Returns bitfield of all instruction sets supported on this CPU.
-  // Thread-safe, only detects CPU support once.
-  static uint64_t Supported();
 };
 
 }  // namespace highwayhash

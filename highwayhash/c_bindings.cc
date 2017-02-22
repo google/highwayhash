@@ -17,20 +17,18 @@
 #include "highwayhash/highwayhash_target.h"
 #include "highwayhash/instruction_sets.h"
 
-using highwayhash::HHKey;
 using highwayhash::InstructionSets;
-using highwayhash::HHResult64;
 using highwayhash::HighwayHash;
 
 extern "C" {
 
 // Ideally this would reside in highwayhash_target.cc, but that file is
 // compiled multiple times and we must only define this function once.
-uint64_t HighwayHash64_Dispatcher(const uint64_t* key, const char* bytes,
-                                  const uint64_t size) {
+uint64_t HighwayHash64(const HHKey key, const char* bytes,
+                       const uint64_t size) {
   HHResult64 result;
   InstructionSets::Run<HighwayHash>(*reinterpret_cast<const HHKey*>(key), bytes,
-                                    size, &result, 0);
+                                    size, &result);
   return result;
 }
 

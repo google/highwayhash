@@ -1,90 +1,95 @@
-# The -m machine flag here indicates the minimum CPU required to run any of the
-# binaries. The instruction_sets dispatcher allows highwayhash_test to test all
-# implementations supported by the compiler and CPU regardless of this flag.
-# By contrast, benchmark only measures implementations enabled by this flag so
-# that it can call HighwayHashT directly, which is slightly faster.
-HH_ARCH := -mavx2
-HH_CXXFLAGS := 
-CXXFLAGS = -I. -std=c++11 -Wall -O3 $(HH_ARCH) $(HH_CXXFLAGS)
+# We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
-PROFILER_OBJS := $(addprefix highwayhash/, \
-	profiler_example.o \
-	os_specific.o \
-)
+override CPPFLAGS += -I../..
+override CXXFLAGS +=-std=c++11 -Wall -O3
 
-NANOBENCHMARK_OBJS := $(addprefix highwayhash/, \
-	nanobenchmark.o \
-	nanobenchmark_example.o \
-	os_specific.o \
-)
-
-VECTOR_TEST_OBJS := $(addprefix highwayhash/, \
-	vector_test.o \
-)
-
-SIP_OBJS := $(addprefix highwayhash/, \
+SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
 	sip_tree_hash.o \
 	scalar_sip_tree_hash.o \
 )
 
-SIP_TEST_OBJS := $(addprefix highwayhash/, \
-	sip_hash_test.o \
-)
-
-HIGHWAYHASH_OBJS := $(addprefix highwayhash/, \
+DISPATCHER_OBJS := $(addprefix obj/, \
 	arch_specific.o \
-	c_bindings.o \
-	hh_avx2.o \
-	hh_sse41.o \
-	hh_portable.o \
 	instruction_sets.o \
-)
-
-HIGHWAYHASH_TEST_OBJS := $(addprefix highwayhash/, \
-	highwayhash_test.o \
-)
-
-BENCHMARK_OBJS := $(addprefix highwayhash/, \
-	arch_specific.o \
-	benchmark.o \
+	nanobenchmark.o \
 	os_specific.o \
 )
 
-all: profiler_example nanobenchmark_example vector_test sip_hash_test\
-	highwayhash_test benchmark
+HIGHWAYHASH_OBJS := $(DISPATCHER_OBJS) obj/hh_portable.o
+HIGHWAYHASH_TEST_OBJS := $(DISPATCHER_OBJS) obj/highwayhash_test_portable.o
+VECTOR_TEST_OBJS := $(DISPATCHER_OBJS) obj/vector_test_portable.o
 
-profiler_example: $(PROFILER_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+ifdef HH_AARCH64
+HH_X64 =
+else
+ifdef HH_POWER
+HH_X64 =
+else
+HH_X64 = 1
+HIGHWAYHASH_OBJS += obj/hh_avx2.o obj/hh_sse41.o
+HIGHWAYHASH_TEST_OBJS += obj/highwayhash_test_avx2.o obj/highwayhash_test_sse41.o
+VECTOR_TEST_OBJS += obj/vector_test_avx2.o obj/vector_test_sse41.o
+endif
+endif
 
-nanobenchmark_example: $(NANOBENCHMARK_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+all: $(addprefix bin/, \
+	profiler_example nanobenchmark_example vector_test sip_hash_test \
+	highwayhash_test benchmark) lib/libhighwayhash.a
 
-vector_test: $(VECTOR_TEST_OBJS)
-	$(CXX) $(CXXFLAGS) -mavx2 $^ -o $@
+obj/%.o: highwayhash/%.cc
+	@mkdir -p -- $(dir $@)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-sip_hash_test: $(SIP_TEST_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+bin/%: obj/%.o
+	@mkdir -p -- $(dir $@)
+	$(CXX) $(LDFLAGS) $^ -o $@
 
-# CPU-specific implementations (same source file, different compiler flags)
-highwayhash/hh_avx2.o: highwayhash/highwayhash_target.cc highwayhash/hh_avx2.h
-	$(CXX) $(CXXFLAGS) -mavx2 -DHH_TARGET=TargetAVX2 -DHH_TARGET_AVX2 -c highwayhash/highwayhash_target.cc -o $@
+.DELETE_ON_ERROR:
+deps.mk: $(wildcard highwayhash/*.cc) $(wildcard highwayhash/*.h) Makefile
+	set -eu; for file in highwayhash/*.cc; do \
+		target=obj/$${file##*/}; target=$${target%.*}.o; \
+		[ "$$target" = "obj/highwayhash_target.o" ] || \
+		[ "$$target" = "obj/data_parallel_benchmark.o" ] || \
+		[ "$$target" = "obj/data_parallel_test.o" ] || \
+		$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DHH_DISABLE_TARGET_SPECIFIC -MM -MT \
+		"$$target" "$$file"; \
+	done | sed -e ':b' -e 's-../[^./]*/--' -e 'tb' >$@
+-include deps.mk
 
-highwayhash/hh_portable.o: highwayhash/highwayhash_target.cc highwayhash/hh_portable.h
-	$(CXX) $(CXXFLAGS) -DHH_TARGET=TargetPortable -DHH_TARGET_PORTABLE -c highwayhash/highwayhash_target.cc -o $@
+bin/profiler_example: $(DISPATCHER_OBJS)
 
-highwayhash/hh_sse41.o: highwayhash/highwayhash_target.cc highwayhash/hh_sse41.h
-	$(CXX) $(CXXFLAGS) -msse4.1 -DHH_TARGET=TargetSSE41 -DHH_TARGET_SSE41 -c highwayhash/highwayhash_target.cc -o $@
+bin/nanobenchmark_example: $(DISPATCHER_OBJS) obj/nanobenchmark.o
 
-libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS)
+ifdef HH_X64
+obj/sip_tree_hash.o: CXXFLAGS+=-mavx2
+# (Compiled from same source file with different compiler flags)
+obj/highwayhash_test_avx2.o: CXXFLAGS+=-mavx2
+obj/highwayhash_test_sse41.o: CXXFLAGS+=-msse4.1
+obj/hh_avx2.o: CXXFLAGS+=-mavx2
+obj/hh_sse41.o: CXXFLAGS+=-msse4.1
+obj/vector_test_avx2.o: CXXFLAGS+=-mavx2
+obj/vector_test_sse41.o: CXXFLAGS+=-msse4.1
+
+obj/benchmark.o: CXXFLAGS+=-mavx2
+endif
+
+lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
+	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
+	./test_exports.sh $@
 
-highwayhash_test: $(HIGHWAYHASH_OBJS) $(HIGHWAYHASH_TEST_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
+bin/vector_test: $(VECTOR_TEST_OBJS)
 
-benchmark: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) $(BENCHMARK_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+bin/benchmark: obj/benchmark.o $(HIGHWAYHASH_TEST_OBJS)
+bin/benchmark: $(SIP_OBJS) $(HIGHWAYHASH_OBJS)
 
-.PHONY: clean all
 clean:
-	$(RM) $(PROFILER_OBJS) $(NANOBENCHMARK_OBJS) $(VECTOR_TEST_OBJS) $(SIP_OBJS) $(SIP_TEST_OBJS) $(HIGHWAYHASH_OBJS) $(HIGHWAYHASH_TEST_OBJS) $(BENCHMARK_OBJS) profiler_example nanobenchmark_example vector_test sip_hash_test highwayhash_test benchmark libhighwayhash.a
+	[ ! -d obj ] || $(RM) -r -- obj/
+
+distclean: clean
+	[ ! -d bin ] || $(RM) -r -- bin/
+	[ ! -d lib ] || $(RM) -r -- lib/
+
+.PHONY: clean distclean all

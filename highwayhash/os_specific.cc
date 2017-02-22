@@ -22,7 +22,7 @@
 #include <ctime>
 #include <random>
 
-#include "highwayhash/compiler_specific.h"
+#include "highwayhash/arch_specific.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_WIN 1
@@ -34,7 +34,6 @@
 
 #ifdef __linux__
 #define OS_LINUX 1
-#include <cpuid.h>
 #include <sched.h>
 #include <sys/time.h>
 #else
@@ -49,7 +48,7 @@
 #define OS_MAC 0
 #endif
 
-namespace os_specific {
+namespace highwayhash {
 
 #define CHECK(condition)                                       \
   while (!(condition)) {                                       \
@@ -184,18 +183,6 @@ void PinThreadToCPU(const int cpu) {
   SetThreadAffinity(&affinity);
 }
 
-uint32_t ApicId() {
-#if HH_MSC_VERSION
-  int regs[4] = {0};
-  __cpuid(regs, 1);
-  return uint32_t(regs[1]) >> 24;
-#else
-  unsigned a, b, c, d;
-  __cpuid(1, a, b, c, d);
-  return b >> 24;
-#endif
-}
-
 void PinThreadToRandomCPU() {
   std::vector<int> cpus = AvailableCPUs();
 
@@ -211,8 +198,12 @@ void PinThreadToRandomCPU() {
 
   PinThreadToCPU(cpu);
 
+#if HH_ARCH_X64
   // After setting affinity, we should be running on the desired CPU.
   printf("Running on CPU #%d, APIC ID %02x\n", cpu, ApicId());
+#else
+  printf("Running on CPU #%d\n", cpu);
+#endif
 }
 
-}  // namespace os_specific
+}  // namespace highwayhash

@@ -15,31 +15,34 @@
 #ifndef HIGHWAYHASH_HH_TYPES_H_
 #define HIGHWAYHASH_HH_TYPES_H_
 
+// WARNING: included from c_bindings => must be C-compatible.
 // WARNING: compiled with different flags => must not define/instantiate any
 // inline functions, nor include any headers that do - see instruction_sets.h.
 
+#include <stddef.h>  // size_t
 #include <stdint.h>
-#include "highwayhash/instruction_sets.h"
 
+#ifdef __cplusplus
 namespace highwayhash {
+#endif
 
 // 256-bit secret key that should remain unknown to attackers.
 // We recommend initializing it to a random value.
-using HHKey = uint64_t[4];
+typedef uint64_t HHKey[4];
 
-// How much input is hashed by one call to HHState::Update.
-using HHPacket = uint64_t[4];
+// How much input is hashed by one call to HHStateT::Update.
+typedef char HHPacket[32];
 
 // Hash 'return' types.
-using HHResult64 = uint64_t;  // returned directly
-using HHResult128 = uint64_t[2];
-using HHResult256 = uint64_t[4];
+typedef uint64_t HHResult64;  // returned directly
+typedef uint64_t HHResult128[2];
+typedef uint64_t HHResult256[4];
 
-// Primary template; hh_*.h provide specializations for Target*, which are
-// forward-declared in instruction_sets.h.
-template <class Target>
-class HHState {};
+// Called if a test fails, indicating which target and size.
+typedef void (*HHNotify)(const char*, size_t);
 
+#ifdef __cplusplus
 }  // namespace highwayhash
+#endif
 
 #endif  // HIGHWAYHASH_HH_TYPES_H_

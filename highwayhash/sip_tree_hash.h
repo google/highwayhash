@@ -49,4 +49,4 @@ HH_U64 SipTreeHash13(const HH_U64 (&key)[4], const char* bytes,
 }  // namespace highwayhash
 #endif
 
-#endif  // #ifndef HIGHWAYHASH_SIP_TREE_HASH_H_
+#endif  // HIGHWAYHASH_SIP_TREE_HASH_H_

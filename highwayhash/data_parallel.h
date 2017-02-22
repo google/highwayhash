@@ -37,7 +37,7 @@
     abort();                                                     \
   }
 
-namespace data_parallel {
+namespace highwayhash {
 
 // Highly scalable thread pool, especially suitable for data-parallel
 // computations in the fork-join model, where clients need to know when all
@@ -334,6 +334,6 @@ class PerThread {
   }
 };
 
-}  // namespace data_parallel
+}  // namespace highwayhash
 
 #endif  // HIGHWAYHASH_DATA_PARALLEL_H_

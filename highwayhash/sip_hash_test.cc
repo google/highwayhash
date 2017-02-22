@@ -128,7 +128,7 @@ BENCHMARK(BM<SipHasher>)->Apply(Args);
 DEFINE_HASHER(ScalarSipTreeHash, 4);
 BENCHMARK(BM<ScalarSipTreeHasher>)->Apply(Args);
 
-#if HH_ENABLE_AVX2
+#ifdef __AVX2__
 DEFINE_HASHER(SipTreeHash, 4);
 BENCHMARK(BM<SipTreeHasher>)->Apply(Args);
 #endif

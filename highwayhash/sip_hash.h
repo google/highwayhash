@@ -22,6 +22,7 @@
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/endianess.h"
 #include "highwayhash/state_helpers.h"
 
 namespace highwayhash {
@@ -43,9 +44,7 @@ class SipHashStateT {
   HH_INLINE void Update(const char* bytes) {
     HH_U64 packet;
     memcpy(&packet, bytes, sizeof(packet));
-#if HH_BIG_ENDIAN
-    packet = HH_BSWAP64(packet);
-#endif
+    packet = host_from_le64(packet);
 
     v3 ^= packet;
 
@@ -169,4 +168,4 @@ static HH_INLINE HH_U64 ReduceSipTreeHash(
 
 }  // namespace highwayhash
 
-#endif  // #ifndef HIGHWAYHASH_SIP_HASH_H_
+#endif  // HIGHWAYHASH_SIP_HASH_H_

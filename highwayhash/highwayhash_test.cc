@@ -15,17 +15,20 @@
 // Ensures each implementation of HighwayHash returns consistent and unchanging
 // hash values.
 
-#include "highwayhash/highwayhash_target.h"
+#include "highwayhash/highwayhash_test_target.h"
 
+#include <stddef.h>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
-#include <map>
-#include <string>
 #include <vector>
 
 #ifdef HH_GOOGLETEST
 #include "testing/base/public/gunit.h"
 #endif
+
+#include "highwayhash/data_parallel.h"
+#include "highwayhash/instruction_sets.h"
 
 // Define to nonzero in order to print the (new) golden outputs.
 #define PRINT_RESULTS 0
@@ -37,7 +40,7 @@ namespace {
 const size_t kMaxSize = 64;
 
 #if PRINT_RESULTS
-void Print(const HHResult64 result) { printf("0x%016llXull,\n", result); }
+void Print(const HHResult64 result) { printf("0x%016lXull,\n", result); }
 
 // For HHResult128/256.
 template <int kNumLanes>
@@ -47,61 +50,62 @@ void Print(const HHResult64 (&result)[kNumLanes]) {
     if (i != 0) {
       printf(", ");
     }
-    printf("0x%016llXull", result[i]);
+    printf("0x%016lXull", result[i]);
   }
   printf("},\n");
 }
 #endif  // PRINT_RESULTS
 
-// Keyed by Target::Name() so we can report which Targets were tested.
-using FailureCounts = std::map<std::string, int>;
-
-// 'Global' data because the notify callbacks cannot accept state arguments.
-FailureCounts& ImplementationFailures() {
-  // Local static ensures init order is well-defined.
-  static FailureCounts counts;
-  return counts;
+// Called when any test fails; exits immediately because one mismatch usually
+// implies many others.
+void OnFailure(const char* target_name, const size_t size) {
+  printf("Mismatch at size %zu\n", size);
+#ifdef HH_GOOGLETEST
+  EXPECT_TRUE(false);
+#endif
+  exit(1);
 }
 
-void NotifyImplementationResult(const char* target_name, const bool ok) {
-  ImplementationFailures()[target_name] += !ok;
-}
-
-// Verifies every combination of implementation and input size.
+// Verifies every combination of implementation and input size. Returns which
+// targets were run/verified.
 template <typename Result>
-void VerifyImplementations(const Result (&known_good)[kMaxSize + 1]) {
+TargetBits VerifyImplementations(const Result (&known_good)[kMaxSize + 1]) {
   const HHKey key = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
                      0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
 
+  TargetBits targets = ~0U;
+
   // For each test input: empty string, 00, 00 01, ...
   char in[kMaxSize + 1] = {0};
+  // Fast enough that we don't need a thread pool.
   for (uint64_t size = 0; size <= kMaxSize; ++size) {
     in[size] = static_cast<char>(size);
 #if PRINT_RESULTS
     Result actual;
-    InstructionSets::Run<HighwayHash>(key, in, size, &actual, 0);
+    targets &= InstructionSets::Run<HighwayHash>(key, in, size, &actual);
     Print(actual);
 #else
     const Result* expected = &known_good[size];
-    InstructionSets::RunAll<HighwayHashTest>(key, in, size, expected,
-                                             &NotifyImplementationResult);
+    targets &= InstructionSets::RunAll<HighwayHashTest>(key, in, size, expected,
+                                                        &OnFailure);
 #endif
   }
+  return targets;
 }
 
 // Cat
 
-FailureCounts& CatFailures() {
-  static FailureCounts counts;
-  return counts;
+void OnCatFailure(const char* target_name, const size_t size) {
+  printf("Cat mismatch at size %zu\n", size);
+#ifdef HH_GOOGLETEST
+  EXPECT_TRUE(false);
+#endif
+  exit(1);
 }
 
-void NotifyCatResult(const char* target_name, const bool ok) {
-  CatFailures()[target_name] += !ok;
-}
-
+// Returns which targets were run/verified.
 template <typename Result>
-void VerifyCat() {
+TargetBits VerifyCat(ThreadPool* pool) {
   // Reversed order vs prior test.
   const HHKey key = {0x1F1E1D1C1B1A1918ULL, 0x1716151413121110ULL,
                      0x0F0E0D0C0B0A0908ULL, 0x0706050403020100ULL};
@@ -111,11 +115,17 @@ void VerifyCat() {
   flat.reserve(kMaxSize);
   srand(129);
   for (size_t size = 0; size < kMaxSize; ++size) {
-    Result dummy;
-    InstructionSets::RunAll<HighwayHashCatTest>(key, flat.data(), size, &dummy,
-                                                &NotifyCatResult);
     flat.push_back(static_cast<char>(rand() & 0xFF));
   }
+
+  std::atomic<TargetBits> targets{~0U};
+
+  pool->Run(0, kMaxSize, [&key, &flat, &targets](const uint32_t i) {
+    Result dummy;
+    targets.fetch_and(InstructionSets::RunAll<HighwayHashCatTest>(
+        key, flat.data(), i, &dummy, &OnCatFailure));
+  });
+  return targets.load();
 }
 
 const HHResult64 kExpected64[kMaxSize + 1] = {
@@ -342,29 +352,25 @@ const HHResult256 kExpected256[kMaxSize + 1] = {
      0x24CFDCA800C34770ull}};
 
 void RunTests() {
-  bool ok = true;
+  // TODO(janwas): detect number of cores.
+  ThreadPool pool(4);
 
-  VerifyImplementations(kExpected64);
-  VerifyImplementations(kExpected128);
-  VerifyImplementations(kExpected256);
-  for (const auto& pair : ImplementationFailures()) {
-    printf("%10s: %s\n", pair.first.c_str(),
-           pair.second == 0 ? "OK" : "failed");
-    ok &= pair.second == 0;
-  }
+  TargetBits tested = ~0U;
+  tested &= VerifyImplementations(kExpected64);
+  tested &= VerifyImplementations(kExpected128);
+  tested &= VerifyImplementations(kExpected256);
+  // Any failure causes immediate exit, so apparently all succeeded.
+  HH_TARGET_NAME::ForeachTarget(tested, [](const TargetBits target) {
+    printf("%10s: OK\n", TargetName(target));
+  });
 
-  VerifyCat<HHResult64>();
-  VerifyCat<HHResult128>();
-  VerifyCat<HHResult256>();
-  for (const auto& pair : CatFailures()) {
-    printf("%10s: %s\n", pair.first.c_str(),
-           pair.second == 0 ? "OK" : "failed");
-    ok &= pair.second == 0;
-  }
-
-#ifdef HH_GOOGLETEST
-  EXPECT_TRUE(ok);
-#endif
+  tested = ~0U;
+  tested &= VerifyCat<HHResult64>(&pool);
+  tested &= VerifyCat<HHResult128>(&pool);
+  tested &= VerifyCat<HHResult256>(&pool);
+  HH_TARGET_NAME::ForeachTarget(tested, [](const TargetBits target) {
+    printf("%10sCat: OK\n", TargetName(target));
+  });
 }
 
 #ifdef HH_GOOGLETEST

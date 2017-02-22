@@ -17,7 +17,7 @@
 
 #include <vector>
 
-namespace os_specific {
+namespace highwayhash {
 
 // Returns current wall-clock time [seconds].
 double Now();
@@ -49,6 +49,6 @@ void PinThreadToCPU(const int cpu);
 // Uses SetThreadAffinity.
 void PinThreadToRandomCPU();
 
-}  // namespace os_specific
+}  // namespace highwayhash
 
 #endif  // HIGHWAYHASH_OS_SPECIFIC_H_

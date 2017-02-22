@@ -18,15 +18,25 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>
 
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 
 namespace highwayhash {
+// To prevent ODR violations when including this from multiple translation
+// units (TU) that are compiled with different flags, the contents must reside
+// in a namespace whose name is unique to the TU. NOTE: this behavior is
+// incompatible with precompiled modules and requires textual inclusion instead.
+namespace HH_TARGET_NAME {
 
 // Single-lane "vector" type with the same interface as V128/Scalar. Allows the
 // same client template to generate both SIMD and portable code.
 template <typename Type>
 class Scalar {
  public:
+  struct Intrinsic {
+    Type t;
+  };
+
   using T = Type;
   static constexpr size_t N = 1;
 
@@ -42,19 +52,27 @@ class Scalar {
     return *this;
   }
 
+  // Convert from/to intrinsics.
+  HH_INLINE Scalar(const Intrinsic& v) : v_(v.t) {}
+  HH_INLINE Scalar& operator=(const Intrinsic& v) {
+    v_ = v.t;
+    return *this;
+  }
+  HH_INLINE operator Intrinsic() const { return {v_}; }
+
   HH_INLINE Scalar operator==(const Scalar& other) const {
     Scalar eq;
-    memset(&eq.v_, v_ == other.v_ ? 0xFF : 0x00, sizeof(v_));
+    eq.FillWithByte(v_ == other.v_ ? 0xFF : 0x00);
     return eq;
   }
   HH_INLINE Scalar operator<(const Scalar& other) const {
     Scalar lt;
-    memset(&lt.v_, v_ < other.v_ ? 0xFF : 0x00, sizeof(v_));
+    lt.FillWithByte(v_ < other.v_ ? 0xFF : 0x00);
     return lt;
   }
   HH_INLINE Scalar operator>(const Scalar& other) const {
     Scalar gt;
-    memset(&gt.v_, v_ > other.v_ ? 0xFF : 0x00, sizeof(v_));
+    gt.FillWithByte(v_ > other.v_ ? 0xFF : 0x00);
     return gt;
   }
 
@@ -89,13 +107,40 @@ class Scalar {
   }
 
   HH_INLINE Scalar& operator<<=(const int count) {
-    v_ <<= count;
+    // In C, int64_t << 64 is undefined, but we want to match the sensible
+    // behavior of SSE2 (zeroing).
+    if (count >= sizeof(T) * 8) {
+      v_ = 0;
+    } else {
+      v_ <<= count;
+    }
     return *this;
   }
 
   HH_INLINE Scalar& operator>>=(const int count) {
-    v_ >>= count;
+    if (count >= sizeof(T) * 8) {
+      v_ = 0;
+    } else {
+      v_ >>= count;
+    }
     return *this;
+  }
+
+  // For internal use only. We need to avoid memcpy/memset because this is a
+  // restricted header.
+  void FillWithByte(const unsigned char value) {
+    unsigned char* bytes = reinterpret_cast<unsigned char*>(&v_);
+    for (size_t i = 0; i < sizeof(T); ++i) {
+      bytes[i] = value;
+    }
+  }
+
+  void CopyTo(unsigned char* HH_RESTRICT to_bytes) const {
+    const unsigned char* from_bytes =
+        reinterpret_cast<const unsigned char*>(&v_);
+    for (size_t i = 0; i < sizeof(T); ++i) {
+      to_bytes[i] = from_bytes[i];
+    }
   }
 
  private:
@@ -171,19 +216,12 @@ using V1x64F = Scalar<double>;
 
 // We differentiate between targets' vector types via template specialization.
 // Calling Load<V>(floats) is more natural than Load(V8x32F(), floats) and may
-// generate better code in unoptimized builds. The primary template can only
-// be defined once, even if multiple vector headers are included.
-#ifndef HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
-#define HH_DEFINED_PRIMARY_TEMPLATE_FOR_LOAD
+// generate better code in unoptimized builds. Only declare the primary
+// templates to avoid needing mutual exclusion with vector128/256.
 template <class V>
-HH_INLINE V Load(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
+HH_INLINE V Load(const typename V::T* const HH_RESTRICT from);
 template <class V>
-HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from) {
-  return V();  // must specialize for each type.
-}
-#endif
+HH_INLINE V LoadUnaligned(const typename V::T* const HH_RESTRICT from);
 
 template <>
 HH_INLINE V1x8U Load<V1x8U>(const V1x8U::T* const HH_RESTRICT from) {
@@ -260,17 +298,17 @@ LoadUnaligned<V1x64F>(const V1x64F::T* const HH_RESTRICT from) {
 
 template <typename T>
 HH_INLINE void Store(const Scalar<T>& v, T* const HH_RESTRICT to) {
-  memcpy(to, &v, sizeof(v));
+  v.CopyTo(reinterpret_cast<unsigned char*>(to));
 }
 
 template <typename T>
 HH_INLINE void StoreUnaligned(const Scalar<T>& v, T* const HH_RESTRICT to) {
-  memcpy(to, &v, sizeof(v));
+  v.CopyTo(reinterpret_cast<unsigned char*>(to));
 }
 
 template <typename T>
 HH_INLINE void Stream(const Scalar<T>& v, T* const HH_RESTRICT to) {
-  memcpy(to, &v, sizeof(v));
+  v.CopyTo(reinterpret_cast<unsigned char*>(to));
 }
 
 // Miscellaneous functions.
@@ -289,9 +327,8 @@ HH_INLINE Scalar<T> AndNot(const Scalar<T>& neg_mask, const Scalar<T>& values) {
 template <typename T>
 HH_INLINE Scalar<T> Select(const Scalar<T>& a, const Scalar<T>& b,
                            const Scalar<T>& mask) {
-  uint8_t bytes[sizeof(T)];
-  memcpy(bytes, &mask, sizeof(T));
-  return (bytes[sizeof(T) - 1] & 0x80) ? b : a;
+  const char* mask_bytes = reinterpret_cast<const char*>(&mask);
+  return (mask_bytes[sizeof(T) - 1] & 0x80) ? b : a;
 }
 
 template <typename T>
@@ -304,6 +341,7 @@ HH_INLINE Scalar<T> Max(const Scalar<T>& v0, const Scalar<T>& v1) {
   return (v0 < v1) ? v1 : v0;
 }
 
+}  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 
 #endif  // HIGHWAYHASH_SCALAR_H_

@@ -17,37 +17,14 @@
 #include <future>  //NOLINT
 #include <set>
 #include "testing/base/public/gunit.h"
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/data_parallel.h"
 #include "thread/threadpool.h"
 
-#if defined(_M_X64) || defined(__x86_64) || defined(__amd64) || \
-    defined(__x86_64__) || defined(__amd64__)
-#if defined(_MSC_VER)
-#include <intrin.h>
-
-#define CPUID __cpuid
-#else  // GCC, clang
-#include <cpuid.h>
-
-#define CPUID(regs, input) \
-  __get_cpuid(input, &regs[0], &regs[1], &regs[2], &regs[3])
-#endif
-#else
-#define CPUID(regs, input)
-#endif
-
-namespace data_parallel {
+namespace highwayhash {
 namespace {
 
 constexpr int kBenchmarkTasks = 1000000;
-
-unsigned ProcessorID() {
-  unsigned regs[4] = {0};
-  // CPUID function 1 is always supported, but the APIC ID is zero on very
-  // old CPUs (Pentium III).
-  CPUID(regs, 1);
-  return regs[1] >> 24;
-}
 
 // Returns elapsed time [nanoseconds] for std::async.
 double BenchmarkAsync(uint64_t* total) {
@@ -134,7 +111,7 @@ TEST(DataParallelTest, Benchmarks) {
 }
 
 // Ensures multiple hardware threads are used (decided by the OS scheduler).
-TEST(DataParallelTest, TestProcessorIDs) {
+TEST(DataParallelTest, TestApicIds) {
   for (int num_threads = 1; num_threads <= std::thread::hardware_concurrency();
        ++num_threads) {
     ThreadPool pool(num_threads);
@@ -151,7 +128,7 @@ TEST(DataParallelTest, TestProcessorIDs) {
       }
 
       mutex.lock();
-      ids.insert(ProcessorID());
+      ids.insert(ApicId());
       total += sum;
       mutex.unlock();
     });
@@ -171,4 +148,4 @@ TEST(DataParallelTest, TestProcessorIDs) {
 }
 
 }  // namespace
-}  // namespace data_parallel
+}  // namespace highwayhash

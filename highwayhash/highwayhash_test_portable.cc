@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define HH_TARGET_NAME AVX2
-#include "highwayhash/highwayhash_target.cc"
+#define HH_TARGET_NAME Portable
+#include "highwayhash/highwayhash_test_target.cc"
