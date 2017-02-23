@@ -15,8 +15,10 @@
 #ifndef HIGHWAYHASH_HH_SSE41_H_
 #define HIGHWAYHASH_HH_SSE41_H_
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"

@@ -15,15 +15,17 @@
 #ifndef HIGHWAYHASH_HIGHWAYHASH_H_
 #define HIGHWAYHASH_HIGHWAYHASH_H_
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
-
 // This header's templates are useful for inlining into other CPU-specific code:
 // template<TargetBits Target> CodeUsingHash() { HighwayHashT<Target>(...); },
 // and can also be instantiated with HH_TARGET when callers don't care about the
 // exact implementation. Otherwise, they are implementation details of the
 // highwayhash_target wrapper. Use that instead if you need to detect the best
 // available implementation at runtime.
+
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"

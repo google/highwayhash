@@ -17,6 +17,11 @@
 
 // Helper functions used by hh_avx2 and hh_sse41.
 
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
+
 #include "highwayhash/vector128.h"
 
 // For auto-dependency generation, we need to include all headers but not their

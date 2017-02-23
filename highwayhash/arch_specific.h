@@ -15,8 +15,26 @@
 #ifndef HIGHWAYHASH_ARCH_SPECIFIC_H_
 #define HIGHWAYHASH_ARCH_SPECIFIC_H_
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME.
+//
+// Background: older GCC/Clang require flags such as -mavx2 before AVX2 SIMD
+// intrinsics can be used. These intrinsics are only used within blocks that
+// first verify CPU capabilities. However, the flag also allows the compiler to
+// generate AVX2 code in other places. This can violate the One Definition Rule,
+// which requires multiple instances of a function with external linkage
+// (e.g. extern inline in a header) to be "equivalent". To prevent the resulting
+// crashes on non-AVX2 CPUs, any header (transitively) included from a
+// translation unit compiled with different flags is "restricted". This means
+// all function definitions must have internal linkage (e.g. static inline), or
+// reside in namespace HH_TARGET_NAME, which expands to a name unique to the
+// current compiler flags.
+//
+// Most C system headers are safe to include, but C++ headers should generally
+// be avoided because they often do not specify static linkage and cannot
+// reliably be wrapped in a namespace.
 
 #include "highwayhash/compiler_specific.h"
 

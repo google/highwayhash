@@ -69,8 +69,10 @@
 // central tendency of the measurement samples with the "half sample mode",
 // which is more robust to outliers and skewed data than the mean or median.
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
 #include <stddef.h>
 #include <stdint.h>

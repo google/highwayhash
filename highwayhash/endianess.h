@@ -15,8 +15,12 @@
 #ifndef HIGHWAYHASH_ENDIANESS_H_
 #define HIGHWAYHASH_ENDIANESS_H_
 
-#include <stdint.h>
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
+#include <stdint.h>
 
 #if defined(BYTE_ORDER) && defined(LITTLE_ENDIAN) && defined(BIG_ENDIAN)
 
@@ -99,6 +103,5 @@ static inline uint64_t le64_from_host(uint64_t x) {return __builtin_bswap64(x);}
 #endif
 
 }  // namespace highwayhash
-
 
 #endif  // HIGHWAYHASH_ENDIANESS_H_

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" source file; avoid including any headers
+// unless they are also restricted. See arch_specific.h for details.
 
 #include "highwayhash/highwayhash_target.h"
 

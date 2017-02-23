@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" source file; avoid including any headers
+// unless they are also restricted. See arch_specific.h for details.
 
 #include "highwayhash/vector_test_target.h"
-
-#include <algorithm>
-#include <limits>
 
 #include "highwayhash/arch_specific.h"
 
@@ -68,6 +65,26 @@ void NotifyIfUnequal(const T& t, const T expected, const HHNotify notify) {
   }
 }
 
+// MaxValue<T>()() replaces std::numeric_limits<T>::max().
+template <typename T>
+struct MaxValue;
+template <>
+struct MaxValue<uint8_t> {
+  constexpr uint8_t operator()() { return 0xFFu; }
+};
+template <>
+struct MaxValue<uint16_t> {
+  constexpr uint16_t operator()() { return 0xFFFFu; }
+};
+template <>
+struct MaxValue<uint32_t> {
+  constexpr uint32_t operator()() { return 0xFFFFFFFFu; }
+};
+template <>
+struct MaxValue<uint64_t> {
+  constexpr uint64_t operator()() { return 0xFFFFFFFFFFFFFFFFull; }
+};
+
 template <typename T>
 void TestMembersAndBinaryOperatorsExceptShifts(const HHNotify notify) {
   // uninitialized
@@ -85,7 +102,7 @@ void TestMembersAndBinaryOperatorsExceptShifts(const HHNotify notify) {
 
   // equal
   const V<T> veq(v3 == v3b);
-  NotifyIfUnequal(veq, std::numeric_limits<T>::max(), notify);
+  NotifyIfUnequal(veq, MaxValue<T>()(), notify);
 
   // Copying to, and constructing from intrinsic yields same result.
   typename V<T>::Intrinsic nv2 = v2;
@@ -125,7 +142,7 @@ void TestShifts(const HHNotify notify) {
 
   // Sign bit
   constexpr int kSign = (sizeof(T) * 8) - 1;
-  constexpr T max = std::numeric_limits<T>::max();
+  constexpr T max = MaxValue<T>()();
   constexpr T sign = ~(max >> 1);
   NotifyIfUnequal(v1 << kSign, sign, notify);
 
@@ -137,8 +154,12 @@ template <class T>
 void TestLoadStore(const HHNotify notify) {
   const size_t n = V<T>::N;
   T lanes[2 * n] HH_ALIGNAS(32);
-  std::fill(lanes, lanes + n, 4);
-  std::fill(lanes + n, lanes + 2 * n, 5);
+  for (size_t i = 0; i < n; ++i) {
+    lanes[i] = 4;
+  }
+  for (size_t i = n; i < 2 * n; ++i) {
+    lanes[i] = 5;
+  }
   // Aligned load
   const V<T> v4 = Load<V<T>>(lanes);
   NotifyIfUnequal(v4, T(4), notify);

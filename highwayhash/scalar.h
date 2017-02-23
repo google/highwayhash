@@ -15,6 +15,11 @@
 #ifndef HIGHWAYHASH_SCALAR_H_
 #define HIGHWAYHASH_SCALAR_H_
 
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
+
 #include <stddef.h>  // size_t
 #include <stdint.h>
 

@@ -16,8 +16,10 @@
 #define HIGHWAYHASH_HH_TYPES_H_
 
 // WARNING: included from c_bindings => must be C-compatible.
-// WARNING: compiled with different flags => must not define/instantiate any
-// inline functions, nor include any headers that do - see instruction_sets.h.
+// WARNING: this is a "restricted" header because it is included from
+// translation units compiled with different flags. This header and its
+// dependencies must not define any function unless it is static inline and/or
+// within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
 #include <stddef.h>  // size_t
 #include <stdint.h>
