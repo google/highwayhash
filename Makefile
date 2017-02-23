@@ -1,6 +1,6 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
-override CPPFLAGS += -I../..
+override CPPFLAGS += -I.
 override CXXFLAGS +=-std=c++11 -Wall -O3
 
 SIP_OBJS := $(addprefix obj/, \
