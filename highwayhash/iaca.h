@@ -34,29 +34,29 @@
 
 namespace highwayhash {
 
+#if HH_ENABLE_IACA && (HH_GCC_VERSION || HH_CLANG_VERSION)
+
 // Call before the region of interest. Fences hopefully prevent reordering.
 static HH_INLINE void BeginIACA() {
-#if HH_ENABLE_IACA && (HH_GCC_VERSION || HH_CLANG_VERSION)
   HH_COMPILER_FENCE;
   asm volatile(
       ".byte 0x0F, 0x0B\n\t"  // UD2
       "movl $111, %ebx\n\t"
       ".byte 0x64, 0x67, 0x90\n\t");
   HH_COMPILER_FENCE;
-#endif
 }
 
 // Call after the region of interest. Fences hopefully prevent reordering.
 static HH_INLINE void EndIACA() {
-#if HH_ENABLE_IACA && (HH_GCC_VERSION || HH_CLANG_VERSION)
   HH_COMPILER_FENCE;
   asm volatile(
       "movl $222, %ebx\n\t"
       ".byte 0x64, 0x67, 0x90\n\t"
       ".byte 0x0F, 0x0B\n\t");  // UD2
   HH_COMPILER_FENCE;
-#endif
 }
+
+#endif
 
 }  // namespace highwayhash
 

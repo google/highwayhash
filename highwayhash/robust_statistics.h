@@ -124,7 +124,7 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
   std::vector<T> abs_deviations;
   abs_deviations.reserve(samples.size());
   for (const T sample : samples) {
-    abs_deviations.push_back(std::abs(sample - median));
+    abs_deviations.push_back(std::abs(static_cast<T>(sample - median)));
   }
   return Median(&abs_deviations);
 }

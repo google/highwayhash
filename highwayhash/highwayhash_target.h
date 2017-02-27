@@ -36,7 +36,7 @@ namespace highwayhash {
 // compiled once for every target with the required flags (e.g. -mavx2).
 template <TargetBits Target>
 struct HighwayHash {
-  // Stores a 64/128/256 bit hash of "bytes" using the HighwayHash
+  // Stores a 64/128/256 bit hash of "bytes" using the HighwayHashT
   // implementation for the "Target" CPU. The hash result is identical
   // regardless of which implementation is used.
   //
@@ -54,6 +54,28 @@ struct HighwayHash {
                   const size_t size, HHResult128* HH_RESTRICT hash) const;
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
                   const size_t size, HHResult256* HH_RESTRICT hash) const;
+};
+
+// Note: this interface avoids dispatch overhead per fragment.
+template <TargetBits Target>
+struct HighwayHashCat {
+  // Stores a 64/128/256 bit hash of all fragments (of given count and sizes)
+  // using the HighwayHashCatT implementation for "Target". The hash result is
+  // identical to HighwayHash of the flattened data, regardless of Target.
+  //
+  // "key" is a (randomly generated or hard-coded) HHKey.
+  // "fragments" are "num_fragments" pointers to the (unaligned) data to hash.
+  // "sizes" are "num_fragments" values indicating the number of bytes.
+  // "hash" is a HHResult* (either 64, 128 or 256 bits).
+  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
+                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+                  HHResult64* HH_RESTRICT hash) const;
+  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
+                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+                  HHResult128* HH_RESTRICT hash) const;
+  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
+                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+                  HHResult256* HH_RESTRICT hash) const;
 };
 
 }  // namespace highwayhash

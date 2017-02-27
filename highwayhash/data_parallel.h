@@ -73,6 +73,8 @@ class ThreadPool {
       threads_.emplace_back(ThreadFunc, this);
     }
 
+    padding_[0] = 0;  // avoid unused member warning.
+
     WorkersReadyBarrier();
   }
 
@@ -243,7 +245,7 @@ class ThreadPool {
 
   // Updated by workers; alignment/padding avoids false sharing.
   alignas(64) std::atomic<int> num_reserved_{0};
-  int padding[15];
+  int padding_[15];
 };
 
 // Thread-local storage with support for reduction (combining into one result).

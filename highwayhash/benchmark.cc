@@ -183,11 +183,15 @@ void AddMeasurements(DurationsForInputs* input_map, const char* caption,
   input_map->num_items = 0;
 }
 
+#if BENCHMARK_SIP || BENCHMARK_FARM || (BENCHMARK_SIP_TREE && defined(__AVX2__))
+
 void MeasureAndAdd(DurationsForInputs* input_map, const char* caption,
                    const Func func, Measurements* measurements) {
   MeasureDurations(func, input_map);
   AddMeasurements(input_map, caption, measurements);
 }
+
+#endif
 
 // InstructionSets::RunAll callback.
 void AddMeasurementsWithPrefix(const char* prefix, const char* target_name,

@@ -70,19 +70,19 @@ template <typename T>
 struct MaxValue;
 template <>
 struct MaxValue<uint8_t> {
-  constexpr uint8_t operator()() { return 0xFFu; }
+  constexpr uint8_t operator()() const { return 0xFFu; }
 };
 template <>
 struct MaxValue<uint16_t> {
-  constexpr uint16_t operator()() { return 0xFFFFu; }
+  constexpr uint16_t operator()() const { return 0xFFFFu; }
 };
 template <>
 struct MaxValue<uint32_t> {
-  constexpr uint32_t operator()() { return 0xFFFFFFFFu; }
+  constexpr uint32_t operator()() const { return 0xFFFFFFFFu; }
 };
 template <>
 struct MaxValue<uint64_t> {
-  constexpr uint64_t operator()() { return 0xFFFFFFFFFFFFFFFFull; }
+  constexpr uint64_t operator()() const { return 0xFFFFFFFFFFFFFFFFull; }
 };
 
 template <typename T>
