@@ -16,6 +16,8 @@
 
 #include <cassert>
 #include <numeric>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef HH_GOOGLETEST
 #include "base/integral_types.h"

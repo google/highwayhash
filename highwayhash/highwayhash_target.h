@@ -56,25 +56,33 @@ struct HighwayHash {
                   const size_t size, HHResult256* HH_RESTRICT hash) const;
 };
 
+// Replacement for C++17 std::string_view that avoids dependencies.
+// A struct requires fewer allocations when calling HighwayHashCat with
+// non-const "num_fragments".
+struct StringView {
+  const char* data;  // not necessarily aligned/padded
+  size_t num_bytes;  // nonzero
+};
+
 // Note: this interface avoids dispatch overhead per fragment.
 template <TargetBits Target>
 struct HighwayHashCat {
-  // Stores a 64/128/256 bit hash of all fragments (of given count and sizes)
-  // using the HighwayHashCatT implementation for "Target". The hash result is
-  // identical to HighwayHash of the flattened data, regardless of Target.
+  // Stores a 64/128/256 bit hash of all "num_fragments" "fragments" using the
+  // HighwayHashCatT implementation for "Target". The hash result is identical
+  // to HighwayHash of the flattened data, regardless of Target.
   //
   // "key" is a (randomly generated or hard-coded) HHKey.
-  // "fragments" are "num_fragments" pointers to the (unaligned) data to hash.
-  // "sizes" are "num_fragments" values indicating the number of bytes.
+  // "fragments" contain unaligned pointers and the number of valid bytes.
+  // "num_fragments" indicates the number of entries in "fragments".
   // "hash" is a HHResult* (either 64, 128 or 256 bits).
-  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
-                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+  void operator()(const HHKey& key, const StringView* HH_RESTRICT fragments,
+                  const size_t num_fragments,
                   HHResult64* HH_RESTRICT hash) const;
-  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
-                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+  void operator()(const HHKey& key, const StringView* HH_RESTRICT fragments,
+                  const size_t num_fragments,
                   HHResult128* HH_RESTRICT hash) const;
-  void operator()(const HHKey& key, const char* const* HH_RESTRICT fragments,
-                  const size_t* HH_RESTRICT sizes, const size_t num_fragments,
+  void operator()(const HHKey& key, const StringView* HH_RESTRICT fragments,
+                  const size_t num_fragments,
                   HHResult256* HH_RESTRICT hash) const;
 };
 

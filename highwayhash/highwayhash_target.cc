@@ -62,39 +62,36 @@ void HighwayHash<Target>::operator()(const HHKey& key,
 
 template <TargetBits Target>
 void HighwayHashCat<Target>::operator()(const HHKey& key,
-                                        const char* const* HH_RESTRICT fragments,
-                                        const size_t* HH_RESTRICT sizes,
+                                        const StringView* HH_RESTRICT fragments,
                                         const size_t num_fragments,
                                         HHResult64* HH_RESTRICT hash) const {
   HighwayHashCatT<Target> cat(key);
   for (size_t i = 0; i < num_fragments; ++i) {
-    cat.Append(fragments[i], sizes[i]);
+    cat.Append(fragments[i].data, fragments[i].num_bytes);
   }
   cat.Finalize(hash);
 }
 
 template <TargetBits Target>
 void HighwayHashCat<Target>::operator()(const HHKey& key,
-                                        const char* const* HH_RESTRICT fragments,
-                                        const size_t* HH_RESTRICT sizes,
+                                        const StringView* HH_RESTRICT fragments,
                                         const size_t num_fragments,
                                         HHResult128* HH_RESTRICT hash) const {
   HighwayHashCatT<Target> cat(key);
   for (size_t i = 0; i < num_fragments; ++i) {
-    cat.Append(fragments[i], sizes[i]);
+    cat.Append(fragments[i].data, fragments[i].num_bytes);
   }
   cat.Finalize(hash);
 }
 
 template <TargetBits Target>
 void HighwayHashCat<Target>::operator()(const HHKey& key,
-                                        const char* const* HH_RESTRICT fragments,
-                                        const size_t* HH_RESTRICT sizes,
+                                        const StringView* HH_RESTRICT fragments,
                                         const size_t num_fragments,
                                         HHResult256* HH_RESTRICT hash) const {
   HighwayHashCatT<Target> cat(key);
   for (size_t i = 0; i < num_fragments; ++i) {
-    cat.Append(fragments[i], sizes[i]);
+    cat.Append(fragments[i].data, fragments[i].num_bytes);
   }
   cat.Finalize(hash);
 }
