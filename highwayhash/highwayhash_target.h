@@ -61,7 +61,7 @@ struct HighwayHash {
 // non-const "num_fragments".
 struct StringView {
   const char* data;  // not necessarily aligned/padded
-  size_t num_bytes;  // nonzero
+  size_t num_bytes;  // possibly zero
 };
 
 // Note: this interface avoids dispatch overhead per fragment.
