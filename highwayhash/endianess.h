@@ -57,7 +57,8 @@
 
 #elif defined(_WIN32)
 
-#  include <sys/param.h>
+#define HH_IS_LITTLE_ENDIAN 1
+#define HH_IS_BIG_ENDIAN 0
 
 #else
 
