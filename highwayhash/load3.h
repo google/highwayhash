@@ -59,7 +59,7 @@ class Load3 {
     // because string.h must not be included per the warning above. On GCC and
     // Clang, we can use a builtin instead.
     uint32_t last4;
-    __builtin_memcpy(&last4, from + size_mod4 - 4, 4);
+    Copy(from + size_mod4 - 4, 4, reinterpret_cast<char*>(&last4));
     return host_from_le32(last4);
   }
 
@@ -124,6 +124,17 @@ class Load3 {
 
   static HH_INLINE uint64_t U64FromChar(const char c) {
     return static_cast<uint64_t>(static_cast<unsigned char>(c));
+  }
+
+  static HH_INLINE void Copy(const char* HH_RESTRICT from, const size_t size,
+                             char* HH_RESTRICT to) {
+#if HH_MSC_VERSION
+    for (size_t i = 0; i < size; ++i) {
+      to[i] = from[i];
+    }
+#else
+    __builtin_memcpy(to, from, size);
+#endif
   }
 };
 
