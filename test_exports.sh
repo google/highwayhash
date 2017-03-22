@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Verifies that a set of object files (or archives of object files) doesn't
 # define any symbol twice. Used to check for ODR violation between files
 # compiled with different compiler options.
