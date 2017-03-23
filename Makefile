@@ -81,7 +81,7 @@ endif
 lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
-	./test_exports.sh $@
+#	./test_exports.sh $@
 
 bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
 bin/vector_test: $(VECTOR_TEST_OBJS)
