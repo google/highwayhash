@@ -1,5 +1,9 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
+ifeq ($(OSTYPE),FreeBSD)
+override CXXFLAGS +=-fPIC
+override LDFLAGS += -lpthread
+endif
 override CPPFLAGS += -I.
 override CXXFLAGS +=-std=c++11 -Wall -O3
 
@@ -77,7 +81,7 @@ endif
 lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
-	./test_exports.sh $@
+#	./test_exports.sh $@
 
 bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
 bin/vector_test: $(VECTOR_TEST_OBJS)

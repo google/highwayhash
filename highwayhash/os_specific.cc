@@ -48,6 +48,15 @@
 #define OS_MAC 0
 #endif
 
+#ifdef __FreeBSD__
+#define OS_FREEBSD 1
+#include <unistd.h>
+#include <sys/param.h>
+#include <sys/cpuset.h>
+#else
+#define OS_FREEBSD 0
+#endif
+
 namespace highwayhash {
 
 #define CHECK(condition)                                       \
@@ -92,6 +101,7 @@ void RaiseThreadPriority() {
 #elif OS_LINUX
   // omit: SCHED_RR and SCHED_FIFO with sched_priority max, max-1 and max/2
   // lead to 2-3x runtime and higher variability!
+#elif OS_FREEBSD
 #else
 #error "port"
 #endif
@@ -102,6 +112,8 @@ struct ThreadAffinity {
   DWORD_PTR mask;
 #elif OS_LINUX
   cpu_set_t set;
+#elif OS_FREEBSD
+  cpuset_t set;
 #endif
 };
 
@@ -116,6 +128,10 @@ ThreadAffinity* GetThreadAffinity() {
 #elif OS_LINUX
   const pid_t pid = 0;  // current thread
   const int err = sched_getaffinity(pid, sizeof(cpu_set_t), &affinity->set);
+  CHECK(err == 0);
+#elif OS_FREEBSD
+  const pid_t pid = getpid();  // current thread
+  const int err = cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, pid, sizeof(cpuset_t), &affinity->set);
   CHECK(err == 0);
 #endif
   return affinity;
@@ -143,6 +159,10 @@ void SetThreadAffinity(ThreadAffinity* affinity) {
   const pid_t pid = 0;  // current thread
   const int err = sched_setaffinity(pid, sizeof(cpu_set_t), &affinity->set);
   CHECK(err == 0);
+#elif OS_FREEBSD
+  const pid_t pid = getpid();  // current thread
+  const int err = cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, pid, sizeof(cpuset_t), &affinity->set);
+  CHECK(err == 0);
 #else
 #error "port"
 #endif
@@ -164,6 +184,12 @@ std::vector<int> AvailableCPUs() {
       cpus.push_back(cpu);
     }
   }
+#elif OS_FREEBSD
+  for (size_t cpu = 0; cpu < sizeof(cpuset_t) * 8; ++cpu) {
+    if (CPU_ISSET(cpu, &affinity->set)) {
+      cpus.push_back(cpu);
+    }
+  }
 #else
 #error "port"
 #endif
@@ -175,6 +201,9 @@ void PinThreadToCPU(const int cpu) {
 #if OS_WIN
   affinity.mask = 1ULL << cpu;
 #elif OS_LINUX
+  CPU_ZERO(&affinity.set);
+  CPU_SET(cpu, &affinity.set);
+#elif OS_FREEBSD
   CPU_ZERO(&affinity.set);
   CPU_SET(cpu, &affinity.set);
 #else
