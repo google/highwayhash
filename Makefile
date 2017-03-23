@@ -1,5 +1,9 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
+ifeq ($(OSTYPE),FreeBSD)
+override CXXFLAGS +=-fPIC
+override LDFLAGS += -lpthread
+endif
 override CPPFLAGS += -I.
 override CXXFLAGS +=-std=c++11 -Wall -O3
 
