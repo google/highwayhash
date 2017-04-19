@@ -188,7 +188,10 @@ static_assert(sizeof(Packet) == 8, "Wrong Packet size");
 // Returns the address of a string literal. Assuming zone names are also
 // literals and stored nearby, we can represent them as offsets, which are
 // faster to compute than hashes or even a static index.
-static inline const char* StringOrigin() {
+//
+// This function must not be static - each call (even from other translation
+// units) must return the same value.
+inline const char* StringOrigin() {
   // Chosen such that no zone name is a prefix nor suffix of this string
   // to ensure they aren't merged (offset 0 identifies zone-exit packets).
   static const char* string_origin = "__#__";
@@ -218,7 +221,7 @@ static_assert(sizeof(Accumulator) == sizeof(__m128i), "Wrong Accumulator size");
 #endif
 
 template <typename T>
-static inline T ClampedSubtract(const T minuend, const T subtrahend) {
+inline T ClampedSubtract(const T minuend, const T subtrahend) {
   if (subtrahend > minuend) {
     return 0;
   }
