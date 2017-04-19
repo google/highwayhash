@@ -1,7 +1,12 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
 override CPPFLAGS += -I.
-override CXXFLAGS +=-std=c++11 -Wall -O3
+override CXXFLAGS += -std=c++11 -Wall -O3
+override LDFLAGS += -lpthread
+
+ifeq ($(OSTYPE),FreeBSD)
+override CXXFLAGS +=-fPIC
+endif
 
 SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
@@ -77,7 +82,9 @@ endif
 lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
-	./test_exports.sh $@
+	# Disabled due to false positives; ideally the test instead ensures
+	# target-specific modules _only_ export symbols starting with a prefix.
+	# ./test_exports.sh $^
 
 bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
 bin/vector_test: $(VECTOR_TEST_OBJS)
