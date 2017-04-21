@@ -8,6 +8,10 @@ ifeq ($(OSTYPE),FreeBSD)
 override CXXFLAGS +=-fPIC
 endif
 
+PREFIX ?= /usr/local
+INCDIR ?= $(PREFIX)/include
+LIBDIR ?= $(PREFIX)/lib
+
 SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
 	sip_tree_hash.o \
@@ -99,4 +103,10 @@ distclean: clean
 	[ ! -d bin ] || $(RM) -r -- bin/
 	[ ! -d lib ] || $(RM) -r -- lib/
 
-.PHONY: clean distclean all
+install: lib/libhighwayhash.a
+	mkdir -p $(DESTDIR)/$(LIBDIR)
+	mkdir -p $(DESTDIR)/$(INCDIR)/highwayhash
+	install -m0755 lib/libhighwayhash.a $(DESTDIR)/$(LIBDIR)
+	install -m0755 highwayhash/*.h $(DESTDIR)/$(INCDIR)/highwayhash/
+
+.PHONY: clean distclean all install
