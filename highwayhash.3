@@ -1,0 +1,107 @@
+.TH highwayhash 3 "April 25, 2017"
+
+.SH NAME
+highwayhash \- fast strong 64-bit hash functions
+
+.SH SYNOPSIS
+
+.B #include <highwayhash/c_bindings.h>  /* C */
+
+    uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
+
+    uint64_t SipHash13C(const uint64_t* key, const char* bytes, const uint64_t size);
+
+    uint64_t HighwayHash64(const HHKey key, const char* bytes, const uint64_t size);
+
+.B #include <highwayhash/highwayhash.h> /* C++ */
+
+    using namespace highwayhash;
+
+    void HighwayHashT(State* HH_RESTRICT state,
+                      const char* HH_RESTRICT bytes, const size_t size,
+                      Result* HH_RESTRICT hash);
+
+.B #include <highwayhash/sip_hash.h> /* C++ */
+
+    using namespace highwayhash;
+
+    HH_U64 SipHash(const SipHashState::Key& key, const char* bytes,const HH_U64 size);
+
+Link with
+.I
+-lhighwayhash
+
+.SH DESCRIPTION
+
+Hash functions are widely used, so it is desirable to increase their speed and
+security. This package provides two 'strong' (well-distributed and
+unpredictable) hash functions: a faster version of SipHash, and an even faster
+algorithm we call HighwayHash.
+
+SipHash is a fast but 'cryptographically strong' pseudo-random function by
+Aumasson and Bernstein [https://www.131002.net/siphash/siphash.pdf].
+
+HighwayHash is a new way of mixing inputs which may inspire new
+cryptographically strong hashes. Large inputs are processed at a rate of 0.24
+cycles per byte, and latency remains low even for small inputs. HighwayHash is
+faster than SipHash for all input sizes, with 5 times higher throughput at 1
+KiB. We discuss design choices and provide statistical analysis and preliminary
+cryptanalysis in https://arxiv.org/abs/1612.06257.
+
+.I
+Note, SipHash wants an uint64_t[2] key while HighwayHash uint64_t[4] .
+
+.SH EXAMPLES
+
+64-bit SipHash for any CPU:
+
+    #include "highwayhash/sip_hash.h"
+    using namespace highwayhash;
+    const HH_U64 key2[2] HH_ALIGNAS(16) = {1234, 5678};
+    char in[8] = {1};
+    return SipHash(key2, in, 8);
+
+64, 128 or 256 bit HighwayHash for the CPU determined by compiler flags:
+
+    #include "highwayhash/highwayhash.h"
+    using namespace highwayhash;
+    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    char in[8] = {1};
+    HHResult64 result;  // or HHResult128 or HHResult256
+    HHStateT<HH_TARGET> state(key);
+    HighwayHashT(&state, in, 8, &result);
+
+64, 128 or 256 bit HighwayHash for the CPU on which we're currently running:
+
+    #include "highwayhash/highwayhash_target.h"
+    #include "highwayhash/instruction_sets.h"
+    using namespace highwayhash;
+    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    char in[8] = {1};
+    HHResult64 result;  // or HHResult128 or HHResult256
+    InstructionSets::Run<HighwayHash>(key, in, 8, &result);
+
+C-callable 64-bit HighwayHash for the CPU on which we're currently running:
+
+    #include "highwayhash/c_bindings.h"
+    const uint64_t key[4] = {1, 2, 3, 4};
+    char in[8] = {1};
+    return HighwayHash64(key, in, 8);
+
+.SH SEE ALSO
+
+/usr/include/highwayhash/c_bindings.h (C)
+
+/usr/include/highwayhash/highwayhash.h (C++)
+
+.SH BUGS
+
+https://github.com/google/highwayhash/issues
+
+.SH AUTHOR
+
+Upstream authors are Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala <jyrki.alakuijala@gmail.com>, updated 2017-02-07
+
+This manpage was created by Adam Borowski <kilobyte@angband.pl>,
+and completed by Zhou Mo <cdluminate@gmail.com> according to upstream readme
+and header files.
