@@ -1,12 +1,8 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
 override CPPFLAGS += -I.
-override CXXFLAGS += -std=c++11 -Wall -O3
+override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC
 override LDFLAGS += -lpthread
-
-ifeq ($(OSTYPE),FreeBSD)
-override CXXFLAGS +=-fPIC
-endif
 
 PREFIX ?= /usr/local
 INCDIR ?= $(PREFIX)/include
@@ -90,6 +86,11 @@ lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	# target-specific modules _only_ export symbols starting with a prefix.
 	# ./test_exports.sh $^
 
+lib/libhighwayhash.so: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
+	@mkdir -p -- $(dir $@)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $^ -o $@.0 -Wl,-soname,libhighwayhash.so.0
+	@cd $(dir $@); ln -s libhighwayhash.so.0 libhighwayhash.so
+
 bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
 bin/vector_test: $(VECTOR_TEST_OBJS)
 
@@ -103,10 +104,10 @@ distclean: clean
 	[ ! -d bin ] || $(RM) -r -- bin/
 	[ ! -d lib ] || $(RM) -r -- lib/
 
-install: lib/libhighwayhash.a
+install: lib/libhighwayhash.a lib/libhighwayhash.so
 	mkdir -p $(DESTDIR)/$(LIBDIR)
 	mkdir -p $(DESTDIR)/$(INCDIR)/highwayhash
-	install -m0755 lib/libhighwayhash.a $(DESTDIR)/$(LIBDIR)
+	install -m0755 lib/libhighwayhash.* $(DESTDIR)/$(LIBDIR)
 	install -m0755 highwayhash/*.h $(DESTDIR)/$(INCDIR)/highwayhash/
 
 .PHONY: clean distclean all install
