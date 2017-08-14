@@ -80,6 +80,8 @@ namespace highwayhash {
 #define HH_TARGET_NAME AVX2
 #elif defined(__SSE4_1__)
 #define HH_TARGET_NAME SSE41
+#elif defined(__VSX__)
+#define HH_TARGET_NAME VSX
 #else
 #define HH_TARGET_NAME Portable
 #endif
@@ -109,6 +111,7 @@ namespace highwayhash {
 #define HH_TARGET_Portable 1
 #define HH_TARGET_SSE41 2
 #define HH_TARGET_AVX2 4
+#define HH_TARGET_VSX 8
 
 // Bit array for one or more HH_TARGET_*. Used to indicate which target(s) are
 // supported or were called by InstructionSets::RunAll.
@@ -132,6 +135,15 @@ void ForeachTarget(TargetBits bits, const Func& func) {
 // bits, or nullptr if zero, multiple, or unknown bits are set.
 const char* TargetName(const TargetBits target_bit);
 
+// Returns the nominal (without Turbo Boost) CPU clock rate [Hertz]. Useful for
+// (roughly) characterizing the CPU speed.
+double NominalClockRate();
+
+// Returns tsc_timer frequency, useful for converting ticks to seconds. This is
+// unaffected by CPU throttling ("invariant"). Thread-safe. Returns timebase
+// frequency on PPC and NominalClockRate on all other platforms.
+double InvariantTicksPerSecond();
+
 #if HH_ARCH_X64
 
 // Calls CPUID instruction with eax=level and ecx=count and returns the result
@@ -141,10 +153,6 @@ void Cpuid(const uint32_t level, const uint32_t count,
 
 // Returns the APIC ID of the CPU on which we're currently running.
 uint32_t ApicId();
-
-// Returns nominal CPU clock frequency for converting tsc_timer cycles to
-// seconds. This is unaffected by CPU throttling ("invariant"). Thread-safe.
-double InvariantCyclesPerSecond();
 
 #endif  // HH_ARCH_X64
 

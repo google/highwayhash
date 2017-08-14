@@ -42,6 +42,8 @@
 
 #if PROFILER_ENABLED
 
+#define PROFILER_PRINT_OVERHEAD 0
+
 #include <algorithm>  // min/max
 #include <atomic>
 #include <cassert>
@@ -282,7 +284,7 @@ class Results {
       const uint64_t self_duration = ClampedSubtract(
           duration, self_overhead_ + child_overhead_ + node.child_total);
 
-      UpdateOrAdd(node.packet.BiasedOffset(), self_duration);
+      UpdateOrAdd(node.packet.BiasedOffset(), 1, self_duration);
       --depth_;
 
       // Deduct this nested node's time from its parent's self_duration.
@@ -304,7 +306,7 @@ class Results {
 
     for (size_t i = 0; i < other.num_zones_; ++i) {
       const Accumulator& zone = other.zones_[i];
-      UpdateOrAdd(zone.BiasedOffset(), zone.total_duration);
+      UpdateOrAdd(zone.BiasedOffset(), zone.NumCalls(), zone.total_duration);
     }
     const uint64_t t1 = Stop<uint64_t>();
     analyze_elapsed_ += t1 - t0 + other.analyze_elapsed_;
@@ -347,13 +349,15 @@ class Results {
   // Uses a self-organizing list data structure, which avoids dynamic memory
   // allocations and is far faster than unordered_map. Loads, updates and
   // stores the entire Accumulator with vector instructions.
-  void UpdateOrAdd(const size_t biased_offset, const uint64_t duration) {
+  void UpdateOrAdd(const size_t biased_offset, const uint64_t num_calls,
+                   const uint64_t duration) {
     assert(biased_offset < (1ULL << Packet::kOffsetBits));
 
 #if HH_ARCH_X64
-    const __m128i one_64 = _mm_set1_epi64x(1);
+    const __m128i num_calls_64 = _mm_cvtsi64_si128(num_calls);
     const __m128i duration_64 = _mm_cvtsi64_si128(duration);
-    const __m128i add_duration_call = _mm_unpacklo_epi64(one_64, duration_64);
+    const __m128i add_duration_call =
+        _mm_unpacklo_epi64(num_calls_64, duration_64);
 
     __m128i* const HH_RESTRICT zones = reinterpret_cast<__m128i*>(zones_);
 
@@ -394,7 +398,7 @@ class Results {
     // Special case for first zone: (maybe) update, without swapping.
     if (zones_[0].BiasedOffset() == biased_offset) {
       zones_[0].total_duration += duration;
-      zones_[0].num_calls += 1;
+      zones_[0].num_calls += num_calls;
       assert(zones_[0].BiasedOffset() == biased_offset);
       return;
     }
@@ -403,7 +407,7 @@ class Results {
     for (size_t i = 1; i < num_zones_; ++i) {
       if (zones_[i].BiasedOffset() == biased_offset) {
         zones_[i].total_duration += duration;
-        zones_[i].num_calls += 1;
+        zones_[i].num_calls += num_calls;
         assert(zones_[i].BiasedOffset() == biased_offset);
         // Swap with predecessor (more conservative than move to front,
         // but at least as successful).
@@ -417,7 +421,7 @@ class Results {
     // Not found; create a new Accumulator.
     assert(num_zones_ < kMaxZones);
     Accumulator* HH_RESTRICT zone = zones_ + num_zones_;
-    zone->num_calls = (biased_offset << Accumulator::kNumCallBits) + 1;
+    zone->num_calls = (biased_offset << Accumulator::kNumCallBits) + num_calls;
     zone->total_duration = duration;
     assert(zone->BiasedOffset() == biased_offset);
     ++num_zones_;
@@ -697,7 +701,9 @@ inline void ThreadSpecific::ComputeOverhead() {
     // Median.
     CountingSort(samples, samples + kNumSamples);
     self_overhead = samples[kNumSamples / 2];
+#if PROFILER_PRINT_OVERHEAD
     printf("Overhead: %zu\n", self_overhead);
+#endif
     results_.SetSelfOverhead(self_overhead);
   }
 
@@ -739,7 +745,9 @@ inline void ThreadSpecific::ComputeOverhead() {
   }
   CountingSort(samples, samples + kNumSamples);
   const uint64_t child_overhead = samples[9 * kNumSamples / 10];
+#if PROFILER_PRINT_OVERHEAD
   printf("Child overhead: %zu\n", child_overhead);
+#endif
   results_.SetChildOverhead(child_overhead);
 }
 

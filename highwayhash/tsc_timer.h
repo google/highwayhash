@@ -86,6 +86,8 @@ inline T Start();
 template <typename T>
 inline T Stop();
 
+// Returns a 64-bit timestamp in unit of 'ticks'; to convert to seconds,
+// divide by InvariantTicksPerSecond.
 template <>
 inline uint64_t Start<uint64_t>() {
   uint64_t t;

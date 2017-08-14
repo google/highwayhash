@@ -23,7 +23,7 @@
 //   #include "highwayhash/nanobenchmark.h"
 //   using namespace highwayhash;
 //
-//   uint64_t RegionToMeasure(size_t size) {
+//   uint64_t RegionToMeasure(const void*, size_t size) {
 //     char from[8] = {static_cast<char>(size)};
 //     char to[8];
 //     memcpy(to, from, size);
@@ -40,10 +40,10 @@
 //   }
 //
 // Output:
-//   3: median= 25.2 cycles; median abs. deviation= 0.1 cycles
-//   4: median= 13.5 cycles; median abs. deviation= 0.1 cycles
-//   7: median= 13.5 cycles; median abs. deviation= 0.1 cycles
-//   8: median= 27.5 cycles; median abs. deviation= 0.2 cycles
+//   3: median= 25.2 ticks; median abs. deviation= 0.1 ticks
+//   4: median= 13.5 ticks; median abs. deviation= 0.1 ticks
+//   7: median= 13.5 ticks; median abs. deviation= 0.1 ticks
+//   8: median= 27.5 ticks; median abs. deviation= 0.2 ticks
 // (7 is presumably faster because it can use two unaligned 32-bit load/stores.)
 //
 // Background: Microbenchmarks such as http://github.com/google/benchmark
@@ -88,13 +88,19 @@ using FuncInput = size_t;
 using FuncOutput = uint64_t;
 
 // Function to measure (cannot use std::function in a restricted header).
-using Func = FuncOutput (*)(FuncInput);
+// Users either pass a function pointer or captureless lambda with this
+// signature, or use MeasureClosureDuration to convert a closure (e.g. lambda
+// with captures) to this kind of function pointer.
+using Func = FuncOutput (*)(const void*, FuncInput);
 
-// Flat map of input -> durations[].
+// Flat map of input -> durations[]. NOTE: durations are 'ticks' (tsc_timer.h);
+// convert to seconds via division by InvariantTicksPerSecond.
 class DurationsForInputs {
  public:
   struct Item {
-    void PrintMedianAndVariability();
+    // The optional "mul" scaling factor is applied to median and variability
+    // (useful for reporting cycles per byte etc.)
+    void PrintMedianAndVariability(const double mul = 1.0);
 
     FuncInput input;       // read-only (set by AddItem).
     size_t num_durations;  // written so far: [0, max_durations).
@@ -131,7 +137,7 @@ class DurationsForInputs {
   size_t num_items;  // safe to reset to zero.
 
  private:
-  friend void MeasureDurations(Func, DurationsForInputs*);
+  friend void MeasureDurations(Func, DurationsForInputs*, const uint8_t*);
 
   const FuncInput* const inputs_;
   const size_t num_inputs_;
@@ -146,12 +152,37 @@ static HH_INLINE DurationsForInputs MakeDurationsForInputs(
   return DurationsForInputs(&inputs[0], N, max_durations);
 }
 
-// Returns precise measurements of the cycles elapsed when calling "func" with
-// each unique input value in "input_map", taking special care to maintain
-// realistic branch prediction hit rates.
+// Returns precise measurements of the number of ticks (see tsc_timer.h)
+// elapsed when calling "func" with each unique input value in "input_map",
+// taking special care to maintain realistic branch prediction hit rates.
 //
 // "func" returns a 'proof of work' to ensure its computations are not elided.
-void MeasureDurations(const Func func, DurationsForInputs* input_map);
+// "arg*" are for use by MeasureClosureDurations.
+void MeasureDurations(const Func func, DurationsForInputs* input_map,
+                      const uint8_t* arg = nullptr);
+
+namespace HH_TARGET_NAME {
+// Calls operator() of the given closure (lambda function).
+template <class Closure>
+static FuncOutput CallClosure(const Closure* f, const FuncInput input) {
+  return (*f)(input);
+}
+}  // namespace HH_TARGET_NAME
+
+// Returns a function pointer that will be called with the address of "closure".
+template <class Closure>
+static HH_INLINE Func MakeThunk(const Closure& closure) {
+  return reinterpret_cast<Func>(&HH_TARGET_NAME::CallClosure<Closure>);
+}
+
+// Same as MeasureDurations, except "closure" is typically a lambda function of
+// FuncInput -> FuncOutput with a capture list.
+template <class Closure>
+void HH_INLINE MeasureClosureDurations(const Closure& closure,
+                                       DurationsForInputs* input_map) {
+  MeasureDurations(MakeThunk(closure), input_map,
+                   reinterpret_cast<const uint8_t*>(&closure));
+}
 
 }  // namespace highwayhash
 

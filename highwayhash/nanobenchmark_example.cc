@@ -19,17 +19,21 @@
 #include "highwayhash/nanobenchmark.h"
 #include "highwayhash/os_specific.h"
 
+#ifdef HH_GOOGLETEST
+#include "testing/base/public/gunit.h"
+#endif
+
 namespace highwayhash {
 namespace {
 
-uint64_t RegionToMeasure(FuncInput size) {
+uint64_t RegionToMeasure(const void*, FuncInput size) {
   char from[8] = {static_cast<char>(size)};
   char to[8];
   memcpy(to, from, size);
   return to[0];
 }
 
-void TestMemcpy() {
+void Measure() {
   PinThreadToRandomCPU();
   static const size_t distribution[] = {3, 3, 4, 4, 7, 7, 8, 8};
   DurationsForInputs input_map = MakeDurationsForInputs(distribution, 10);
@@ -39,10 +43,16 @@ void TestMemcpy() {
   }
 }
 
+#ifdef HH_GOOGLETEST
+TEST(NanobenchmarkTest, Run) { Measure(); }
+#endif
+
 }  // namespace
 }  // namespace highwayhash
 
+#ifndef HH_GOOGLETEST
 int main(int argc, char* argv[]) {
-  highwayhash::TestMemcpy();
+  highwayhash::Measure();
   return 0;
 }
+#endif

@@ -17,7 +17,11 @@
 #include <stdint.h>
 
 #if HH_ARCH_X64 && !HH_MSC_VERSION
-#  include <cpuid.h>
+#include <cpuid.h>
+#endif
+
+#if HH_ARCH_PPC
+#include <sys/platform/ppc.h>  // __ppc_get_timebase_freq
 #endif
 
 #include <string.h>  // memcpy
@@ -33,12 +37,36 @@ const char* TargetName(const TargetBits target_bit) {
       return "SSE41";
     case HH_TARGET_AVX2:
       return "AVX2";
+    case HH_TARGET_VSX:
+      return "VSX";
     default:
       return nullptr;  // zero, multiple, or unknown bits
   }
 }
 
 #if HH_ARCH_X64
+
+namespace {
+
+std::string BrandString() {
+  char brand_string[49];
+  uint32_t abcd[4];
+
+  // Check if brand string is supported (it is on all reasonable Intel/AMD)
+  Cpuid(0x80000000U, 0, abcd);
+  if (abcd[0] < 0x80000004U) {
+    return std::string();
+  }
+
+  for (int i = 0; i < 3; ++i) {
+    Cpuid(0x80000002U + i, 0, abcd);
+    memcpy(brand_string + i * 16, &abcd, sizeof(abcd));
+  }
+  brand_string[48] = 0;
+  return brand_string;
+}
+
+}  // namespace
 
 void Cpuid(const uint32_t level, const uint32_t count,
            uint32_t* HH_RESTRICT abcd) {
@@ -64,27 +92,12 @@ uint32_t ApicId() {
   return abcd[1] >> 24;  // ebx
 }
 
+#endif  // HH_ARCH_X64
+
 namespace {
 
-std::string BrandString() {
-  char brand_string[49];
-  uint32_t abcd[4];
-
-  // Check if brand string is supported (it is on all reasonable Intel/AMD)
-  Cpuid(0x80000000U, 0, abcd);
-  if (abcd[0] < 0x80000004U) {
-    return std::string();
-  }
-
-  for (int i = 0; i < 3; ++i) {
-    Cpuid(0x80000002U + i, 0, abcd);
-    memcpy(brand_string + i * 16, &abcd, sizeof(abcd));
-  }
-  brand_string[48] = 0;
-  return brand_string;
-}
-
-double DetectInvariantCyclesPerSecond() {
+double DetectNominalClockRate() {
+#if HH_ARCH_X64
   const std::string& brand_string = BrandString();
   // Brand strings include the maximum configured frequency. These prefixes are
   // defined by Intel CPUID documentation.
@@ -101,18 +114,52 @@ double DetectInvariantCyclesPerSecond() {
       }
     }
   }
+#elif HH_ARCH_PPC
+  double freq = -1;
+  char line[200];
+  char* s;
+  char* value;
+
+  FILE* f = fopen("/proc/cpuinfo", "r");
+  if (f != nullptr) {
+    while (fgets(line, sizeof(line), f) != nullptr) {
+      // NOTE: the ':' is the only character we can rely on
+      if (!(value = strchr(line, ':'))) continue;
+      // terminate the valuename
+      *value++ = '\0';
+      // skip any leading spaces
+      while (*value == ' ') value++;
+      if ((s = strchr(value, '\n'))) *s = '\0';
+
+      if (!strncasecmp(line, "clock", strlen("clock")) &&
+          sscanf(value, "%lf", &freq) == 1) {
+        freq *= 1E6;
+        break;
+      }
+    }
+    fclose(f);
+    return freq;
+  }
+#endif
 
   return 0.0;
 }
 
 }  // namespace
 
-double InvariantCyclesPerSecond() {
+double NominalClockRate() {
   // Thread-safe caching - this is called several times.
-  static const double cycles_per_second = DetectInvariantCyclesPerSecond();
+  static const double cycles_per_second = DetectNominalClockRate();
   return cycles_per_second;
 }
 
-#endif  // HH_ARCH_X64
+double InvariantTicksPerSecond() {
+#if HH_ARCH_PPC
+  static const double cycles_per_second = __ppc_get_timebase_freq();
+  return cycles_per_second;
+#else
+  return NominalClockRate();
+#endif
+}
 
 }  // namespace highwayhash

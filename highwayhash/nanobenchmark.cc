@@ -76,11 +76,15 @@ inline void PreventElision(T&& output) {
 
 #endif
 
-HH_NOINLINE FuncOutput Func1(const FuncInput input) { return input + 1; }
-HH_NOINLINE FuncOutput Func2(const FuncInput input) { return input + 2; }
+HH_NOINLINE FuncOutput Func1(const void*, const FuncInput input) {
+  return input + 1;
+}
+HH_NOINLINE FuncOutput Func2(const void*, const FuncInput input) {
+  return input + 2;
+}
 
-// Cycles elapsed = difference between two cycle counts. Must be unsigned to
-// ensure wraparound on overflow.
+// Duration := difference between two tick counts. Must be unsigned to ensure
+// wraparound on overflow.
 using Duration = uint32_t;
 
 // Even with high-priority pinned threads and frequency throttling disabled,
@@ -90,14 +94,14 @@ using Duration = uint32_t;
 // repeatable results with a robust measure of the central tendency ("mode").
 
 // Returns time elapsed between timer Start/Stop.
-Duration EstimateResolutionOnCurrentCPU(const Func func) {
+Duration EstimateResolutionOnCurrentCPU(const Func func, const uint8_t* arg) {
   // Even 128K samples are not enough to achieve repeatable results when
   // throttling is enabled; the caller must perform additional aggregation.
   const size_t kNumSamples = 512;
   Duration samples[kNumSamples];
   for (size_t i = 0; i < kNumSamples; ++i) {
     const volatile Duration t0 = Start<Duration>();
-    PreventElision(func(i));
+    PreventElision(func(arg, i));
     const volatile Duration t1 = Stop<Duration>();
     NANOBENCHMARK_CHECK(t0 <= t1);
     samples[i] = t1 - t0;
@@ -111,7 +115,7 @@ Duration EstimateResolutionOnCurrentCPU(const Func func) {
 // Returns mode of EstimateResolutionOnCurrentCPU across all CPUs. This
 // increases repeatability because some CPUs may be throttled or slowed down by
 // interrupts.
-Duration EstimateResolution(const Func func_to_measure) {
+Duration EstimateResolution(const Func func_to_measure, const uint8_t* arg) {
   Func func = (func_to_measure == &Func2) ? &Func1 : &Func2;
 
   const size_t kNumSamples = 512;
@@ -125,7 +129,7 @@ Duration EstimateResolution(const Func func_to_measure) {
   for (const int cpu : cpus) {
     PinThreadToCPU(cpu);
     for (size_t i = 0; i < repetitions_per_cpu; ++i) {
-      resolutions.push_back(EstimateResolutionOnCurrentCPU(func));
+      resolutions.push_back(EstimateResolutionOnCurrentCPU(func, arg));
     }
   }
   SetThreadAffinity(affinity);
@@ -138,28 +142,30 @@ Duration EstimateResolution(const Func func_to_measure) {
   return resolution;
 }
 
-// Returns cycles elapsed when running an empty region, i.e. the timer
+// Returns ticks elapsed when running an empty region, i.e. the timer
 // resolution/overhead, which will be deducted from other measurements and
 // also used by InitReplicas.
-Duration Resolution(const Func func) {
+Duration Resolution(const Func func, const uint8_t* arg) {
   // Initialization is expensive and should only happen once.
-  static const Duration resolution = EstimateResolution(func);
+  static const Duration resolution = EstimateResolution(func, arg);
   return resolution;
 }
 
-// Returns cycles elapsed when passing each of "inputs" (after in-place
-// shuffling) to "func", which must return something it has computed
-// so the compiler does not optimize it away.
-Duration CyclesElapsed(const Duration resolution, const Func func,
-                       std::vector<FuncInput>* inputs) {
+// Returns total ticks elapsed when passing each of "inputs" (after in-place
+// shuffling) to "func", which must return something it has computed so the
+// compiler does not optimize it away.
+Duration TotalDuration(const Duration resolution, const Func func,
+                       const uint8_t* arg, std::vector<FuncInput>* inputs) {
   // This benchmark attempts to measure the performance of "func" when
   // called with realistic inputs, which we assume are randomly drawn
   // from the given "inputs" distribution, so we shuffle those values.
-  std::random_shuffle(inputs->begin(), inputs->end());
+  if (inputs->size() > 1) {
+    std::random_shuffle(inputs->begin(), inputs->end());
+  }
 
   const Duration t0 = Start<Duration>();
   for (const FuncInput input : *inputs) {
-    PreventElision(func(input));
+    PreventElision(func(arg, input));
   }
   const Duration t1 = Stop<Duration>();
   const Duration elapsed = t1 - t0;
@@ -177,11 +183,13 @@ class Inputs {
 
  public:
   Inputs(const Duration resolution, const std::vector<FuncInput>& distribution,
-         const Func func)
+         const Func func, const uint8_t* arg)
       : unique_(InitUnique(distribution)),
-        replicas_(InitReplicas(distribution, resolution, func)),
+        replicas_(InitReplicas(distribution, resolution, func, arg)),
         num_replicas_(replicas_.size() / distribution.size()) {
-    printf("NumReplicas %zu\n", num_replicas_);
+    if (num_replicas_ != 1) {
+      printf("NumReplicas %zu\n", num_replicas_);
+    }
   }
 
   // Returns vector of the unique values from the input distribution.
@@ -232,10 +240,10 @@ class Inputs {
   }
 
   // Returns how many replicas of "distribution" are required before
-  // CyclesElapsed is large enough compared to the timer resolution.
+  // TotalDuration is large enough compared to the timer resolution.
   static std::vector<FuncInput> InitReplicas(
       const std::vector<FuncInput>& distribution, const Duration resolution,
-      const Func func) {
+      const Func func, const uint8_t* arg) {
     // We compute the difference in duration for inputs = Replicas() vs.
     // Without(). Dividing this by num_replicas must yield a value where the
     // quantization error (from the timer resolution) is sufficiently small.
@@ -248,7 +256,7 @@ class Inputs {
 #if NANOBENCHMARK_ENABLE_CHECKS
       const uint64_t t0 = Start64();
 #endif
-      const Duration elapsed = CyclesElapsed(resolution, func, &replicas);
+      const Duration elapsed = TotalDuration(resolution, func, arg, &replicas);
 #if NANOBENCHMARK_ENABLE_CHECKS
       const uint64_t t1 = Stop64();
 #endif
@@ -322,13 +330,14 @@ class DurationSamples {
 
 // Gathers "num_samples" durations via repeated leave-one-out measurements.
 DurationSamples GatherDurationSamples(const Duration resolution, Inputs& inputs,
-                                      const Func func,
+                                      const Func func, const uint8_t* arg,
                                       const size_t num_samples) {
   DurationSamples samples(inputs.Unique(), num_samples);
   for (size_t i = 0; i < num_samples; ++i) {
     // Total duration for all shuffled input values. This may change over time,
     // so recompute it for each sample.
-    const Duration total = CyclesElapsed(resolution, func, &inputs.Replicas());
+    const Duration total =
+        TotalDuration(resolution, func, arg, &inputs.Replicas());
 
     for (const FuncInput input : inputs.Unique()) {
       // To isolate the durations of the calls with this input value,
@@ -336,7 +345,7 @@ DurationSamples GatherDurationSamples(const Duration resolution, Inputs& inputs,
       // from the total, and later divide by NumReplicas.
       std::vector<FuncInput> without = inputs.Without(input);
       for (int rep = 0; rep < 3; ++rep) {
-        const Duration elapsed = CyclesElapsed(resolution, func, &without);
+        const Duration elapsed = TotalDuration(resolution, func, arg, &without);
         if (elapsed < total) {
           samples.Add(input, total - elapsed);
           break;
@@ -396,27 +405,28 @@ void DurationsForInputs::AddSample(const FuncInput input, const float sample) {
   NANOBENCHMARK_CHECK(!"Item not found");
 }
 
-void DurationsForInputs::Item::PrintMedianAndVariability() {
+void DurationsForInputs::Item::PrintMedianAndVariability(const double mul) {
   // Copy so that Median can modify.
   std::vector<float> duration_vec(durations, durations + num_durations);
   const float median = Median(&duration_vec);
   const float variability = MedianAbsoluteDeviation(duration_vec, median);
-  printf("%5zu: median=%5.1f cycles; median abs. deviation=%4.1f cycles\n",
-         input, median, variability);
+  printf("%5zu: median=%6.2f ticks; median abs. deviation=%6.3f ticks\n", input,
+         median * mul, variability * mul);
 }
 
-void MeasureDurations(const Func func, DurationsForInputs* input_map) {
-  const Duration resolution = Resolution(func);
+void MeasureDurations(const Func func, DurationsForInputs* input_map,
+                      const uint8_t* arg) {
+  const Duration resolution = Resolution(func, arg);
 
   // Adds enough 'replicas' of the distribution to measure "func" given
   // the timer resolution.
   const std::vector<FuncInput> distribution(
       input_map->inputs_, input_map->inputs_ + input_map->num_inputs_);
-  Inputs inputs(resolution, distribution, func);
+  Inputs inputs(resolution, distribution, func, arg);
   const double per_call = 1.0 / static_cast<int>(inputs.NumReplicas());
 
   // First iteration: populate input_map items.
-  auto samples = GatherDurationSamples(resolution, inputs, func, 512);
+  auto samples = GatherDurationSamples(resolution, inputs, func, arg, 512);
   samples.Reduce(
       [per_call, input_map](const FuncInput input, const Duration duration) {
         const float sample = static_cast<float>(duration * per_call);
@@ -425,7 +435,7 @@ void MeasureDurations(const Func func, DurationsForInputs* input_map) {
 
   // Subsequent iteration(s): append to input_map items' array.
   for (size_t rep = 1; rep < input_map->max_durations_; ++rep) {
-    auto samples = GatherDurationSamples(resolution, inputs, func, 512);
+    auto samples = GatherDurationSamples(resolution, inputs, func, arg, 512);
     samples.Reduce(
         [per_call, input_map](const FuncInput input, const Duration duration) {
           const float sample = static_cast<float>(duration * per_call);
