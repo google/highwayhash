@@ -48,6 +48,12 @@ C-callable 64-bit HighwayHash for the CPU on which we're currently running:
     char in[8] = {1};
     return HighwayHash64(key, in, 8);
 
+Printing a 256-bit result in a hexadecimal format similar to sha1sum:
+
+    HHResult256 result;
+    printf("%016"PRIx64"%016"PRIx64"%016"PRIx64"%016"PRIx64"\n",
+         result[3], result[2], result[1], result[0]);
+
 ## Introduction
 
 Hash functions are widely used, so it is desirable to increase their speed and
@@ -128,12 +134,13 @@ https://arxiv.org/abs/1612.06257.
 
 ## Versioning and stability
 
-SipHash and HighwayHash 1.0 are 'fingerprint functions' whose input -> hash
+SipHash and HighwayHash64 are 'fingerprint functions' whose input -> hash
 mapping will not change. This is important for applications that write hashes to
 persistent storage.
 
-HighwayHash has not yet reached 1.0 and may still change in the near future. We
-will announce when it is frozen.
+Now that 17 months have elapsed since its initial release, we consider
+HighwayHash64 (and the C++ variant that returns HHResult64) frozen.
+Note that the 128 and 256 bit versions may still change pending external review.
 
 ## Speed measurements
 
@@ -316,6 +323,7 @@ By | Language | URL
 Damian Gryski | Go and SSE | https://github.com/dgryski/go-highway/
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
+Frank Wessels | Go and Assembly | https://github.com/minio/highwayhash
 
 ## Modules
 
@@ -345,6 +353,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-02-07
+<jyrki.alakuijala@gmail.com>, updated 2017-08-04
 
 This is not an official Google product.
