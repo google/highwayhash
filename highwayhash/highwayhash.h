@@ -30,7 +30,10 @@
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
+
+#if HH_ARCH_X64
 #include "highwayhash/iaca.h"
+#endif
 
 // Include exactly one (see arch_specific.h) header, which defines a state
 // object in a target-specific namespace, e.g. AVX2::HHStateAVX2.
@@ -40,6 +43,8 @@
 #include "highwayhash/hh_avx2.h"
 #elif HH_TARGET == HH_TARGET_SSE41
 #include "highwayhash/hh_sse41.h"
+#elif HH_TARGET == HH_TARGET_VSX
+#include "highwayhash/hh_vsx.h"
 #elif HH_TARGET == HH_TARGET_Portable
 #include "highwayhash/hh_portable.h"
 #else

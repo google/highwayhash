@@ -36,6 +36,10 @@ class InstructionSets {
 // The HH_TARGET_Portable bit is guaranteed to be set.
 #if HH_ARCH_X64
   static TargetBits Supported();
+#elif HH_ARCH_PPC
+  static HH_INLINE TargetBits Supported() {
+    return HH_TARGET_VSX | HH_TARGET_Portable;
+  }
 #else
   static HH_INLINE TargetBits Supported() { return HH_TARGET_Portable; }
 #endif
@@ -56,10 +60,13 @@ class InstructionSets {
       Func<HH_TARGET_SSE41>()(std::forward<Args>(args)...);
       return HH_TARGET_SSE41;
     }
-#endif  // HH_ARCH_X64
-
+#elif HH_ARCH_PPC
+    Func<HH_TARGET_VSX>()(std::forward<Args>(args)...);
+    return HH_TARGET_VSX;
+#else
     Func<HH_TARGET_Portable>()(std::forward<Args>(args)...);
     return HH_TARGET_Portable;
+#endif
   }
 
   // Calls Func<Target>::operator()(args) for all Target supported by the
@@ -74,10 +81,14 @@ class InstructionSets {
     if (supported & HH_TARGET_SSE41) {
       Func<HH_TARGET_SSE41>()(std::forward<Args>(args)...);
     }
+#elif HH_ARCH_PPC
+    const TargetBits supported = Supported();
+    if (supported & HH_TARGET_VSX) {
+      Func<HH_TARGET_VSX>()(std::forward<Args>(args)...);
+    }
 #else
     const TargetBits supported = HH_TARGET_Portable;
-#endif  // HH_ARCH_X64
-
+#endif
     Func<HH_TARGET_Portable>()(std::forward<Args>(args)...);
     return supported;  // i.e. all that were run
   }

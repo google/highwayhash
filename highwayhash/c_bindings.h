@@ -27,9 +27,9 @@ extern "C" {
 // Bring the symbols out of the namespace.
 using highwayhash::HHKey;
 using highwayhash::HHPacket;
-using highwayhash::HHResult64;
 using highwayhash::HHResult128;
 using highwayhash::HHResult256;
+using highwayhash::HHResult64;
 #endif
 
 uint64_t SipHashC(const uint64_t* key, const char* bytes, const uint64_t size);
@@ -47,6 +47,8 @@ uint64_t HighwayHash64_TargetSSE41(const HHKey key, const char* bytes,
                                    const uint64_t size);
 uint64_t HighwayHash64_TargetAVX2(const HHKey key, const char* bytes,
                                   const uint64_t size);
+uint64_t HighwayHash64_TargetVSX(const HHKey key, const char* bytes,
+                                 const uint64_t size);
 
 #ifdef __cplusplus
 }

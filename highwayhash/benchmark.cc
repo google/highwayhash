@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/instruction_sets.h"
 #include "highwayhash/nanobenchmark.h"
@@ -174,11 +175,13 @@ void AddMeasurements(DurationsForInputs* input_map, const char* caption,
     const DurationsForInputs::Item& item = input_map->items[i];
     std::vector<float> durations(item.durations,
                                  item.durations + item.num_durations);
-    const float median = Median(&durations);
-    const float variability = MedianAbsoluteDeviation(durations, median);
-    printf("%s %4zu: median=%6.1f cycles; median L1 norm =%4.1f cycles\n",
-           caption, item.input, median, variability);
-    measurements->Add(caption, item.input, median);
+    const float median_ticks = Median(&durations);
+    const float variability = MedianAbsoluteDeviation(durations, median_ticks);
+    const double median_cpu_cycles =
+        (median_ticks / InvariantTicksPerSecond()) * NominalClockRate();
+    printf("%s %4zu: median=%6.1f ticks; median L1 norm =%4.1f ticks\n",
+           caption, item.input, median_ticks, variability);
+    measurements->Add(caption, item.input, median_cpu_cycles);
   }
   input_map->num_items = 0;
 }

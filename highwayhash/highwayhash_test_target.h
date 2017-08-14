@@ -28,6 +28,7 @@
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
+#include "highwayhash/highwayhash.h"
 #include "highwayhash/nanobenchmark.h"
 
 namespace highwayhash {
