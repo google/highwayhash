@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -117,12 +117,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\highwayhash\arch_specific.h" />
     <ClInclude Include="..\highwayhash\compiler_specific.h" />
     <ClInclude Include="..\highwayhash\os_specific.h" />
     <ClInclude Include="..\highwayhash\profiler.h" />
     <ClInclude Include="..\highwayhash\tsc_timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\highwayhash\arch_specific.cc" />
     <ClCompile Include="..\highwayhash\os_specific.cc" />
     <ClCompile Include="..\highwayhash\profiler_example.cc" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -127,8 +127,12 @@
     <ClInclude Include="..\highwayhash\hh_sse41.h" />
     <ClInclude Include="..\highwayhash\hh_types.h" />
     <ClInclude Include="..\highwayhash\highwayhash_target.h" />
+    <ClInclude Include="..\highwayhash\highwayhash_test_target.h" />
     <ClInclude Include="..\highwayhash\instruction_sets.h" />
+    <ClInclude Include="..\highwayhash\nanobenchmark.h" />
+    <ClInclude Include="..\highwayhash\os_specific.h" />
     <ClInclude Include="..\highwayhash\targets.h" />
+    <ClInclude Include="..\highwayhash\tsc_timer.h" />
     <ClInclude Include="..\highwayhash\vector128.h" />
     <ClInclude Include="..\highwayhash\vector256.h" />
   </ItemGroup>
@@ -145,7 +149,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\highwayhash\highwayhash_test.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_avx2.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_portable.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_sse41.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_target.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_vsx.cc" />
     <ClCompile Include="..\highwayhash\instruction_sets.cc" />
+    <ClCompile Include="..\highwayhash\nanobenchmark.cc" />
+    <ClCompile Include="..\highwayhash\os_specific.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

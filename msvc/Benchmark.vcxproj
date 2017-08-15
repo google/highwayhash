@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -119,10 +119,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\highwayhash\arch_specific.cc" />
     <ClCompile Include="..\highwayhash\benchmark.cc">
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
+    <ClCompile Include="..\highwayhash\highwayhash_target.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_avx2.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_portable.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_sse41.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_target.cc" />
+    <ClCompile Include="..\highwayhash\highwayhash_test_vsx.cc" />
+    <ClCompile Include="..\highwayhash\instruction_sets.cc" />
     <ClCompile Include="..\highwayhash\nanobenchmark.cc" />
     <ClCompile Include="..\highwayhash\os_specific.cc" />
     <ClCompile Include="..\highwayhash\sip_hash.cc" />
@@ -132,13 +140,17 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\highwayhash\arch_specific.h" />
     <ClInclude Include="..\highwayhash\compiler_specific.h" />
     <ClInclude Include="..\highwayhash\hh_avx2.h" />
     <ClInclude Include="..\highwayhash\hh_portable.h" />
     <ClInclude Include="..\highwayhash\hh_sse41.h" />
     <ClInclude Include="..\highwayhash\hh_types.h" />
     <ClInclude Include="..\highwayhash\highwayhash.h" />
+    <ClInclude Include="..\highwayhash\highwayhash_target.h" />
+    <ClInclude Include="..\highwayhash\highwayhash_test_target.h" />
     <ClInclude Include="..\highwayhash\iaca.h" />
+    <ClInclude Include="..\highwayhash\instruction_sets.h" />
     <ClInclude Include="..\highwayhash\nanobenchmark.h" />
     <ClInclude Include="..\highwayhash\os_specific.h" />
     <ClInclude Include="..\highwayhash\sip_hash.h" />
