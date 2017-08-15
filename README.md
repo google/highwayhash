@@ -95,6 +95,8 @@ Strong hashes are also important parts of methods for protecting hash tables
 against unacceptable worst-case behavior and denial of service attacks
 (see "hash flooding" below).
 
+128 and 256-bit hashes can be useful for verifying data integrity (checksums).
+
 ## SipHash
 
 Our SipHash implementation is a fast and portable drop-in replacement for
@@ -126,8 +128,9 @@ or up to 256 bits at no extra cost.
 In addition to high throughput, the algorithm is designed for low finalization
 cost. The result is more than twice as fast as SipTreeHash.
 
-For older CPUs, we also provide an SSE4.1 version (80% as fast for large inputs
-and 95% as fast for short inputs) and a portable version (10% as fast).
+We also provide an SSE4.1 version (80% as fast for large inputs and 95% as fast
+for short inputs), an implementation for VSX on POWER and a portable version
+(10% as fast). A third-party ARM implementation is referenced below.
 
 Statistical analyses and preliminary cryptanalysis are given in
 https://arxiv.org/abs/1612.06257.
@@ -181,16 +184,16 @@ which dramatically increased timings especially for small inputs.
 ## CPU requirements
 
 SipTreeHash[13] requires an AVX2-capable CPU (e.g. Haswell). HighwayHash
-includes a dispatcher that chooses the best available (AVX2, SSE4.1 or portable)
-implementation at runtime, as well as a directly callable function template that
-can only run on the CPU for which it was built. SipHash[13] and
+includes a dispatcher that chooses the best available (AVX2, SSE4.1, VSX or
+portable) implementation at runtime, as well as a directly callable function
+template that can only run on the CPU for which it was built. SipHash[13] and
 ScalarSipTreeHash[13] have no particular CPU requirements.
 
-Our implementations use custom AVX2 vector classes with overloaded operators
+Our x86 implementations use custom vector classes with overloaded operators
 (e.g. `const V4x64U a = b + c`) for type-safety and improved readability vs.
 compiler intrinsics (e.g. `const __m256i a = _mm256_add_epi64(b, c)`).
-
-We intend to port HighwayHash to other SIMD-capable platforms, especially ARM.
+The VSX implementation uses built-in vector types alongside Altivec intrinsics.
+A high-performance third-party ARM implementation is mentioned below.
 
 Our instruction_sets dispatcher avoids running newer instructions on older CPUs
 that do not support them. However, intrinsics, and therefore also any vector
@@ -314,16 +317,16 @@ performance.
 
 ## Third-party implementations / bindings
 
-Thanks to Damian Gryski for making us aware of these third-party
-implementations or bindings. Please feel free to get in touch or
+Thanks to Damian Gryski and Frank Wessels for making us aware of these
+third-party implementations or bindings. Please feel free to get in touch or
 raise an issue and we'll add yours as well.
 
 By | Language | URL
 --- | --- | ---
-Damian Gryski | Go and SSE | https://github.com/dgryski/go-highway/
+Damian Gryski | Go and x64 assembly | https://github.com/dgryski/go-highway/
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
-Frank Wessels | Go and Assembly | https://github.com/minio/highwayhash
+Frank Wessels | Go and ARM assembly | https://github.com/minio/highwayhash
 
 ## Modules
 
@@ -336,7 +339,7 @@ Frank Wessels | Go and Assembly | https://github.com/minio/highwayhash
 *   scalar_sip_tree_hash.cc is a non-SIMD version.
 *   state_helpers.h simplifies the implementation of the SipHash variants.
 *   highwayhash.h is our new, fast hash function.
-*   hh_avx2.h, hh_sse41.h and hh_portable.h are its various implementations.
+*   hh_{avx2,sse41,vsx,portable}.h are its various implementations.
 *   highwayhash_target.h chooses the best available implementation at runtime.
 
 ### Infrastructure
@@ -353,6 +356,6 @@ Frank Wessels | Go and Assembly | https://github.com/minio/highwayhash
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-08-04
+<jyrki.alakuijala@gmail.com>, updated 2017-08-15
 
 This is not an official Google product.
