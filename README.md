@@ -326,7 +326,7 @@ By | Language | URL
 Damian Gryski | Go and x64 assembly | https://github.com/dgryski/go-highway/
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
-Frank Wessels | Go and ARM assembly | https://github.com/minio/highwayhash
+Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/minio/highwayhash
 
 ## Modules
 
