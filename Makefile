@@ -4,10 +4,6 @@ override CPPFLAGS += -I.
 override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC
 override LDFLAGS += -lpthread
 
-PREFIX ?= /usr/local
-INCDIR ?= $(PREFIX)/include
-LIBDIR ?= $(PREFIX)/lib
-
 SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
 	sip_tree_hash.o \
