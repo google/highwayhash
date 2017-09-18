@@ -5,15 +5,15 @@
 #include "os_mac.h"
 
 int mac_getaffinity(cpu_set_t* set) {
-  uint16_t core_count = 0;
+  int64_t core_count = 0;
   size_t core_count_size = sizeof(core_count); // size is a pointer
   const int err = sysctlbyname(__SYSCTL_CORE_COUNT, &core_count,
-                                 &core_count_size, 0, 0);
+                                 &core_count_size, NULL, 0);
   if (err != 0)
     return err;
 
   CPU_ZERO(set);
-  for (uint16_t i = 0; i < core_count; ++i) {
+  for (int64_t i = 0; i < core_count; ++i) {
     CPU_SET(i, set);
   }
 

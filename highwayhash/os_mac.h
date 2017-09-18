@@ -17,7 +17,7 @@
 
 typedef unsigned long int __cpu_mask;
 
-#define __SYSCTL_CORE_COUNT "machdep.cpu.core_count"
+#define __SYSCTL_CORE_COUNT "machdep.cpu.thread_count"
 #define __NR_CPUS 512 // from the linux kernel limit
 #define __NR_CPUBITS (8 * sizeof(__cpu_mask))
 
@@ -31,20 +31,18 @@ static inline void __CPU_ZERO(size_t setsize, cpu_set_t* set) {
 }
 #define CPU_ZERO(cpusetp) __CPU_ZERO(sizeof(cpu_set_t), cpusetp)
 
-static inline int __CPU_ISSET(int cpu, size_t setsize, const cpu_set_t* set) {
-  if (cpu < 8 * setsize) {
-    return (set->__bits[cpu / __NR_CPUBITS] & 1 << (cpu % __NR_CPUBITS)) != 0;
+static inline int CPU_ISSET(int cpu, const cpu_set_t* set) {
+  if (cpu < __NR_CPUS) {
+    return (set->__bits[cpu / __NR_CPUBITS] & 1L << (cpu % __NR_CPUBITS)) != 0;
   }
   return 0;
 }
-#define CPU_ISSET(cpu, cpusetp) __CPU_ISSET(cpu, sizeof(cpu_set_t), cpusetp)
 
-static inline void __CPU_SET(int cpu, size_t setsize, cpu_set_t* set) {
-  if (cpu < 8 * setsize) {
-    set->__bits[cpu / __NR_CPUBITS] |= 1 << (cpu % __NR_CPUBITS);
+static inline void CPU_SET(int cpu, cpu_set_t* set) {
+  if (cpu < __NR_CPUS) {
+    set->__bits[cpu / __NR_CPUBITS] |= 1L << (cpu % __NR_CPUBITS);
   }
 }
-#define CPU_SET(cpu, cpusetp) __CPU_SET(cpu, sizeof(cpu_set_t), cpusetp)
 
 int mac_getaffinity(cpu_set_t* set);
 int mac_setaffinity(cpu_set_t* set);
