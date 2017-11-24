@@ -65,7 +65,7 @@ class HHStatePortable {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
-    const uint64_t mod32_pair = (size_mod32 << 32) + size_mod32;
+    const uint64_t mod32_pair = (static_cast<uint64_t>(size_mod32) << 32) + size_mod32;
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v0[lane] += mod32_pair;
     }
