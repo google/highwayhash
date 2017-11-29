@@ -93,9 +93,9 @@ class Load3 {
     const uint64_t idx1 = size_mod4 >> 1;
     const uint64_t idx2 = size_mod4 - 1;
     // Store into least significant bytes (avoids one shift).
-    last3 = static_cast<uint64_t>(from[idx0]);
-    last3 += static_cast<uint64_t>(from[idx1]) << 8;
-    last3 += static_cast<uint64_t>(from[idx2]) << 16;
+    last3 = U64FromChar(from[idx0]);
+    last3 += U64FromChar(from[idx1]) << 8;
+    last3 += U64FromChar(from[idx2]) << 16;
     return last3;
   }
 
