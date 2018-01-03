@@ -1,8 +1,8 @@
 # We assume X64 unless HH_POWER or HH_AARCH64 are defined.
 
 override CPPFLAGS += -I.
-override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC
-override LDFLAGS += -lpthread
+override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC -pthread
+override LDFLAGS += -pthread
 
 SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
@@ -100,10 +100,12 @@ distclean: clean
 	[ ! -d bin ] || $(RM) -r -- bin/
 	[ ! -d lib ] || $(RM) -r -- lib/
 
+# Mode bits are from issue #58, thanks to yurivict for suggesting.
 install: lib/libhighwayhash.a lib/libhighwayhash.so
 	mkdir -p $(DESTDIR)/$(LIBDIR)
 	mkdir -p $(DESTDIR)/$(INCDIR)/highwayhash
-	install -m0755 lib/libhighwayhash.* $(DESTDIR)/$(LIBDIR)
-	install -m0755 highwayhash/*.h $(DESTDIR)/$(INCDIR)/highwayhash/
+	install -m0444 lib/libhighwayhash.a $(DESTDIR)/$(LIBDIR)
+	install -m0555 lib/libhighwayhash.so $(DESTDIR)/$(LIBDIR)
+	install -m0444 highwayhash/*.h $(DESTDIR)/$(INCDIR)/highwayhash/
 
 .PHONY: clean distclean all install

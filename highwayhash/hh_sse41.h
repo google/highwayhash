@@ -109,10 +109,9 @@ class HHStateSSE41 {
 
   HH_INLINE void Finalize(HHResult64* HH_RESTRICT result) {
     // Mix together all lanes.
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 4; n++) {
+      PermuteAndUpdate();
+    }
 
     const V2x64U sum0 = v0L + mul0L;
     const V2x64U sum1 = v1L + mul1L;
@@ -121,10 +120,9 @@ class HHStateSSE41 {
   }
 
   HH_INLINE void Finalize(HHResult128* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 6; n++) {
+      PermuteAndUpdate();
+    }
 
     const V2x64U sum0 = v0L + mul0L;
     const V2x64U sum1 = v1H + mul1H;
@@ -133,10 +131,9 @@ class HHStateSSE41 {
   }
 
   HH_INLINE void Finalize(HHResult256* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 10; n++) {
+      PermuteAndUpdate();
+    }
 
     const V2x64U sum0L = v0L + mul0L;
     const V2x64U sum1L = v1L + mul1L;

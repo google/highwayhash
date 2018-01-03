@@ -65,7 +65,8 @@ class HHStatePortable {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
-    const uint64_t mod32_pair = (static_cast<uint64_t>(size_mod32) << 32) + size_mod32;
+    const uint64_t mod32_pair =
+        (static_cast<uint64_t>(size_mod32) << 32) + size_mod32;
     for (int lane = 0; lane < kNumLanes; ++lane) {
       v0[lane] += mod32_pair;
     }
@@ -95,29 +96,26 @@ class HHStatePortable {
   }
 
   HH_INLINE void Finalize(HHResult64* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 4; n++) {
+      PermuteAndUpdate();
+    }
 
     *result = v0[0] + v1[0] + mul0[0] + mul1[0];
   }
 
   HH_INLINE void Finalize(HHResult128* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 6; n++) {
+      PermuteAndUpdate();
+    }
 
     (*result)[0] = v0[0] + mul0[0] + v1[2] + mul1[2];
     (*result)[1] = v0[1] + mul0[1] + v1[3] + mul1[3];
   }
 
   HH_INLINE void Finalize(HHResult256* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 10; n++) {
+      PermuteAndUpdate();
+    }
 
     ModularReduction(v1[1] + mul1[1], v1[0] + mul1[0], v0[1] + mul0[1],
                      v0[0] + mul0[0], &(*result)[1], &(*result)[0]);

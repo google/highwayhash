@@ -156,28 +156,25 @@ class HHStateVSX {
 
   HH_INLINE void Finalize(HHResult64* HH_RESTRICT result) {
     // Mix together all lanes.
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 4; n++) {
+      PermuteAndUpdate();
+    }
     const PPC_VEC_U64 hash = v0L + v1L + mul0L + mul1L;
     *result = hash[0];
   }
 
   HH_INLINE void Finalize(HHResult128* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 6; n++) {
+      PermuteAndUpdate();
+    }
     const PPC_VEC_U64 hash = v0L + mul0L + v1H + mul1H;
     StoreUnaligned(hash, *result);
   }
 
   HH_INLINE void Finalize(HHResult256* HH_RESTRICT result) {
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
-    PermuteAndUpdate();
+    for (int n = 0; n < 10; n++) {
+      PermuteAndUpdate();
+    }
     const PPC_VEC_U64 sum0L = v0L + mul0L;
     const PPC_VEC_U64 sum1L = v1L + mul1L;
     const PPC_VEC_U64 sum0H = v0H + mul0H;

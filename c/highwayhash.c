@@ -124,13 +124,6 @@ void PermuteAndUpdate(HighwayHashState* state) {
   Update(permuted, state);
 }
 
-static void FinalPermutes(HighwayHashState* state) {
-  PermuteAndUpdate(state);
-  PermuteAndUpdate(state);
-  PermuteAndUpdate(state);
-  PermuteAndUpdate(state);
-}
-
 static void ModularReduction(uint64_t a3_unmasked, uint64_t a2, uint64_t a1,
                              uint64_t a0, uint64_t* m1, uint64_t* m0) {
   uint64_t a3 = a3_unmasked & 0x3FFFFFFFFFFFFFFFull;
@@ -139,18 +132,31 @@ static void ModularReduction(uint64_t a3_unmasked, uint64_t a2, uint64_t a1,
 }
 
 static uint64_t HighwayHashFinalize64(HighwayHashState* state) {
-  FinalPermutes(state);
+  int i;
+  for (i = 0; i < 4; i++) {
+    PermuteAndUpdate(state);
+  }
   return state->v0[0] + state->v1[0] + state->mul0[0] + state->mul1[0];
 }
 
 static void HighwayHashFinalize128(HighwayHashState* state, uint64_t hash[2]) {
-  FinalPermutes(state);
+  int i;
+  for (i = 0; i < 6; i++) {
+    PermuteAndUpdate(state);
+  }
   hash[0] = state->v0[0] + state->mul0[0] + state->v1[2] + state->mul1[2];
   hash[1] = state->v0[1] + state->mul0[1] + state->v1[3] + state->mul1[3];
 }
 
 static void HighwayHashFinalize256(HighwayHashState* state, uint64_t hash[4]) {
-  FinalPermutes(state);
+  int i;
+  /* We anticipate that 256-bit hashing will be mostly used with long messages
+     because storing and using the 256-bit hash (in contrast to 128-bit)
+     carries a larger additional constant cost by itself. Doing extra rounds
+     here hardly increases the per-byte cost of long messages. */
+  for (i = 0; i < 10; i++) {
+    PermuteAndUpdate(state);
+  }
   ModularReduction(state->v1[1] + state->mul1[1], state->v1[0] + state->mul1[0],
                    state->v0[1] + state->mul0[1], state->v0[0] + state->mul0[0],
                    &hash[1], &hash[0]);

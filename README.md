@@ -105,7 +105,7 @@ between 0 and 63 bytes).
 
 Interestingly, it is about twice as fast as a SIMD implementation using SSE4.1
 (https://goo.gl/80GBSD). This is presumably due to the lack of SIMD bit rotate
-instructions.
+instructions prior to AVX-512.
 
 SipHash13 is a faster but weaker variant with one mixing round per update and
 three during finalization.
@@ -137,13 +137,12 @@ https://arxiv.org/abs/1612.06257.
 
 ## Versioning and stability
 
-SipHash and HighwayHash64 are 'fingerprint functions' whose input -> hash
+Now that 21 months have elapsed since their initial release, we have declared
+all (64/128/256 bit) variants of HighwayHash frozen, i.e. unchanging forever.
+
+SipHash and HighwayHash are 'fingerprint functions' whose input -> hash
 mapping will not change. This is important for applications that write hashes to
 persistent storage.
-
-Now that 17 months have elapsed since its initial release, we consider
-HighwayHash64 (and the C++ variant that returns HHResult64) frozen.
-Note that the 128 and 256 bit versions may still change pending external review.
 
 ## Speed measurements
 
@@ -161,9 +160,9 @@ nanobenchmark.h enables cycle-accurate measurements of very short functions.
 It uses CPU fences and robust statistics to minimize variability, and also
 avoids unrealistic branch prediction effects.
 
-We compile the C++ implementations with a patched GCC 4.9 and run on a single
-core of a Xeon E5-2690 v3 clocked at 2.6 GHz. CPU cost is measured as cycles per
-byte for various input sizes:
+We compile the 64-bit C++ implementations with a patched GCC 4.9 and run on a
+single idle core of a Xeon E5-2690 v3 clocked at 2.6 GHz. CPU cost is measured
+as cycles per byte for various input sizes:
 
 Algorithm        | 8     | 31   | 32   | 63   | 64   | 1024
 ---------------- | ----- | ---- | ---- | ---- | ---- | ----
@@ -183,11 +182,11 @@ which dramatically increased timings especially for small inputs.
 
 ## CPU requirements
 
-SipTreeHash[13] requires an AVX2-capable CPU (e.g. Haswell). HighwayHash
+SipTreeHash(13) requires an AVX2-capable CPU (e.g. Haswell). HighwayHash
 includes a dispatcher that chooses the best available (AVX2, SSE4.1, VSX or
 portable) implementation at runtime, as well as a directly callable function
-template that can only run on the CPU for which it was built. SipHash[13] and
-ScalarSipTreeHash[13] have no particular CPU requirements.
+template that can only run on the CPU for which it was built. SipHash(13) and
+ScalarSipTreeHash(13) have no particular CPU requirements.
 
 Our x86 implementations use custom vector classes with overloaded operators
 (e.g. `const V4x64U a = b + c`) for type-safety and improved readability vs.
@@ -356,6 +355,6 @@ Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/m
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-08-15
+<jyrki.alakuijala@gmail.com>, updated 2017-12-29
 
 This is not an official Google product.

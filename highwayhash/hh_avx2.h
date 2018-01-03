@@ -131,10 +131,9 @@ def x(a,b,c):
   }
 
   HH_INLINE void Finalize(HHResult128* HH_RESTRICT result) {
-    Update(Permute(v0));
-    Update(Permute(v0));
-    Update(Permute(v0));
-    Update(Permute(v0));
+    for (int n = 0; n < 6; n++) {
+      Update(Permute(v0));
+    }
 
     const V2x64U sum0(_mm256_castsi256_si128(v0 + mul0));
     const V2x64U sum1(_mm256_extracti128_si256(v1 + mul1, 1));
@@ -143,10 +142,9 @@ def x(a,b,c):
   }
 
   HH_INLINE void Finalize(HHResult256* HH_RESTRICT result) {
-    Update(Permute(v0));
-    Update(Permute(v0));
-    Update(Permute(v0));
-    Update(Permute(v0));
+    for (int n = 0; n < 10; n++) {
+      Update(Permute(v0));
+    }
 
     const V4x64U sum0 = v0 + mul0;
     const V4x64U sum1 = v1 + mul1;

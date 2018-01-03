@@ -48,20 +48,22 @@ using V = Scalar<T>;
 #endif
 
 template <class T>
-void NotifyIfUnequal(const V<T>& v, const T expected, const HHNotify notify) {
+void NotifyIfUnequal(const V<T>& v, const T expected, const size_t line,
+                     const HHNotify notify) {
   T lanes[V<T>::N] HH_ALIGNAS(32);
   Store(v, lanes);
   for (size_t i = 0; i < V<T>::N; ++i) {
     if (lanes[i] != expected) {
-      notify(TargetName(HH_TARGET), (i << 8) | sizeof(T));
+      notify(TargetName(HH_TARGET), (line << 16) | (i << 8) | sizeof(T));
     }
   }
 }
 
 template <class T>
-void NotifyIfUnequal(const T& t, const T expected, const HHNotify notify) {
+void NotifyIfUnequal(const T& t, const T expected, const size_t line,
+                     const HHNotify notify) {
   if (t != expected) {
-    notify(TargetName(HH_TARGET), sizeof(T));
+    notify(TargetName(HH_TARGET), (line << 16) | sizeof(T));
   }
 }
 
@@ -92,42 +94,42 @@ void TestMembersAndBinaryOperatorsExceptShifts(const HHNotify notify) {
 
   // broadcast
   const V<T> v2(2);
-  NotifyIfUnequal(v2, T(2), notify);
+  NotifyIfUnequal(v2, T(2), __LINE__, notify);
 
   // assign from V
   const V<T> v3(3);
   V<T> v3b;
   v3b = v3;
-  NotifyIfUnequal(v3b, T(3), notify);
+  NotifyIfUnequal(v3b, T(3), __LINE__, notify);
 
   // equal
   const V<T> veq(v3 == v3b);
-  NotifyIfUnequal(veq, MaxValue<T>()(), notify);
+  NotifyIfUnequal(veq, MaxValue<T>()(), __LINE__, notify);
 
   // Copying to, and constructing from intrinsic yields same result.
   typename V<T>::Intrinsic nv2 = v2;
   V<T> v2b(nv2);
-  NotifyIfUnequal(v2b, T(2), notify);
+  NotifyIfUnequal(v2b, T(2), __LINE__, notify);
 
   // .. assignment also works.
   V<T> v2c;
   v2c = nv2;
-  NotifyIfUnequal(v2c, T(2), notify);
+  NotifyIfUnequal(v2c, T(2), __LINE__, notify);
 
   const V<T> add = v2 + v3;
-  NotifyIfUnequal(add, T(5), notify);
+  NotifyIfUnequal(add, T(5), __LINE__, notify);
 
   const V<T> sub = v3 - v2;
-  NotifyIfUnequal(sub, T(1), notify);
+  NotifyIfUnequal(sub, T(1), __LINE__, notify);
 
   const V<T> vand = v3 & v2;
-  NotifyIfUnequal(vand, T(2), notify);
+  NotifyIfUnequal(vand, T(2), __LINE__, notify);
 
   const V<T> vor = add | v2;
-  NotifyIfUnequal(vor, T(7), notify);
+  NotifyIfUnequal(vor, T(7), __LINE__, notify);
 
   const V<T> vxor = v3 ^ v2;
-  NotifyIfUnequal(vxor, T(1), notify);
+  NotifyIfUnequal(vxor, T(1), __LINE__, notify);
 }
 
 // SSE does not allow shifting uint8_t, so instantiate for all other types.
@@ -135,19 +137,19 @@ template <class T>
 void TestShifts(const HHNotify notify) {
   const V<T> v1(1);
   // Shifting out of right side => zero
-  NotifyIfUnequal(v1 >> 1, T(0), notify);
+  NotifyIfUnequal(v1 >> 1, T(0), __LINE__, notify);
 
   // Simple left shift
-  NotifyIfUnequal(v1 << 1, T(2), notify);
+  NotifyIfUnequal(v1 << 1, T(2), __LINE__, notify);
 
   // Sign bit
   constexpr int kSign = (sizeof(T) * 8) - 1;
   constexpr T max = MaxValue<T>()();
   constexpr T sign = ~(max >> 1);
-  NotifyIfUnequal(v1 << kSign, sign, notify);
+  NotifyIfUnequal(v1 << kSign, sign, __LINE__, notify);
 
   // Shifting out of left side => zero
-  NotifyIfUnequal(v1 << (kSign + 1), T(0), notify);
+  NotifyIfUnequal(v1 << (kSign + 1), T(0), __LINE__, notify);
 }
 
 template <class T>
@@ -162,30 +164,30 @@ void TestLoadStore(const HHNotify notify) {
   }
   // Aligned load
   const V<T> v4 = Load<V<T>>(lanes);
-  NotifyIfUnequal(v4, T(4), notify);
+  NotifyIfUnequal(v4, T(4), __LINE__, notify);
 
   // Aligned store
   T lanes4[n] HH_ALIGNAS(32);
   Store(v4, lanes4);
-  NotifyIfUnequal(Load<V<T>>(lanes4), T(4), notify);
+  NotifyIfUnequal(Load<V<T>>(lanes4), T(4), __LINE__, notify);
 
   // Unaligned load
   const V<T> vu = LoadUnaligned<V<T>>(lanes + 1);
   Store(vu, lanes4);
-  NotifyIfUnequal(lanes4[n - 1], T(5), notify);
+  NotifyIfUnequal(lanes4[n - 1], T(5), __LINE__, notify);
   for (size_t i = 1; i < n - 1; ++i) {
-    NotifyIfUnequal(lanes4[i], T(4), notify);
+    NotifyIfUnequal(lanes4[i], T(4), __LINE__, notify);
   }
 
   // Unaligned store
   StoreUnaligned(v4, lanes + n / 2);
   size_t i;
   for (i = 0; i < 3 * n / 2; ++i) {
-    NotifyIfUnequal(lanes[i], T(4), notify);
+    NotifyIfUnequal(lanes[i], T(4), __LINE__, notify);
   }
   // Subsequent values remain unchanged.
   for (; i < 2 * n; ++i) {
-    NotifyIfUnequal(lanes[i], T(5), notify);
+    NotifyIfUnequal(lanes[i], T(5), __LINE__, notify);
   }
 }
 

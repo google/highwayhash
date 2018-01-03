@@ -27,13 +27,14 @@ namespace {
 
 void NotifyFailure(const char* target, const size_t size) {
   const size_t lane_bits = (size & 0xFF) * 8;
-  const size_t lane_index = size >> 8;
+  const size_t lane_index = (size >> 8) & 0xFF;
+  const size_t line = (size >> 16);
 #ifdef HH_GOOGLETEST
   EXPECT_TRUE(false) << "VectorTest failed for " << target << " T=" << lane_bits
-                     << ", lane " << lane_index;
+                     << ", lane " << lane_index << ", line " << line;
 #else
-  printf("VectorTest failed for %10s T=%zu, lane=%zu\n", target, lane_bits,
-         lane_index);
+  printf("VectorTest failed for %10s T=%zu, lane=%zu, line=%zu\n", target,
+         lane_bits, lane_index, line);
 #endif
 }
 

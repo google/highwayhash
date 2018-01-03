@@ -28,7 +28,6 @@
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/instruction_sets.h"
 #include "highwayhash/nanobenchmark.h"
-#include "highwayhash/os_specific.h"
 #include "highwayhash/robust_statistics.h"
 
 // Which functions to enable (includes check for compiler support)
@@ -207,14 +206,14 @@ void AddMeasurementsWithPrefix(const char* prefix, const char* target_name,
 
 #if BENCHMARK_SIP
 
-uint64_t RunSip(const size_t size) {
+uint64_t RunSip(const void*, const size_t size) {
   const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipHash(key2, in, size);
 }
 
-uint64_t RunSip13(const size_t size) {
+uint64_t RunSip13(const void*, const size_t size) {
   const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
@@ -225,14 +224,14 @@ uint64_t RunSip13(const size_t size) {
 
 #if BENCHMARK_SIP_TREE
 
-uint64_t RunSipTree(const size_t size) {
+uint64_t RunSipTree(const void*, const size_t size) {
   const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipTreeHash(key4, in, size);
 }
 
-uint64_t RunSipTree13(const size_t size) {
+uint64_t RunSipTree13(const void*, const size_t size) {
   const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
@@ -243,7 +242,7 @@ uint64_t RunSipTree13(const size_t size) {
 
 #if BENCHMARK_FARM
 
-uint64_t RunFarm(const size_t size) {
+uint64_t RunFarm(const void*, const size_t size) {
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return farmhash::Fingerprint64(reinterpret_cast<const char*>(in), size);
@@ -255,13 +254,13 @@ void AddMeasurements(const std::vector<size_t>& in_sizes,
                      Measurements* measurements) {
   DurationsForInputs input_map(in_sizes.data(), in_sizes.size(), 40);
 #if BENCHMARK_SIP
-  MeasureAndAdd(&input_map, "SipHash", RunSip, measurements);
-  MeasureAndAdd(&input_map, "SipHash13", RunSip13, measurements);
+  MeasureAndAdd(&input_map, "SipHash", &RunSip, measurements);
+  MeasureAndAdd(&input_map, "SipHash13", &RunSip13, measurements);
 #endif
 
 #if BENCHMARK_SIP_TREE && defined(__AVX2__)
-  MeasureAndAdd(&input_map, "SipTreeHash", RunSipTree, measurements);
-  MeasureAndAdd(&input_map, "SipTreeHash13", RunSipTree13, measurements);
+  MeasureAndAdd(&input_map, "SipTreeHash", &RunSipTree, measurements);
+  MeasureAndAdd(&input_map, "SipTreeHash13", &RunSipTree13, measurements);
 #endif
 
 #if BENCHMARK_FARM
@@ -305,7 +304,6 @@ void PrintPlots() {
 }  // namespace highwayhash
 
 int main(int argc, char* argv[]) {
-  highwayhash::PinThreadToRandomCPU();
   // No argument or t => table
   if (argc < 2 || argv[1][0] == 't') {
     highwayhash::PrintTable();

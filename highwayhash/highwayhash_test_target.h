@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_TARGET_H_
-#define HIGHWAYHASH_HIGHWAYHASH_TARGET_H_
+#ifndef HIGHWAYHASH_HIGHWAYHASH_TEST_TARGET_H_
+#define HIGHWAYHASH_HIGHWAYHASH_TEST_TARGET_H_
 
 // Tests called by InstructionSets::RunAll, so we can verify all
 // implementations supported by the current CPU.
@@ -87,4 +87,4 @@ struct HighwayHashCatBenchmark {
 
 }  // namespace highwayhash
 
-#endif  // HIGHWAYHASH_HIGHWAYHASH_TARGET_H_
+#endif  // HIGHWAYHASH_HIGHWAYHASH_TEST_TARGET_H_

@@ -136,7 +136,10 @@ public final class HighwayHash {
    * @return 64-bit hash
    */
   public long finalize64() {
-    finalPermutes();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
     done = true;
     return v0[0] + v1[0] + mul0[0] + mul1[0];
   }
@@ -150,7 +153,12 @@ public final class HighwayHash {
    * @return array of size 2 containing 128-bit hash
    */
   public long[] finalize128() {
-    finalPermutes();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
     done = true;
     long[] hash = new long[2];
     hash[0] = v0[0] + mul0[0] + v1[2] + mul1[2];
@@ -167,7 +175,16 @@ public final class HighwayHash {
    * @return array of size 4 containing 256-bit hash
    */
   public long[] finalize256() {
-    finalPermutes();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
+    permuteAndUpdate();
     done = true;
     long[] hash = new long[4];
     modularReduction(v1[1] + mul1[1], v1[0] + mul1[0],
@@ -234,13 +251,6 @@ public final class HighwayHash {
         (v0[3] >>> 32) | (v0[3] << 32),
         (v0[0] >>> 32) | (v0[0] << 32),
         (v0[1] >>> 32) | (v0[1] << 32));
-  }
-
-  private void finalPermutes() {
-    permuteAndUpdate();
-    permuteAndUpdate();
-    permuteAndUpdate();
-    permuteAndUpdate();
   }
 
   private void modularReduction(long a3_unmasked, long a2, long a1,
