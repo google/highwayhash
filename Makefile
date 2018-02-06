@@ -26,6 +26,9 @@ HH_X64 =
 else
 ifdef HH_POWER
 HH_X64 =
+HIGHWAYHASH_OBJS += obj/hh_vsx.o
+HIGHWAYHASH_TEST_OBJS += obj/highwayhash_test_vsx.o
+VECTOR_TEST_OBJS += obj/vector_test_vsx.o
 else
 HH_X64 = 1
 HIGHWAYHASH_OBJS += obj/hh_avx2.o obj/hh_sse41.o
