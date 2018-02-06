@@ -155,12 +155,13 @@ Duration Resolution(const Func func, const uint8_t* arg) {
 // shuffling) to "func", which must return something it has computed so the
 // compiler does not optimize it away.
 Duration TotalDuration(const Duration resolution, const Func func,
-                       const uint8_t* arg, std::vector<FuncInput>* inputs) {
+                       const uint8_t* arg, std::vector<FuncInput>* inputs,
+                       std::mt19937_64* rng) {
   // This benchmark attempts to measure the performance of "func" when
   // called with realistic inputs, which we assume are randomly drawn
   // from the given "inputs" distribution, so we shuffle those values.
   if (inputs->size() > 1) {
-    std::random_shuffle(inputs->begin(), inputs->end());
+    std::shuffle(inputs->begin(), inputs->end(), *rng);
   }
 
   const Duration t0 = Start<Duration>();
@@ -183,9 +184,9 @@ class Inputs {
 
  public:
   Inputs(const Duration resolution, const std::vector<FuncInput>& distribution,
-         const Func func, const uint8_t* arg)
+         const Func func, const uint8_t* arg, std::mt19937_64* rng)
       : unique_(InitUnique(distribution)),
-        replicas_(InitReplicas(distribution, resolution, func, arg)),
+        replicas_(InitReplicas(distribution, resolution, func, arg, rng)),
         num_replicas_(replicas_.size() / distribution.size()) {
     if (num_replicas_ != 1) {
       printf("NumReplicas %zu\n", num_replicas_);
@@ -243,7 +244,7 @@ class Inputs {
   // TotalDuration is large enough compared to the timer resolution.
   static std::vector<FuncInput> InitReplicas(
       const std::vector<FuncInput>& distribution, const Duration resolution,
-      const Func func, const uint8_t* arg) {
+      const Func func, const uint8_t* arg, std::mt19937_64* rng) {
     // We compute the difference in duration for inputs = Replicas() vs.
     // Without(). Dividing this by num_replicas must yield a value where the
     // quantization error (from the timer resolution) is sufficiently small.
@@ -256,7 +257,8 @@ class Inputs {
 #if NANOBENCHMARK_ENABLE_CHECKS
       const uint64_t t0 = Start64();
 #endif
-      const Duration elapsed = TotalDuration(resolution, func, arg, &replicas);
+      const Duration elapsed =
+          TotalDuration(resolution, func, arg, &replicas, rng);
 #if NANOBENCHMARK_ENABLE_CHECKS
       const uint64_t t1 = Stop64();
 #endif
@@ -331,13 +333,14 @@ class DurationSamples {
 // Gathers "num_samples" durations via repeated leave-one-out measurements.
 DurationSamples GatherDurationSamples(const Duration resolution, Inputs& inputs,
                                       const Func func, const uint8_t* arg,
-                                      const size_t num_samples) {
+                                      const size_t num_samples,
+                                      std::mt19937_64* rng) {
   DurationSamples samples(inputs.Unique(), num_samples);
   for (size_t i = 0; i < num_samples; ++i) {
     // Total duration for all shuffled input values. This may change over time,
     // so recompute it for each sample.
     const Duration total =
-        TotalDuration(resolution, func, arg, &inputs.Replicas());
+        TotalDuration(resolution, func, arg, &inputs.Replicas(), rng);
 
     for (const FuncInput input : inputs.Unique()) {
       // To isolate the durations of the calls with this input value,
@@ -345,7 +348,8 @@ DurationSamples GatherDurationSamples(const Duration resolution, Inputs& inputs,
       // from the total, and later divide by NumReplicas.
       std::vector<FuncInput> without = inputs.Without(input);
       for (int rep = 0; rep < 3; ++rep) {
-        const Duration elapsed = TotalDuration(resolution, func, arg, &without);
+        const Duration elapsed =
+            TotalDuration(resolution, func, arg, &without, rng);
         if (elapsed < total) {
           samples.Add(input, total - elapsed);
           break;
@@ -416,17 +420,19 @@ void DurationsForInputs::Item::PrintMedianAndVariability(const double mul) {
 
 void MeasureDurations(const Func func, DurationsForInputs* input_map,
                       const uint8_t* arg) {
+  std::mt19937_64 rng;
   const Duration resolution = Resolution(func, arg);
 
   // Adds enough 'replicas' of the distribution to measure "func" given
   // the timer resolution.
   const std::vector<FuncInput> distribution(
       input_map->inputs_, input_map->inputs_ + input_map->num_inputs_);
-  Inputs inputs(resolution, distribution, func, arg);
+  Inputs inputs(resolution, distribution, func, arg, &rng);
   const double per_call = 1.0 / static_cast<int>(inputs.NumReplicas());
 
   // First iteration: populate input_map items.
-  auto samples = GatherDurationSamples(resolution, inputs, func, arg, 512);
+  auto samples =
+      GatherDurationSamples(resolution, inputs, func, arg, 512, &rng);
   samples.Reduce(
       [per_call, input_map](const FuncInput input, const Duration duration) {
         const float sample = static_cast<float>(duration * per_call);
@@ -435,7 +441,8 @@ void MeasureDurations(const Func func, DurationsForInputs* input_map,
 
   // Subsequent iteration(s): append to input_map items' array.
   for (size_t rep = 1; rep < input_map->max_durations_; ++rep) {
-    auto samples = GatherDurationSamples(resolution, inputs, func, arg, 512);
+    auto samples =
+        GatherDurationSamples(resolution, inputs, func, arg, 512, &rng);
     samples.Reduce(
         [per_call, input_map](const FuncInput input, const Duration duration) {
           const float sample = static_cast<float>(duration * per_call);

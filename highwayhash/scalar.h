@@ -123,7 +123,7 @@ class Scalar {
   }
 
   HH_INLINE Scalar& operator>>=(const int count) {
-    if (count >= sizeof(T) * 8) {
+    if (count >= static_cast<int>(sizeof(T)) * 8) {
       v_ = 0;
     } else {
       v_ >>= count;
