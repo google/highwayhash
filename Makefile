@@ -28,7 +28,6 @@ ifdef HH_POWER
 HH_X64 =
 HIGHWAYHASH_OBJS += obj/hh_vsx.o
 HIGHWAYHASH_TEST_OBJS += obj/highwayhash_test_vsx.o
-VECTOR_TEST_OBJS += obj/vector_test_vsx.o
 else
 HH_X64 = 1
 HIGHWAYHASH_OBJS += obj/hh_avx2.o obj/hh_sse41.o
@@ -78,6 +77,15 @@ obj/vector_test_sse41.o: CXXFLAGS+=-msse4.1
 obj/benchmark.o: CXXFLAGS+=-mavx2
 endif
 
+ifdef HH_POWER
+obj/highwayhash_test_vsx.o: CXXFLAGS+=-mvsx
+obj/hh_vsx.o: CXXFLAGS+=-mvsx
+obj/benchmark.o: CXXFLAGS+=-mvsx
+# Skip file - vector library/test not supported on PPC
+obj/vector_test_target.o: CXXFLAGS+=-DHH_DISABLE_TARGET_SPECIFIC
+obj/vector_test.o: CXXFLAGS+=-DHH_DISABLE_TARGET_SPECIFIC
+endif
+
 lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
@@ -91,10 +99,10 @@ lib/libhighwayhash.so: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@cd $(dir $@); ln -s libhighwayhash.so.0 libhighwayhash.so
 
 bin/highwayhash_test: $(HIGHWAYHASH_TEST_OBJS)
-bin/vector_test: $(VECTOR_TEST_OBJS)
 
 bin/benchmark: obj/benchmark.o $(HIGHWAYHASH_TEST_OBJS)
 bin/benchmark: $(SIP_OBJS) $(HIGHWAYHASH_OBJS)
+bin/vector_test: $(VECTOR_TEST_OBJS)
 
 clean:
 	[ ! -d obj ] || $(RM) -r -- obj/

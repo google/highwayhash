@@ -19,6 +19,7 @@
 
 #include "highwayhash/arch_specific.h"
 
+#ifndef HH_DISABLE_TARGET_SPECIFIC
 #if HH_TARGET == HH_TARGET_AVX2
 #include "highwayhash/vector256.h"
 #elif HH_TARGET == HH_TARGET_SSE41
@@ -29,7 +30,6 @@
 #error "Unknown target, add its include here."
 #endif
 
-#ifndef HH_DISABLE_TARGET_SPECIFIC
 namespace highwayhash {
 namespace HH_TARGET_NAME {
 namespace {

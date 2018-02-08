@@ -39,10 +39,12 @@ void NotifyFailure(const char* target, const size_t size) {
 }
 
 void RunTests() {
+#ifndef HH_DISABLE_TARGET_SPECIFIC
   const TargetBits tested = InstructionSets::RunAll<VectorTest>(&NotifyFailure);
   HH_TARGET_NAME::ForeachTarget(tested, [](const TargetBits target) {
     printf("%10s: done\n", TargetName(target));
   });
+#endif
 }
 
 #ifdef HH_GOOGLETEST
