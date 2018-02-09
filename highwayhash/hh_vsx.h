@@ -30,13 +30,15 @@
 #ifndef HH_DISABLE_TARGET_SPECIFIC
 
 #include <altivec.h>
-#include <string>
+#undef vector
+#undef pixel
+#undef bool
 
 namespace highwayhash {
 
-typedef vector unsigned long long PPC_VEC_U64;  // NOLINT
-typedef vector unsigned int PPC_VEC_U32;
-typedef vector unsigned char PPC_VEC_U8;
+typedef __vector unsigned long long PPC_VEC_U64;  // NOLINT
+typedef __vector unsigned int PPC_VEC_U32;
+typedef __vector unsigned char PPC_VEC_U8;
 
 // See vector128.h for why this namespace is necessary;
 namespace HH_TARGET_NAME {
@@ -186,7 +188,9 @@ class HHStateVSX {
   }
 
   static HH_INLINE void ZeroInitialize(char* HH_RESTRICT buffer_bytes) {
-    memset(buffer_bytes, 0, sizeof(HHPacket));
+    for (size_t i = 0; i < sizeof(HHPacket); ++i) {
+      buffer_bytes[i] = 0;
+    }
   }
 
   static HH_INLINE void CopyPartial(const char* HH_RESTRICT from,

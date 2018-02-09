@@ -21,7 +21,6 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
-#include <vector>
 
 #ifdef HH_GOOGLETEST
 #include "testing/base/public/gunit.h"
@@ -113,11 +112,10 @@ TargetBits VerifyCat(ThreadPool* pool) {
                      0x0F0E0D0C0B0A0908ULL, 0x0706050403020100ULL};
 
   const size_t kMaxSize = 3 * 35;
-  std::vector<char> flat;
-  flat.reserve(kMaxSize);
+  char flat[kMaxSize];
   srand(129);
   for (size_t size = 0; size < kMaxSize; ++size) {
-    flat.push_back(static_cast<char>(rand() & 0xFF));
+    flat[size] = static_cast<char>(rand() & 0xFF);
   }
 
   std::atomic<TargetBits> targets{~0U};
@@ -125,7 +123,7 @@ TargetBits VerifyCat(ThreadPool* pool) {
   pool->Run(0, kMaxSize, [&key, &flat, &targets](const uint32_t i) {
     Result dummy;
     targets.fetch_and(InstructionSets::RunAll<HighwayHashCatTest>(
-        key, flat.data(), i, &dummy, &OnCatFailure));
+        key, flat, i, &dummy, &OnCatFailure));
   });
   return targets.load();
 }

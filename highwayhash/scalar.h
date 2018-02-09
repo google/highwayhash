@@ -114,7 +114,7 @@ class Scalar {
   HH_INLINE Scalar& operator<<=(const int count) {
     // In C, int64_t << 64 is undefined, but we want to match the sensible
     // behavior of SSE2 (zeroing).
-    if (count >= sizeof(T) * 8) {
+    if (count >= static_cast<int>(sizeof(T)) * 8) {
       v_ = 0;
     } else {
       v_ <<= count;

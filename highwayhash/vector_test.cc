@@ -25,6 +25,10 @@
 namespace highwayhash {
 namespace {
 
+#ifdef HH_DISABLE_TARGET_SPECIFIC
+void RunTests() {}
+#else
+
 void NotifyFailure(const char* target, const size_t size) {
   const size_t lane_bits = (size & 0xFF) * 8;
   const size_t lane_index = (size >> 8) & 0xFF;
@@ -39,13 +43,13 @@ void NotifyFailure(const char* target, const size_t size) {
 }
 
 void RunTests() {
-#ifndef HH_DISABLE_TARGET_SPECIFIC
   const TargetBits tested = InstructionSets::RunAll<VectorTest>(&NotifyFailure);
   HH_TARGET_NAME::ForeachTarget(tested, [](const TargetBits target) {
     printf("%10s: done\n", TargetName(target));
   });
-#endif
 }
+
+#endif  // HH_DISABLE_TARGET_SPECIFIC
 
 #ifdef HH_GOOGLETEST
 TEST(VectorTest, Run) { RunTests(); }
