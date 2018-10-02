@@ -18,6 +18,7 @@
 #include <set>
 #include "testing/base/public/gunit.h"
 #include "third_party/absl/time/clock.h"
+#include "third_party/absl/time/time.h"
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/data_parallel.h"
 #include "thread/threadpool.h"
@@ -29,7 +30,7 @@ constexpr int kBenchmarkTasks = 1000000;
 
 // Returns elapsed time [nanoseconds] for std::async.
 double BenchmarkAsync(uint64_t* total) {
-  const base::Time t0 = absl::Now();
+  const absl::Time t0 = absl::Now();
   std::atomic<uint64_t> sum1{0};
   std::atomic<uint64_t> sum2{0};
 
@@ -48,14 +49,14 @@ double BenchmarkAsync(uint64_t* total) {
     future.get();
   }
 
-  const base::Time t1 = absl::Now();
+  const absl::Time t1 = absl::Now();
   *total = sum1.load() + sum2.load();
-  return base::ToDoubleNanoseconds(t1 - t0);
+  return absl::ToDoubleNanoseconds(t1 - t0);
 }
 
 // Returns elapsed time [nanoseconds] for (atomic) ThreadPool.
 double BenchmarkPoolA(uint64_t* total) {
-  const base::Time t0 = absl::Now();
+  const absl::Time t0 = absl::Now();
   std::atomic<uint64_t> sum1{0};
   std::atomic<uint64_t> sum2{0};
 
@@ -65,14 +66,14 @@ double BenchmarkPoolA(uint64_t* total) {
     sum2.fetch_add(1);
   });
 
-  const base::Time t1 = absl::Now();
+  const absl::Time t1 = absl::Now();
   *total = sum1.load() + sum2.load();
-  return base::ToDoubleNanoseconds(t1 - t0);
+  return absl::ToDoubleNanoseconds(t1 - t0);
 }
 
 // Returns elapsed time [nanoseconds] for ::ThreadPool.
 double BenchmarkPoolG(uint64_t* total) {
-  const base::Time t0 = absl::Now();
+  const absl::Time t0 = absl::Now();
   std::atomic<uint64_t> sum1{0};
   std::atomic<uint64_t> sum2{0};
 
@@ -87,9 +88,9 @@ double BenchmarkPoolG(uint64_t* total) {
     }
   }
 
-  const base::Time t1 = absl::Now();
+  const absl::Time t1 = absl::Now();
   *total = sum1.load() + sum2.load();
-  return base::ToDoubleNanoseconds(t1 - t0);
+  return absl::ToDoubleNanoseconds(t1 - t0);
 }
 
 // Compares ThreadPool speed to std::async and ::ThreadPool.
