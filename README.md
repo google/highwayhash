@@ -116,14 +116,14 @@ does not return the same results.
 
 ## HighwayHash
 
-We have devised a new way of mixing inputs with AVX2 multiply and permute
+We have devised a new way of mixing inputs with SIMD multiply and permute
 instructions. The multiplications are 32x32 -> 64 bits and therefore infeasible
 to reverse. Permuting equalizes the distribution of the resulting bytes.
 
-The internal state occupies four 256-bit AVX2 registers. Due to limitations of
-the instruction set, the registers are partitioned into two 512-bit halves that
-remain independent until the reduce phase. The algorithm outputs 64 bit digests
-or up to 256 bits at no extra cost.
+The internal state is quite large (1024 bits) but fits within SIMD registers.
+Due to limitations of the AVX2 instruction set, the registers are partitioned
+into two 512-bit halves that remain independent until the reduce phase. The
+algorithm outputs 64 bit digests or up to 256 bits at no extra cost.
 
 In addition to high throughput, the algorithm is designed for low finalization
 cost. The result is more than twice as fast as SipTreeHash.
@@ -183,10 +183,25 @@ which dramatically increased timings especially for small inputs.
 ## CPU requirements
 
 SipTreeHash(13) requires an AVX2-capable CPU (e.g. Haswell). HighwayHash
-includes a dispatcher that chooses the best available (AVX2, SSE4.1, VSX or
-portable) implementation at runtime, as well as a directly callable function
-template that can only run on the CPU for which it was built. SipHash(13) and
+includes a dispatcher that chooses the implementation (AVX2, SSE4.1, VSX or
+portable)  at runtime, as well as a directly callable function template that can
+only run on the CPU for which it was built. SipHash(13) and
 ScalarSipTreeHash(13) have no particular CPU requirements.
+
+### AVX2 vs SSE4
+
+When both AVX2 and SSE4 are available, the decision whether to use AVX2 is
+non-obvious. AVX2 vectors are twice as wide, but require a higher power license
+(integer multiplications count as 'heavy' instructions) and can thus reduce the
+clock frequency of the core or entire socket(!) on Haswell systems. This
+partially explains the observed 1.25x (not 2x) speedup over SSE4. Moreover, it
+is inadvisable to only sporadically use AVX2 instructions because there is also
+a ~56K cycle warmup period during which AVX2 operations are slower, and Haswell
+can even stall during this period. Thus, we recommend avoiding AVX2 for
+infrequent hashing if the rest of the application is also not using AVX2. For
+any input larger than 1 MiB, it is probably worthwhile to enable AVX2.
+
+### SIMD implementations
 
 Our x86 implementations use custom vector classes with overloaded operators
 (e.g. `const V4x64U a = b + c`) for type-safety and improved readability vs.
@@ -194,13 +209,16 @@ compiler intrinsics (e.g. `const __m256i a = _mm256_add_epi64(b, c)`).
 The VSX implementation uses built-in vector types alongside Altivec intrinsics.
 A high-performance third-party ARM implementation is mentioned below.
 
+### Dispatch
+
 Our instruction_sets dispatcher avoids running newer instructions on older CPUs
 that do not support them. However, intrinsics, and therefore also any vector
-classes that use them, require a compiler flag that also enables the compiler to
-generate code for that CPU. This means the intrinsics must be placed in separate
-translation units that are compiled with the required flags. It is important
-that these source files and their headers not define any inline functions,
-because that might break the one definition rule and cause crashes.
+classes that use them, require (on GCC < 4.9 or Clang < 3.9) a compiler flag
+that also allows the compiler to generate code for that CPU. This means the
+intrinsics must be placed in separate translation units that are compiled with
+the required flags. It is important that these source files and their headers
+not define any inline functions, because that might break the one definition
+rule and cause crashes.
 
 To minimize dispatch overhead when hashes are computed often (e.g. in a loop),
 we can inline the hash function into its caller using templates. The dispatch
@@ -356,6 +374,6 @@ Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2017-12-29
+<jyrki.alakuijala@gmail.com>, updated 2018-10-02
 
 This is not an official Google product.
