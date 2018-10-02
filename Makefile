@@ -4,6 +4,10 @@ override CPPFLAGS += -I.
 override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC -pthread
 override LDFLAGS += -pthread
 
+PREFIX ?= /usr/local
+INCDIR ?= $(PREFIX)/include
+LIBDIR ?= $(PREFIX)/lib
+
 SIP_OBJS := $(addprefix obj/, \
 	sip_hash.o \
 	sip_tree_hash.o \
@@ -35,6 +39,9 @@ HIGHWAYHASH_TEST_OBJS += obj/highwayhash_test_avx2.o obj/highwayhash_test_sse41.
 VECTOR_TEST_OBJS += obj/vector_test_avx2.o obj/vector_test_sse41.o
 endif
 endif
+
+# In case highwayhash_test defines PRINT_RESULTS.
+HIGHWAYHASH_TEST_OBJS += $(HIGHWAYHASH_OBJS)
 
 all: $(addprefix bin/, \
 	profiler_example nanobenchmark_example vector_test sip_hash_test \
