@@ -22,7 +22,11 @@
 // dependencies must not define any function unless it is static inline and/or
 // within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
+#if HH_TARGET == HH_TARGET_NEON
+#include "highwayhash/vector_neon.h"
+#else
 #include "highwayhash/vector128.h"
+#endif
 
 // For auto-dependency generation, we need to include all headers but not their
 // contents (otherwise compilation fails because -msse4.1 is not specified).
@@ -45,7 +49,11 @@ struct IntMask<0> {
   HH_INLINE V4x32U operator()(const V4x32U& size) const {
     // Lane n is valid if size >= (n + 1) * 4; subtract one because we only have
     // greater-than comparisons and don't want a negated mask.
+#if HH_TARGET == HH_TARGET_NEON
+    return V4x32U(vcgtq_u32(size, V4x32U(15, 11, 7, 3)));
+#else
     return V4x32U(_mm_cmpgt_epi32(size, V4x32U(15, 11, 7, 3)));
+#endif
   }
 };
 
@@ -54,7 +62,11 @@ struct IntMask<16> {
   // "size" is 16..31; this is for loading the upper half of a packet, so
   // effectively deduct 16 from size by changing the comparands.
   HH_INLINE V4x32U operator()(const V4x32U& size) const {
+#if HH_TARGET == HH_TARGET_NEON
+    return V4x32U(vcgtq_u32(size, V4x32U(31, 27, 23, 19)));
+#else
     return V4x32U(_mm_cmpgt_epi32(size, V4x32U(31, 27, 23, 19)));
+#endif
   }
 };
 
@@ -70,10 +82,12 @@ HH_INLINE V4x32U Insert4AboveMask(const uint32_t bytes4, const V4x32U& mask,
   return prev | AndNot(mask, V4x32U(bytes4));
 }
 
+#if HH_TARGET == HH_TARGET_AVX2
 // Shifts "suffix" left by "prefix_len" = 0..15 bytes, clears upper bytes of
 // "prefix", and returns the merged/concatenated bytes.
 HH_INLINE V4x32U Concatenate(const V4x32U& prefix, const size_t prefix_len,
                              const V4x32U& suffix) {
+
   static const uint64_t table[V16x8U::N][V2x64U::N] = {
       {0x0706050403020100ull, 0x0F0E0D0C0B0A0908ull},
       {0x06050403020100FFull, 0x0E0D0C0B0A090807ull},
@@ -95,7 +109,7 @@ HH_INLINE V4x32U Concatenate(const V4x32U& prefix, const size_t prefix_len,
   const V2x64U shifted_suffix(_mm_shuffle_epi8(suffix, control));
   return V4x32U(_mm_blendv_epi8(shifted_suffix, prefix, control));
 }
-
+#endif
 }  // namespace HH_TARGET_NAME
 }  // namespace highwayhash
 

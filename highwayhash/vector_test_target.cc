@@ -24,6 +24,8 @@
 #include "highwayhash/vector256.h"
 #elif HH_TARGET == HH_TARGET_SSE41
 #include "highwayhash/vector128.h"
+#elif HH_TARGET == HH_TARGET_NEON
+#include "highwayhash/vector_neon.h"
 #elif HH_TARGET == HH_TARGET_Portable
 #include "highwayhash/scalar.h"
 #else
@@ -37,7 +39,7 @@ namespace {
 #if HH_TARGET == HH_TARGET_AVX2
 template <typename T>
 using V = V256<T>;
-#elif HH_TARGET == HH_TARGET_SSE41
+#elif HH_TARGET == HH_TARGET_SSE41 || HH_TARGET == HH_TARGET_NEON
 template <typename T>
 using V = V128<T>;
 #elif HH_TARGET == HH_TARGET_Portable

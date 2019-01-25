@@ -52,10 +52,22 @@ namespace highwayhash {
 #define HH_ARCH_X64 0
 #endif
 
-#ifdef __aarch64__
+#if defined(__aarch64__) || defined(__arm64__)
 #define HH_ARCH_AARCH64 1
 #else
 #define HH_ARCH_AARCH64 0
+#endif
+
+#ifdef __arm__
+#define HH_ARCH_ARM 1
+#else
+#define HH_ARCH_ARM 0
+#endif
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+#define HH_ARCH_NEON 1
+#else
+#define HH_ARCH_NEON 0
 #endif
 
 #if defined(__powerpc64__) || defined(_M_PPC)
@@ -82,6 +94,8 @@ namespace highwayhash {
 #define HH_TARGET_NAME SSE41
 #elif defined(__VSX__)
 #define HH_TARGET_NAME VSX
+#elif HH_ARCH_NEON
+#define HH_TARGET_NAME NEON
 #else
 #define HH_TARGET_NAME Portable
 #endif
@@ -112,6 +126,7 @@ namespace highwayhash {
 #define HH_TARGET_SSE41 2
 #define HH_TARGET_AVX2 4
 #define HH_TARGET_VSX 8
+#define HH_TARGET_NEON 16
 
 // Bit array for one or more HH_TARGET_*. Used to indicate which target(s) are
 // supported or were called by InstructionSets::RunAll.

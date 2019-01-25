@@ -28,6 +28,8 @@
 #include <intrin.h>
 #endif
 
+#include <ctime>
+
 namespace highwayhash {
 
 // Start/Stop return absolute timestamps and must be placed immediately before
@@ -114,7 +116,7 @@ inline uint64_t Start<uint64_t>() {
       // "cc" = flags modified by SHL.
       : "rdx", "memory", "cc");
 #else
-#error "Port"
+  t = static_cast<uint64_t>(clock());
 #endif
   return t;
 }
@@ -145,7 +147,7 @@ inline uint64_t Stop<uint64_t>() {
       // "cc" = flags modified by SHL.
       : "rcx", "rdx", "memory", "cc");
 #else
-#error "Port"
+  t = static_cast<uint64_t>(clock());
 #endif
   return t;
 }

@@ -1,4 +1,4 @@
-# We assume X64 unless HH_POWER or HH_AARCH64 are defined.
+# We assume X64 unless HH_POWER, HH_ARM, or HH_AARCH64 are defined.
 
 override CPPFLAGS += -I.
 override CXXFLAGS += -std=c++11 -Wall -O3 -fPIC -pthread
@@ -25,8 +25,17 @@ HIGHWAYHASH_OBJS := $(DISPATCHER_OBJS) obj/hh_portable.o
 HIGHWAYHASH_TEST_OBJS := $(DISPATCHER_OBJS) obj/highwayhash_test_portable.o
 VECTOR_TEST_OBJS := $(DISPATCHER_OBJS) obj/vector_test_portable.o
 
+# aarch64 and ARM use the same code, although ARM usually needs an extra flag for NEON.
+ifdef HH_ARM
+CXXFLAGS += -mfloat-abi=hard -march=armv7-a -mfpu=neon
+HH_AARCH64 = 1
+endif
+
 ifdef HH_AARCH64
 HH_X64 =
+HIGHWAYHASH_OBJS += obj/hh_neon.o
+HIGHWAYHASH_TEST_OBJS += obj/highwayhash_test_neon.o
+VECTOR_TEST_OBJS += obj/vector_test_neon.o
 else
 ifdef HH_POWER
 HH_X64 =
@@ -72,6 +81,7 @@ bin/profiler_example: $(DISPATCHER_OBJS)
 bin/nanobenchmark_example: $(DISPATCHER_OBJS) obj/nanobenchmark.o
 
 ifdef HH_X64
+# TODO: Portability: Have AVX2 be optional so benchmarking can be done on older machines.
 obj/sip_tree_hash.o: CXXFLAGS+=-mavx2
 # (Compiled from same source file with different compiler flags)
 obj/highwayhash_test_avx2.o: CXXFLAGS+=-mavx2

@@ -39,6 +39,8 @@ const char* TargetName(const TargetBits target_bit) {
       return "AVX2";
     case HH_TARGET_VSX:
       return "VSX";
+    case HH_TARGET_NEON:
+      return "NEON";
     default:
       return nullptr;  // zero, multiple, or unknown bits
   }
