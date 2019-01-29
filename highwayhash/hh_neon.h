@@ -74,7 +74,11 @@ class HHStateNEON {
     // 'Length padding' differentiates zero-valued inputs that have the same
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
-    const int32x4_t vsize_mod32(static_cast<int32_t>(size_mod32));
+
+    // We can't use vshl/vsra because it needs a constant expression.
+    // In order to do this right now, we would need a switch statement.
+    const int32x4_t vsize_mod32(vdupq_n_s32(static_cast<int32_t>(size_mod32)));
+    // -32 - size_mod32
     const int32x4_t shift_right_amt = vdupq_n_s32(static_cast<int32_t>(size_mod32) + (~32 + 1));
     // Equivalent to storing size_mod32 in packet.
     v0L += V2x64U(vreinterpretq_u64_s32(vsize_mod32));

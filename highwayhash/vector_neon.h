@@ -114,7 +114,7 @@ HH_INLINE uint64x2_t vld1q_low_u64(const uint64_t* p)
 #define EXPAND(...) __VA_ARGS__
 
 #define CASE(op, i, ...)                   \
-    case i: v_ = op(__VA_ARGS__, i);
+    case i: v_ = op(__VA_ARGS__, i); break;
 
 #define INTRINSIC_REPEAT_8_0(op, addx, ...)    \
     CASE(EXPAND(op), 1 + addx, __VA_ARGS__);       \
@@ -176,7 +176,7 @@ class V128<uint8_t> {
   HH_INLINE explicit V128(T i) : v_(vdupq_n_u8(i)) {}
 
   // Copy from other vector.
-  HH_INLINE explicit V128(const V128& other) : v_(other.v_) {}
+  HH_INLINE explicit V128(const V128& other) : v_(wother.v_) {}
 
   // C-style cast because vector casts are stupid on NEON.
   template <typename U>
@@ -356,7 +356,7 @@ class V128<uint32_t> {
   // Copy from other vector.
   HH_INLINE explicit V128(const V128& other) : v_(other.v_) {}
   template <typename U>
-  HH_INLINE explicit V128(const V128<U>& other) : v_((const uint32x4_t)other.v_) {}
+  HH_INLINE explicit V128(const V128<U>& other) : v_((const uint32x4_t)other) {}
   HH_INLINE V128& operator=(const V128& other) {
     v_ = other.v_;
     return *this;
@@ -881,12 +881,13 @@ HH_INLINE void Store<uint32_t>(const V128<uint32_t>& v, uint32_t* const HH_RESTR
   vst1q_u32(p, v);
 }
 
-#undef HH_ALIGN
 template<>
 HH_INLINE void Store<uint64_t>(const V128<uint64_t>& v, uint64_t* const HH_RESTRICT to) {
   uint64_t *const HH_RESTRICT p = reinterpret_cast<uint64_t *>(HH_ALIGN(to));
   vst1q_u64(p, v);
 }
+#undef HH_ALIGN
+
 #if 0
 HH_INLINE void Store(const V128<float>& v, float* const HH_RESTRICT to) {
   vst1q_f32(to, v);
