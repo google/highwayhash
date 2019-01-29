@@ -40,8 +40,9 @@
 #define OS_LINUX 0
 #endif
 
-#ifdef __MACH__
+#if defined(__APPLE__) || defined(__MACH__) // __MACH__ also defined for GNU/Hurd
 #define OS_MAC 1
+#include "os_mac.cc"
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #else
@@ -101,7 +102,7 @@ void RaiseThreadPriority() {
 #elif OS_LINUX
   // omit: SCHED_RR and SCHED_FIFO with sched_priority max, max-1 and max/2
   // lead to 2-3x runtime and higher variability!
-#elif OS_FREEBSD
+#elif OS_FREEBSD || OS_MAC
 #else
 #error "port"
 #endif
@@ -110,7 +111,7 @@ void RaiseThreadPriority() {
 struct ThreadAffinity {
 #if OS_WIN
   DWORD_PTR mask;
-#elif OS_LINUX
+#elif OS_LINUX || OS_MAC
   cpu_set_t set;
 #elif OS_FREEBSD
   cpuset_t set;
@@ -133,6 +134,9 @@ ThreadAffinity* GetThreadAffinity() {
   const pid_t pid = getpid();  // current thread
   const int err = cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, pid,
                                      sizeof(cpuset_t), &affinity->set);
+  CHECK(err == 0);
+#elif OS_MAC
+  const int err = mac_getaffinity(&affinity->set);
   CHECK(err == 0);
 #endif
   return affinity;
@@ -165,6 +169,9 @@ void SetThreadAffinity(ThreadAffinity* affinity) {
   const int err = cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, pid,
                                      sizeof(cpuset_t), &affinity->set);
   CHECK(err == 0);
+#elif OS_MAC
+  const int err = mac_setaffinity(&affinity->set);
+  CHECK(err == 0);
 #else
 #error "port"
 #endif
@@ -192,6 +199,12 @@ std::vector<int> AvailableCPUs() {
       cpus.push_back(cpu);
     }
   }
+#elif OS_MAC
+  for (int cpu = 0; cpu < sizeof(cpu_set_t) * 8; ++cpu) {
+    if (CPU_ISSET(cpu, &affinity->set)) {
+      cpus.push_back(cpu);
+    }
+  }
 #else
 #error "port"
 #endif
@@ -206,6 +219,9 @@ void PinThreadToCPU(const int cpu) {
   CPU_ZERO(&affinity.set);
   CPU_SET(cpu, &affinity.set);
 #elif OS_FREEBSD
+  CPU_ZERO(&affinity.set);
+  CPU_SET(cpu, &affinity.set);
+#elif OS_MAC
   CPU_ZERO(&affinity.set);
   CPU_SET(cpu, &affinity.set);
 #else

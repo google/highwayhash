@@ -45,6 +45,8 @@
 #include "highwayhash/hh_sse41.h"
 #elif HH_TARGET == HH_TARGET_VSX
 #include "highwayhash/hh_vsx.h"
+#elif HH_TARGET == HH_TARGET_NEON
+#include "highwayhash/hh_neon.h"
 #elif HH_TARGET == HH_TARGET_Portable
 #include "highwayhash/hh_portable.h"
 #else

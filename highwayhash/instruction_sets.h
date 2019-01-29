@@ -40,6 +40,10 @@ class InstructionSets {
   static HH_INLINE TargetBits Supported() {
     return HH_TARGET_VSX | HH_TARGET_Portable;
   }
+#elif HH_ARCH_NEON
+  static HH_INLINE TargetBits Supported() {
+    return HH_TARGET_NEON | HH_TARGET_Portable;
+  }
 #else
   static HH_INLINE TargetBits Supported() { return HH_TARGET_Portable; }
 #endif
@@ -66,6 +70,12 @@ class InstructionSets {
       Func<HH_TARGET_VSX>()(std::forward<Args>(args)...);
       return HH_TARGET_VSX;
     }
+#elif HH_ARCH_NEON
+    const TargetBits supported = Supported();
+    if (supported & HH_TARGET_NEON) {
+      Func<HH_TARGET_NEON>()(std::forward<Args>(args)...);
+      return HH_TARGET_NEON;
+    }
 #endif
 
     // No matching HH_ARCH or no supported HH_TARGET:
@@ -89,6 +99,11 @@ class InstructionSets {
 #elif HH_ARCH_PPC
     if (supported & HH_TARGET_VSX) {
       Func<HH_TARGET_VSX>()(std::forward<Args>(args)...);
+    }
+
+#elif HH_ARCH_NEON
+    if (supported & HH_TARGET_NEON) {
+      Func<HH_TARGET_NEON>()(std::forward<Args>(args)...);
     }
 #endif
 
