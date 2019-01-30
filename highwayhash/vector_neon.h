@@ -176,7 +176,7 @@ class V128<uint8_t> {
   HH_INLINE explicit V128(T i) : v_(vdupq_n_u8(i)) {}
 
   // Copy from other vector.
-  HH_INLINE explicit V128(const V128& other) : v_(wother.v_) {}
+  HH_INLINE explicit V128(const V128& other) : v_(other.v_) {}
 
   // C-style cast because vector casts are stupid on NEON.
   template <typename U>
