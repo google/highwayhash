@@ -39,7 +39,7 @@ struct cpu_set_t {
 };
 
 static inline void CPU_ZERO(size_t setsize, cpu_set_t* set) {
-  memset(set, 0, setsize);
+  memset(set, 0, sizeof(cpu_set_t));
 }
 
 static inline int CPU_ISSET(int cpu, const cpu_set_t* set) {
