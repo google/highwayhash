@@ -38,7 +38,7 @@ namespace highwayhash {
 // it easier use the vector_neon symbols, but requires textual inclusion.
 namespace HH_TARGET_NAME {
 
-// J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
+// J-lanes tree hashing: see https://doi.org/10.4236/jis.2014.53010
 // Uses the same method that SSE4.1 uses, only with NEON used instead.
 class HHStateNEON {
  public:

@@ -81,7 +81,7 @@ static HH_INLINE PPC_VEC_U64 MultiplyVectors(const PPC_VEC_U64& vec1,
                   reinterpret_cast<const PPC_VEC_U32>(vec2));
 }
 
-// J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
+// J-lanes tree hashing: see https://doi.org/10.4236/jis.2014.53010
 class HHStateVSX {
  public:
   explicit HH_INLINE HHStateVSX(const HHKey key) { Reset(key); }
