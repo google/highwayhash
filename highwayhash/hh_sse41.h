@@ -36,7 +36,7 @@ namespace highwayhash {
 // it easier use the vector128 symbols, but requires textual inclusion.
 namespace HH_TARGET_NAME {
 
-// J-lanes tree hashing: see http://dx.doi.org/10.4236/jis.2014.53010
+// J-lanes tree hashing: see https://doi.org/10.4236/jis.2014.53010
 // Uses pairs of SSE4.1 instructions to emulate the AVX-2 algorithm.
 class HHStateSSE41 {
  public:

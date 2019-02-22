@@ -28,7 +28,7 @@ namespace {
 
 // Paper: https://www.131002.net/siphash/siphash.pdf
 // SSE41 implementation: https://goo.gl/80GBSD
-// Tree hash extension: http://dx.doi.org/10.4236/jis.2014.53010
+// Tree hash extension: https://doi.org/10.4236/jis.2014.53010
 
 // The hash state is updated by injecting 4x8-byte packets;
 // XORing together all state vectors yields 32 bytes that are
