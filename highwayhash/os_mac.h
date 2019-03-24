@@ -38,7 +38,7 @@ struct cpu_set_t {
   cpu_mask bits[NR_CPUS / NR_CPUBITS];
 };
 
-static inline void CPU_ZERO(size_t setsize, cpu_set_t* set) {
+static inline void CPU_ZERO(cpu_set_t* set) {
   memset(set, 0, sizeof(cpu_set_t));
 }
 
