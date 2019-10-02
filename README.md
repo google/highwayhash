@@ -297,6 +297,19 @@ Our first proposal (suggested by Github user funny-falcon) avoids this overhead
 by always storing one tree per bin. It may also be worthwhile to store the first
 entry directly in the bin, which avoids allocating any tree nodes in the common
 case where bins are sparsely populated. What kind of tree should be used?
+
+Given SipHash and HighwayHash provide high quality randomness, depending on
+expecting attack surface simple non-balancing binary search tree could perform
+reasonably well. [Wikipedia says](https://en.wikipedia.org/wiki/Binary_search_tree#Definition)
+> After a long intermixed sequence of random insertion and deletion, the expected
+> height of the tree approaches square root of the number of keys, √n, which grows
+> much faster than log n.
+
+While `O(√n)` is much larger than `O(log n)`, it is still much smaller than `O(n)`.
+And it will certainly complicate the timing attack, since the time of operation
+on collisioned bin will grow slower.
+
+If stronger safety guarantees are needed, then a balanced tree should be used.
 Scapegoat and splay trees only offer amortized complexity guarantees, whereas
 treaps require an entropy source and have higher constant factors in practice.
 Self-balancing structures such as 2-3 or red-black trees require additional
