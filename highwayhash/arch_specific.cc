@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
+#endif
 
 #include <string.h>  // memcpy
 #include <string>
