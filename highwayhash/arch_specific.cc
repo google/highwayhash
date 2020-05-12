@@ -21,7 +21,11 @@
 #endif
 
 #if HH_ARCH_PPC
+#if __GLIBC__
 #include <sys/platform/ppc.h>  // __ppc_get_timebase_freq
+#elif __FreeBSD__
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #endif
 
 #include <string.h>  // memcpy
@@ -118,6 +122,7 @@ double DetectNominalClockRate() {
   }
 #elif HH_ARCH_PPC
   double freq = -1;
+#if __linux__
   char line[200];
   char* s;
   char* value;
@@ -142,6 +147,12 @@ double DetectNominalClockRate() {
     fclose(f);
     return freq;
   }
+ #elif __FreeBSD__
+  size_t length = sizeof(freq);
+  sysctlbyname("dev.cpu.0.freq"), &freq, &length, NULL, 0);
+  freq *= 1E6;
+  return freq;
+#endif
 #endif
 
   return 0.0;
@@ -157,7 +168,13 @@ double NominalClockRate() {
 
 double InvariantTicksPerSecond() {
 #if HH_ARCH_PPC
+#if __GLIBC__  
   static const double cycles_per_second = __ppc_get_timebase_freq();
+#elif __FreeBSD__
+  static double cycles_per_second = 0;
+  size_t length = sizeof(cycles_per_second);
+  sysctlbyname("kern.timecounter.tc.timebase.frequency", &cycles_per_second, &length, NULL, 0);
+#endif
   return cycles_per_second;
 #else
   return NominalClockRate();
