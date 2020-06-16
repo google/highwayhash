@@ -218,16 +218,6 @@ class HHStateNEON {
     );
   }
 
-  // Rotates 32-bit lanes by "count" bits.
-  static HH_INLINE void Rotate32By(V2x64U* HH_RESTRICT vH,
-                                   V2x64U* HH_RESTRICT vL,
-                                   const uint64_t count) {
-    // WARNING: the shift count is 64 bits, so we can't reuse vsize_mod32,
-    // which is broadcast into 32-bit lanes.
-    *vL = V2x64U((V4x32U(*vL) << int(count)).ShiftRightInsert(*vL, 32-count));
-    *vH = V2x64U((V4x32U(*vH) << int(count)).ShiftRightInsert(*vH, 32-count));
-  }
-
   static HH_INLINE V2x64U ZipperMerge(const V2x64U& v) {
     // Multiplication mixes/scrambles bytes 0-7 of the 64-bit result to
     // varying degrees. In descending order of goodness, bytes
