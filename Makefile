@@ -129,11 +129,15 @@ distclean: clean
 	[ ! -d lib ] || $(RM) -r -- lib/
 
 # Mode bits are from issue #58, thanks to yurivict for suggesting.
+# Also added owner-write for stripping the .so in post-install.
 install: lib/libhighwayhash.a lib/libhighwayhash.so
 	mkdir -p $(DESTDIR)/$(LIBDIR)
 	mkdir -p $(DESTDIR)/$(INCDIR)/highwayhash
 	install -m0444 lib/libhighwayhash.a $(DESTDIR)/$(LIBDIR)
-	install -m0555 lib/libhighwayhash.so $(DESTDIR)/$(LIBDIR)
+	install -m0755 lib/libhighwayhash.so $(DESTDIR)/$(LIBDIR)
 	install -m0444 highwayhash/*.h $(DESTDIR)/$(INCDIR)/highwayhash/
 
-.PHONY: clean distclean all install
+post-install:
+	${STRIP_CMD} $(DESTDIR)/$(LIBDIR)/libhighwayhash.so
+
+.PHONY: clean distclean all install post-install
