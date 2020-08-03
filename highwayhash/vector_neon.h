@@ -33,6 +33,7 @@
 
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/hh_types.h"
 
 // For auto-dependency generation, we need to include all headers but not their
 // contents.

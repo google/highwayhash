@@ -301,9 +301,9 @@ case where bins are sparsely populated. What kind of tree should be used?
 Given SipHash and HighwayHash provide high quality randomness, depending on
 expecting attack surface simple non-balancing binary search tree could perform
 reasonably well. [Wikipedia says](https://en.wikipedia.org/wiki/Binary_search_tree#Definition)
-> After a long intermixed sequence of random insertion and deletion, the expected
-> height of the tree approaches square root of the number of keys, √n, which grows
-> much faster than log n.
+> After a long intermixed sequence of random insertion and deletion, the
+> expected height of the tree approaches square root of the number of keys, √n,
+> which grows much faster than log n.
 
 While `O(√n)` is much larger than `O(log n)`, it is still much smaller than `O(n)`.
 And it will certainly complicate the timing attack, since the time of operation
@@ -358,6 +358,9 @@ Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/minio/highwayhash
 Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-cffi
+
+> **_NOTE:_**  For highwayhash-cffi, please note an [issue](https://github.com/kpdemetriou/highwayhash-cffi/issues/1)
+has been reported ([merge request](https://github.com/kpdemetriou/highwayhash-cffi/pull/2)).
 
 ## Modules
 

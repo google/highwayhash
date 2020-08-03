@@ -33,7 +33,6 @@
 
 namespace highwayhash {
 
-
 // See vector_neon.h for why this namespace is necessary; matching it here makes
 // it easier use the vector_neon symbols, but requires textual inclusion.
 namespace HH_TARGET_NAME {
@@ -79,24 +78,19 @@ class HHStateNEON {
     // In order to do this right now, we would need a switch statement.
     const int32x4_t vsize_mod32(vdupq_n_s32(static_cast<int32_t>(size_mod32)));
     // -32 - size_mod32
-    const int32x4_t shift_right_amt = vdupq_n_s32(static_cast<int32_t>(size_mod32) + (~32 + 1));
+    const int32x4_t shift_right_amt =
+        vdupq_n_s32(static_cast<int32_t>(size_mod32) + (~32 + 1));
     // Equivalent to storing size_mod32 in packet.
     v0L += V2x64U(vreinterpretq_u64_s32(vsize_mod32));
     v0H += V2x64U(vreinterpretq_u64_s32(vsize_mod32));
 
     // Boosts the avalanche effect of mod32.
     v1L = V2x64U(vreinterpretq_u64_u32(
-      vorrq_u32(
-        vshlq_u32(vreinterpretq_u32_u64(v1L), vsize_mod32),
-        vshlq_u32(vreinterpretq_u32_u64(v1L), shift_right_amt)
-      )
-    ));
+        vorrq_u32(vshlq_u32(vreinterpretq_u32_u64(v1L), vsize_mod32),
+                  vshlq_u32(vreinterpretq_u32_u64(v1L), shift_right_amt))));
     v1H = V2x64U(vreinterpretq_u64_u32(
-      vorrq_u32(
-        vshlq_u32(vreinterpretq_u32_u64(v1H), vsize_mod32),
-        vshlq_u32(vreinterpretq_u32_u64(v1H), shift_right_amt)
-      )
-    ));
+        vorrq_u32(vshlq_u32(vreinterpretq_u32_u64(v1H), vsize_mod32),
+                  vshlq_u32(vreinterpretq_u32_u64(v1H), shift_right_amt))));
 
     const size_t size_mod4 = size_mod32 & 3;
     const char* HH_RESTRICT remainder = bytes + (size_mod32 & ~3);
@@ -111,11 +105,8 @@ class HHStateNEON {
           Load3()(Load3::AllowReadBeforeAndReturn(), remainder, size_mod4);
 
       // The upper four bytes of packetH are zero, so insert there.
-      packetH = V2x64U(
-        vreinterpretq_u64_u32(
-          vsetq_lane_u32(last4, vreinterpretq_u32_u64(packetH), 3)
-        )
-      );
+      packetH = V2x64U(vreinterpretq_u64_u32(
+          vsetq_lane_u32(last4, vreinterpretq_u32_u64(packetH), 3)));
       Update(packetH, packetL);
     } else {  // size_mod32 < 16
       const V2x64U packetL = LoadMultipleOfFour(bytes, size_mod32);
@@ -125,7 +116,7 @@ class HHStateNEON {
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
-      HH_ALIGNAS(16) uint64_t tmp[2] = { last4, 0 };
+      HH_ALIGNAS(16) uint64_t tmp[2] = {last4, 0};
       const V2x64U packetH(vld1q_u64(tmp));
       Update(packetH, packetL);
     }
@@ -209,13 +200,7 @@ class HHStateNEON {
  private:
   // Swap 32-bit halves of each lane (caller swaps 128-bit halves)
   static HH_INLINE V2x64U Rotate64By32(const V2x64U& v) {
-    return V2x64U(
-      vreinterpretq_u64_u32(
-        vrev64q_u32(
-          vreinterpretq_u32_u64(v)
-        )
-      )
-    );
+    return V2x64U(vreinterpretq_u64_u32(vrev64q_u32(vreinterpretq_u32_u64(v))));
   }
 
   static HH_INLINE V2x64U ZipperMerge(const V2x64U& v) {
@@ -230,21 +215,13 @@ class HHStateNEON {
     //    be used in the next 32x32 multiplication.
 
     // The positions of each byte in the new vector.
-    const uint8_t shuffle_positions[] = {
-       3, 12,  2,  5, 14, 1, 15, 0,
-       11, 4, 10, 13,  9, 6,  8, 7
-    };
+    const uint8_t shuffle_positions[] = {3,  12, 2,  5,  14, 1, 15, 0,
+                                         11, 4,  10, 13, 9,  6, 8,  7};
     const uint8x16_t tbl = vld1q_u8(shuffle_positions);
 
     // Note: vqtbl1q_u8 is polyfilled for ARMv7a in vector_neon.h.
     return V2x64U(
-      vreinterpretq_u64_u8(
-        vqtbl1q_u8(
-          vreinterpretq_u8_u64(v),
-          tbl
-        )
-      )
-    );
+        vreinterpretq_u64_u8(vqtbl1q_u8(vreinterpretq_u8_u64(v), tbl)));
   }
 
   HH_INLINE void Update(const V2x64U& packetH, const V2x64U& packetL) {
@@ -280,7 +257,7 @@ class HHStateNEON {
     const uint32_t* words = reinterpret_cast<const uint32_t*>(bytes);
     // Mask of 1-bits where the final 4 bytes should be inserted (replacement
     // for variable shift/insert using broadcast+blend).
-    alignas(16) const uint64_t mask_pattern[2] = { 0xFFFFFFFFULL, 0 };
+    alignas(16) const uint64_t mask_pattern[2] = {0xFFFFFFFFULL, 0};
     V2x64U mask4(vld1q_u64(mask_pattern));  // 'insert' into lane 0
     V2x64U ret(vdupq_n_u64(0));
     if (size & 8) {
@@ -306,7 +283,8 @@ class HHStateNEON {
   static HH_INLINE void XorByShift128Left12(const V2x64U& x,
                                             V2x64U* HH_RESTRICT out) {
     const V4x32U zero(vdupq_n_u32(0));
-    const V2x64U sign_bit128(vreinterpretq_u64_u32(vsetq_lane_u32(0x80000000u, zero, 3)));
+    const V2x64U sign_bit128(
+        vreinterpretq_u64_u32(vsetq_lane_u32(0x80000000u, zero, 3)));
     const V2x64U top_bits2 = x >> (64 - 2);
     HH_COMPILER_FENCE;
     const V2x64U shifted1_unmasked = x + x;  // (avoids needing port0)

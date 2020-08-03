@@ -185,7 +185,8 @@ void AddMeasurements(DurationsForInputs* input_map, const char* caption,
   input_map->num_items = 0;
 }
 
-#if BENCHMARK_SIP || BENCHMARK_FARM || (BENCHMARK_SIP_TREE && defined(__AVX2__))
+#if BENCHMARK_SIP || BENCHMARK_FARM || BENCHMARK_FP2011 || \
+    (BENCHMARK_SIP_TREE && defined(__AVX2__))
 
 void MeasureAndAdd(DurationsForInputs* input_map, const char* caption,
                    const Func func, Measurements* measurements) {
@@ -250,6 +251,7 @@ uint64_t RunFarm(const void*, const size_t size) {
 
 #endif
 
+
 void AddMeasurements(const std::vector<size_t>& in_sizes,
                      Measurements* measurements) {
   DurationsForInputs input_map(in_sizes.data(), in_sizes.size(), 40);
@@ -266,6 +268,7 @@ void AddMeasurements(const std::vector<size_t>& in_sizes,
 #if BENCHMARK_FARM
   MeasureAndAdd(&input_map, "Farm", &RunFarm, measurements);
 #endif
+
 
 #if BENCHMARK_HIGHWAY
   InstructionSets::RunAll<HighwayHashBenchmark>(

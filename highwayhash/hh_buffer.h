@@ -87,7 +87,6 @@ HH_INLINE V4x32U Insert4AboveMask(const uint32_t bytes4, const V4x32U& mask,
 // "prefix", and returns the merged/concatenated bytes.
 HH_INLINE V4x32U Concatenate(const V4x32U& prefix, const size_t prefix_len,
                              const V4x32U& suffix) {
-
   static const uint64_t table[V16x8U::N][V2x64U::N] = {
       {0x0706050403020100ull, 0x0F0E0D0C0B0A0908ull},
       {0x06050403020100FFull, 0x0E0D0C0B0A090807ull},

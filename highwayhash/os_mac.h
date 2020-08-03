@@ -19,19 +19,19 @@
 
 #ifndef HH_DISABLE_TARGET_SPECIFIC
 
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <sys/sysctl.h>
-
 #include <mach/mach_types.h>
 #include <mach/thread_act.h>
 #include <pthread.h>
+#include <sys/sysctl.h>
+
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
 typedef unsigned long int cpu_mask;
 
 #define SYSCTL_CORE_COUNT "machdep.cpu.thread_count"
-#define NR_CPUS 512 // from the linux kernel limit
+#define NR_CPUS 512  // from the linux kernel limit
 #define NR_CPUBITS (8 * sizeof(cpu_mask))
 
 struct cpu_set_t {
@@ -58,5 +58,5 @@ static inline void CPU_SET(int cpu, cpu_set_t* set) {
 int mac_getaffinity(cpu_set_t* set);
 int mac_setaffinity(cpu_set_t* set);
 
-#endif // !HH_DISABLE_TARGET_SPECIFIC
-#endif // HIGHWAYHASH_OS_MAC_H_
+#endif  // !HH_DISABLE_TARGET_SPECIFIC
+#endif  // HIGHWAYHASH_OS_MAC_H_

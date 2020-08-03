@@ -16,4 +16,7 @@
 // unless they are also restricted. See arch_specific.h for details.
 
 #define HH_TARGET_NAME NEON
+// GCC 4.5.4 only defines the former; 5.4 defines both.
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
 #include "highwayhash/highwayhash_test_target.cc"
+#endif

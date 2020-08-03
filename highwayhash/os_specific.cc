@@ -40,19 +40,21 @@
 #define OS_LINUX 0
 #endif
 
-#if defined(__APPLE__) || defined(__MACH__) // __MACH__ also defined for GNU/Hurd
+#if defined(__APPLE__) || \
+    defined(__MACH__)  // __MACH__ also defined for GNU/Hurd
 #define OS_MAC 1
-#include "os_mac.cc"
 #include <mach/mach.h>
 #include <mach/mach_time.h>
+//
+#include "highwayhash/os_mac.cc"
 #else
 #define OS_MAC 0
 #endif
 
 #ifdef __FreeBSD__
 #define OS_FREEBSD 1
-#include <sys/param.h>
 #include <sys/cpuset.h>
+#include <sys/param.h>
 #include <unistd.h>
 #else
 #define OS_FREEBSD 0

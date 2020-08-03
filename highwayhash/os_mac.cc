@@ -14,15 +14,14 @@
 //
 // Created by Alexander Gryanko on 16/09/2017.
 
-#include "os_mac.h"
+#include "highwayhash/os_mac.h"
 
 int mac_getaffinity(cpu_set_t* set) {
   int64_t core_count = 0;
-  size_t core_count_size = sizeof(core_count); // size is a pointer
-  const int err = sysctlbyname(SYSCTL_CORE_COUNT, &core_count,
-                                 &core_count_size, NULL, 0);
-  if (err != 0)
-    return err;
+  size_t core_count_size = sizeof(core_count);  // size is a pointer
+  const int err =
+      sysctlbyname(SYSCTL_CORE_COUNT, &core_count, &core_count_size, NULL, 0);
+  if (err != 0) return err;
 
   CPU_ZERO(set);
   for (int64_t i = 0; i < core_count; ++i) {
@@ -39,7 +38,7 @@ int mac_setaffinity(cpu_set_t* set) {
   for (current_core = 0; current_core < NR_CPUS; ++current_core) {
     if (CPU_ISSET(current_core, set)) break;
   }
-  thread_affinity_policy_data_t policy = { current_core };
+  thread_affinity_policy_data_t policy = {current_core};
   return thread_policy_set(thread, THREAD_AFFINITY_POLICY,
-                                                (thread_policy_t)&policy, 1);
+                           (thread_policy_t)&policy, 1);
 }
