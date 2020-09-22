@@ -359,9 +359,6 @@ Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/minio/highwayhash
 Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-cffi
 
-> **_NOTE:_**  For highwayhash-cffi, please note an [issue](https://github.com/kpdemetriou/highwayhash-cffi/issues/1)
-has been reported ([merge request](https://github.com/kpdemetriou/highwayhash-cffi/pull/2)).
-
 ## Modules
 
 ### Hashes
