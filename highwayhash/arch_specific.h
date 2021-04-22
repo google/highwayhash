@@ -90,7 +90,10 @@ namespace highwayhash {
 // match the HH_TARGET_* suffixes below.
 #ifdef __AVX2__
 #define HH_TARGET_NAME AVX2
-#elif defined(__SSE4_1__)
+// MSVC does not set SSE4_1, but it does set AVX; checking for the latter means
+// we at least get SSE4 on machines supporting AVX but not AVX2.
+// https://stackoverflow.com/questions/18563978/detect-the-availability-of-sse-sse2-instruction-set-in-visual-studio
+#elif defined(__SSE4_1__) || (HH_MSC_VERSION != 0 && defined(__AVX__))
 #define HH_TARGET_NAME SSE41
 #elif defined(__VSX__)
 #define HH_TARGET_NAME VSX

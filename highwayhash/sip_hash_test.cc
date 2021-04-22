@@ -97,18 +97,16 @@ char* GetInput(size_t size) {
 }
 
 template <class Hasher>
-void BM(int iters, int size) {
-  StopBenchmarkTiming();
+void BM(benchmark::State& state) {
+  int size = state.range(0);
   auto* input = GetInput(size);
   const HH_U64 keys[4] = {0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL,
                           0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL};
   Hasher hasher(keys);
-  StartBenchmarkTiming();
-  for (int i = 0; i < iters; ++i) {
-    testing::DoNotOptimize(hasher(input, size));
+  for (auto s : state) {
+    benchmark::DoNotOptimize(hasher(input, size));
   }
-  StopBenchmarkTiming();
-  SetBenchmarkBytesProcessed(static_cast<int64>(iters) * size);
+  state.SetBytesProcessed(state.iterations() * size);
 }
 
 void Args(::testing::Benchmark* bm) {
