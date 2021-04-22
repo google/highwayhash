@@ -359,6 +359,7 @@ Nick Babcock | Rust port | https://github.com/nickbabcock/highway-rs
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/minio/highwayhash
 Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-cffi
+Jonathan Beard | C++20 constexpr | https://gist.github.com/jonathan-beard/632017faa1d9d1936eb5948ac9186657
 
 ## Modules
 
