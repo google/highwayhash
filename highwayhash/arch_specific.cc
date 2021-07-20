@@ -24,8 +24,10 @@
 #if __GLIBC__
 #include <sys/platform/ppc.h>  // __ppc_get_timebase_freq
 #elif __FreeBSD__
-#include <sys/sysctl.h>
+// clang-format off
 #include <sys/types.h>
+#include <sys/sysctl.h>                 /* must come after sys/types.h */
+// clang-format on
 #endif
 #endif
 
