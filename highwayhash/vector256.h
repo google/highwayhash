@@ -287,7 +287,12 @@ class V256<uint64_t> {
 
   // Broadcasts i to all lanes.
   HH_INLINE explicit V256(T i)
+#if HH_ARCH_X86
+      // _mm_cvtsi64_si128 is not available on x86
+      : V256(i,i,i,i) {}
+#else
       : v_(_mm256_broadcastq_epi64(_mm_cvtsi64_si128(i))) {}
+#endif
 
   // Copy from other vector.
   HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
