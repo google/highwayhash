@@ -31,7 +31,7 @@
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_types.h"
 
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
 #include "highwayhash/iaca.h"
 #endif
 

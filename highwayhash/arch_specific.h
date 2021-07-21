@@ -52,6 +52,18 @@ namespace highwayhash {
 #define HH_ARCH_X64 0
 #endif
 
+#if defined(__i386__) || defined(_M_IX86)
+#define HH_ARCH_X86 1
+#else
+#define HH_ARCH_X86 0
+#endif
+
+#if HH_ARCH_X86 || HH_ARCH_X64
+#define HH_ARCH_X86_X64 1
+#else
+#define HH_ARCH_X86_X64 0
+#endif
+
 #if defined(__aarch64__) || defined(__arm64__)
 #define HH_ARCH_AARCH64 1
 #else
@@ -162,7 +174,7 @@ double NominalClockRate();
 // frequency on PPC and NominalClockRate on all other platforms.
 double InvariantTicksPerSecond();
 
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
 
 // Calls CPUID instruction with eax=level and ecx=count and returns the result
 // in abcd array where abcd = {eax, ebx, ecx, edx} (hence the name abcd).
@@ -172,7 +184,7 @@ void Cpuid(const uint32_t level, const uint32_t count,
 // Returns the APIC ID of the CPU on which we're currently running.
 uint32_t ApicId();
 
-#endif  // HH_ARCH_X64
+#endif  // HH_ARCH_X86_X64
 
 }  // namespace highwayhash
 

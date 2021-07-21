@@ -34,7 +34,7 @@ class InstructionSets {
  public:
 // Returns bit array of HH_TARGET_* supported by the current CPU.
 // The HH_TARGET_Portable bit is guaranteed to be set.
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
   static TargetBits Supported();
 #elif HH_ARCH_PPC
   static HH_INLINE TargetBits Supported() {
@@ -54,7 +54,7 @@ class InstructionSets {
   // this should only be called infrequently (e.g. hoisting it out of loops).
   template <template <TargetBits> class Func, typename... Args>
   static HH_INLINE TargetBits Run(Args&&... args) {
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
     const TargetBits supported = Supported();
     if (supported & HH_TARGET_AVX2) {
       Func<HH_TARGET_AVX2>()(std::forward<Args>(args)...);
@@ -89,7 +89,7 @@ class InstructionSets {
   static HH_INLINE TargetBits RunAll(Args&&... args) {
     const TargetBits supported = Supported();
 
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
     if (supported & HH_TARGET_AVX2) {
       Func<HH_TARGET_AVX2>()(std::forward<Args>(args)...);
     }
