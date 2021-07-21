@@ -249,7 +249,7 @@ void PinThreadToRandomCPU() {
 
   PinThreadToCPU(cpu);
 
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
   // After setting affinity, we should be running on the desired CPU.
   printf("Running on CPU #%d, APIC ID %02x\n", cpu, ApicId());
 #else

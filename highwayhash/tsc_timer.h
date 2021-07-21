@@ -97,7 +97,7 @@ inline uint64_t Start<uint64_t>() {
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HH_ARCH_AARCH64
   asm volatile("mrs %0, cntvct_el0" : "=r"(t));
-#elif HH_ARCH_X64 && HH_MSC_VERSION
+#elif HH_ARCH_X32_X64 && HH_MSC_VERSION
   _mm_lfence();
   HH_COMPILER_FENCE;
   t = __rdtsc();
@@ -128,7 +128,7 @@ inline uint64_t Stop<uint64_t>() {
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HH_ARCH_AARCH64
   asm volatile("mrs %0, cntvct_el0" : "=r"(t));
-#elif HH_ARCH_X64 && HH_MSC_VERSION
+#elif HH_ARCH_X32_X64 && HH_MSC_VERSION
   HH_COMPILER_FENCE;
   unsigned aux;
   t = __rdtscp(&aux);
@@ -158,7 +158,7 @@ inline uint64_t Stop<uint64_t>() {
 template <>
 inline uint32_t Start<uint32_t>() {
   uint32_t t;
-#if HH_ARCH_X64 && HH_MSC_VERSION
+#if HH_ARCH_X32_X64 && HH_MSC_VERSION
   _mm_lfence();
   HH_COMPILER_FENCE;
   t = static_cast<uint32_t>(__rdtsc());
@@ -182,7 +182,7 @@ inline uint32_t Start<uint32_t>() {
 template <>
 inline uint32_t Stop<uint32_t>() {
   uint32_t t;
-#if HH_ARCH_X64 && HH_MSC_VERSION
+#if HH_ARCH_X32_X64 && HH_MSC_VERSION
   HH_COMPILER_FENCE;
   unsigned aux;
   t = static_cast<uint32_t>(__rdtscp(&aux));
