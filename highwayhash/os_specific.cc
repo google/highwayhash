@@ -55,7 +55,7 @@
 #define OS_FREEBSD 1
 // clang-format off
 #include <sys/param.h>
-#include <sys/cpuset.h>			/* must come after sys/param.h */
+#include <sys/cpuset.h>  /* must come after sys/param.h */
 // clang-format on
 #include <unistd.h>
 #else
