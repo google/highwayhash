@@ -178,6 +178,11 @@ double InvariantTicksPerSecond() {
   size_t length = sizeof(cycles_per_second);
   sysctlbyname("kern.timecounter.tc.timebase.frequency", &cycles_per_second,
                &length, NULL, 0);
+#elif __OpenBSD__
+  /* There is currently no method of retrieving this via userland.
+   * This value is correct for Power8 and Power9.
+   */
+  static const double cycles_per_second = 512000000;
 #endif
   return cycles_per_second;
 #else
