@@ -354,6 +354,7 @@ raise an issue and we'll add yours as well.
 By | Language | URL
 --- | --- | ---
 Damian Gryski | Go and x64 assembly | https://github.com/dgryski/go-highway/
+Simon Abdullah | NPM package | https://www.npmjs.com/package/highwayhash-nodejs
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Nick Babcock | Rust port | https://github.com/nickbabcock/highway-rs
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
