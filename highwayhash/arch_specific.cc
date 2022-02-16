@@ -174,7 +174,7 @@ double InvariantTicksPerSecond() {
 #if __GLIBC__
   static const double cycles_per_second = __ppc_get_timebase_freq();
 #elif __FreeBSD__
-  static double cycles_per_second = 0;
+  double cycles_per_second = 0;
   size_t length = sizeof(cycles_per_second);
   sysctlbyname("kern.timecounter.tc.timebase.frequency", &cycles_per_second,
                &length, NULL, 0);
