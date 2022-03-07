@@ -16,7 +16,9 @@
 #include <cstdio>
 #include <future>  //NOLINT
 #include <set>
+
 #include "testing/base/public/gunit.h"
+#include "third_party/absl/container/btree_set.h"
 #include "third_party/absl/time/clock.h"
 #include "third_party/absl/time/time.h"
 #include "highwayhash/arch_specific.h"
@@ -119,7 +121,7 @@ TEST(DataParallelTest, TestApicIds) {
     ThreadPool pool(num_threads);
 
     std::mutex mutex;
-    std::set<unsigned> ids;
+    absl::btree_set<unsigned> ids;
     double total = 0.0;
     pool.Run(0, 2 * num_threads, [&mutex, &ids, &total](const int i) {
       // Useless computations to keep the processor busy so that threads
