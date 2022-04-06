@@ -135,6 +135,13 @@ class HighwayHashCatT {
   // Adds "bytes" to the internal buffer, feeding it to HHStateT::Update as
   // required. Call this as often as desired. Only reads bytes within the
   // interval [bytes, bytes + num_bytes). "num_bytes" == 0 has no effect.
+  //
+  // Beware that this implies hashing two strings {"A", ""} has the same result
+  // as {"", "A"}. To prevent this when hashing independent fields, you can
+  // append some extra (non-empty) data when a field is empty, or
+  // unconditionally also Append the field length. Either option would ensure
+  // the two examples above result in a different hash.
+  //
   // There are no alignment requirements.
   HH_INLINE void Append(const char* HH_RESTRICT bytes, size_t num_bytes) {
     // BeginIACA();
