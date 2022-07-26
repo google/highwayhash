@@ -1,9 +1,10 @@
 // Minimal usage example: prints a hash. Tested on x86, ppc, arm.
 
-#include "highwayhash/highwayhash.h"
-
 #include <algorithm>
+#include <cstring>
 #include <iostream>
+
+#include "highwayhash/highwayhash.h"
 
 using namespace highwayhash;
 
