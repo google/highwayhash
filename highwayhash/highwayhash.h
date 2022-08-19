@@ -205,8 +205,8 @@ class HighwayHashCatT {
   }
 
  private:
-  HHPacket buffer_ HH_ALIGNAS(64);
-  HHStateT<Target> state_ HH_ALIGNAS(32);
+  HH_ALIGNAS(64) HHPacket buffer_;
+  HH_ALIGNAS(32) HHStateT<Target> state_;
   // How many bytes in buffer_ (starting with offset 0) are valid.
   size_t buffer_usage_ = 0;
 };

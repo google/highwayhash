@@ -57,7 +57,7 @@ Note, SipHash wants an uint64_t[2] key while HighwayHash uint64_t[4] .
 
     #include "highwayhash/sip_hash.h"
     using namespace highwayhash;
-    const HH_U64 key2[2] HH_ALIGNAS(16) = {1234, 5678};
+    HH_ALIGNAS(16) const HH_U64 key2[2] = {1234, 5678};
     char in[8] = {1};
     return SipHash(key2, in, 8);
 
@@ -65,7 +65,7 @@ Note, SipHash wants an uint64_t[2] key while HighwayHash uint64_t[4] .
 
     #include "highwayhash/highwayhash.h"
     using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
     HHStateT<HH_TARGET> state(key);
@@ -76,7 +76,7 @@ Note, SipHash wants an uint64_t[2] key while HighwayHash uint64_t[4] .
     #include "highwayhash/highwayhash_target.h"
     #include "highwayhash/instruction_sets.h"
     using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
     InstructionSets::Run<HighwayHash>(key, in, 8, &result);

@@ -52,7 +52,7 @@ using V = Scalar<T>;
 template <class T>
 void NotifyIfUnequal(const V<T>& v, const T expected, const size_t line,
                      const HHNotify notify) {
-  T lanes[V<T>::N] HH_ALIGNAS(32);
+  HH_ALIGNAS(32) T lanes[V<T>::N];
   Store(v, lanes);
   for (size_t i = 0; i < V<T>::N; ++i) {
     if (lanes[i] != expected) {
@@ -157,7 +157,7 @@ void TestShifts(const HHNotify notify) {
 template <class T>
 void TestLoadStore(const HHNotify notify) {
   const size_t n = V<T>::N;
-  T lanes[2 * n] HH_ALIGNAS(32);
+  HH_ALIGNAS(32) T lanes[2 * n];
   for (size_t i = 0; i < n; ++i) {
     lanes[i] = 4;
   }
@@ -169,7 +169,7 @@ void TestLoadStore(const HHNotify notify) {
   NotifyIfUnequal(v4, T(4), __LINE__, notify);
 
   // Aligned store
-  T lanes4[n] HH_ALIGNAS(32);
+  HH_ALIGNAS(32) T lanes4[n];
   Store(v4, lanes4);
   NotifyIfUnequal(Load<V<T>>(lanes4), T(4), __LINE__, notify);
 

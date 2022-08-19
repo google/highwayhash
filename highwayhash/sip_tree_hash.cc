@@ -186,7 +186,7 @@ HH_U64 SipTreeHashT(const HH_U64 (&key)[4], const char* bytes,
   state.Update(final_packet);
 
   // Faster than passing __m256i and extracting.
-  uint64_t hashes[kNumLanes] HH_ALIGNAS(32);
+  HH_ALIGNAS(32) uint64_t hashes[kNumLanes];
   Store(state.Finalize(), hashes);
 
   typename SipHashStateT<kUpdateRounds, kFinalizeRounds>::Key reduce_key;

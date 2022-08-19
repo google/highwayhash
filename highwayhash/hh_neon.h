@@ -187,7 +187,7 @@ class HHStateNEON {
                                  const size_t size_mod32,
                                  const char* HH_RESTRICT buffer,
                                  const size_t buffer_valid) {
-    HHPacket tmp HH_ALIGNAS(32);
+    HH_ALIGNAS(32) HHPacket tmp;
     for (size_t i = 0; i < buffer_valid; ++i) {
       tmp[i] = buffer[i];
     }

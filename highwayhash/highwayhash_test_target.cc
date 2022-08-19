@@ -162,7 +162,7 @@ namespace {
 
 template <TargetBits Target>
 uint64_t RunHighway(const void*, const size_t size) {
-  static const HHKey key HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) static const HHKey key = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   in[0] = static_cast<char>(size & 0xFF);
   HHResult64 result;
@@ -173,7 +173,7 @@ uint64_t RunHighway(const void*, const size_t size) {
 
 template <TargetBits Target>
 uint64_t RunHighwayCat(const void*, const size_t size) {
-  static const HHKey key HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) static const HHKey key = {0, 1, 2, 3};
   HH_ALIGNAS(64) HighwayHashCatT<Target> cat(key);
   char in[kMaxBenchmarkInputSize];
   in[0] = static_cast<char>(size & 0xFF);

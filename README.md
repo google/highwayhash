@@ -15,31 +15,37 @@ ensure the implementations return known-good values for a given set of inputs.
 
 64-bit SipHash for any CPU:
 
-    #include "highwayhash/sip_hash.h"
-    using namespace highwayhash;
-    const HH_U64 key2[2] HH_ALIGNAS(16) = {1234, 5678};
-    char in[8] = {1};
-    return SipHash(key2, in, 8);
+```
+#include "highwayhash/sip_hash.h"
+using namespace highwayhash;
+HH_ALIGNAS(16) const HH_U64 key2[2] = {1234, 5678};
+char in[8] = {1};
+return SipHash(key2, in, 8);
+```
 
 64, 128 or 256 bit HighwayHash for the CPU determined by compiler flags:
 
-    #include "highwayhash/highwayhash.h"
-    using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
-    char in[8] = {1};
-    HHResult64 result;  // or HHResult128 or HHResult256
-    HHStateT<HH_TARGET> state(key);
-    HighwayHashT(&state, in, 8, &result);
+```
+#include "highwayhash/highwayhash.h"
+using namespace highwayhash;
+HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
+char in[8] = {1};
+HHResult64 result;  // or HHResult128 or HHResult256
+HHStateT<HH_TARGET> state(key);
+HighwayHashT(&state, in, 8, &result);
+```
 
 64, 128 or 256 bit HighwayHash for the CPU on which we're currently running:
 
-    #include "highwayhash/highwayhash_target.h"
-    #include "highwayhash/instruction_sets.h"
-    using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
-    char in[8] = {1};
-    HHResult64 result;  // or HHResult128 or HHResult256
-    InstructionSets::Run<HighwayHash>(key, in, 8, &result);
+```
+#include "highwayhash/highwayhash_target.h"
+#include "highwayhash/instruction_sets.h"
+using namespace highwayhash;
+HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
+char in[8] = {1};
+HHResult64 result;  // or HHResult128 or HHResult256
+InstructionSets::Run<HighwayHash>(key, in, 8, &result);
+```
 
 C-callable 64-bit HighwayHash for the CPU on which we're currently running:
 

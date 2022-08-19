@@ -208,14 +208,14 @@ void AddMeasurementsWithPrefix(const char* prefix, const char* target_name,
 #if BENCHMARK_SIP
 
 uint64_t RunSip(const void*, const size_t size) {
-  const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
+  HH_ALIGNAS(16) const HH_U64 key2[2] = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipHash(key2, in, size);
 }
 
 uint64_t RunSip13(const void*, const size_t size) {
-  const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
+  HH_ALIGNAS(16) const HH_U64 key2[2] = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipHash13(key2, in, size);
@@ -226,14 +226,14 @@ uint64_t RunSip13(const void*, const size_t size) {
 #if BENCHMARK_SIP_TREE
 
 uint64_t RunSipTree(const void*, const size_t size) {
-  const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) const HH_U64 key4[4] = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipTreeHash(key4, in, size);
 }
 
 uint64_t RunSipTree13(const void*, const size_t size) {
-  const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) const HH_U64 key4[4] = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipTreeHash13(key4, in, size);
