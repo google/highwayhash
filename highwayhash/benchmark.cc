@@ -141,7 +141,7 @@ class Measurements {
     return sizes;
   }
 
-  using SpeedsForCaption = absl::btree_map<std::string, std::vector<float>>;
+  using SpeedsForCaption = std::map<std::string, std::vector<float>>;
 
   SpeedsForCaption SortByCaption() const {
     SpeedsForCaption cpb_for_caption;
