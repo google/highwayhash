@@ -192,7 +192,7 @@ class HHStateSSE41 {
   // Rotates 32-bit lanes by "count" bits.
   static HH_INLINE void Rotate32By(V2x64U* HH_RESTRICT vH,
                                    V2x64U* HH_RESTRICT vL,
-                                   const uint64_t count) {
+                                   const size_t count) {
     // WARNING: the shift count is 64 bits, so we can't reuse vsize_mod32,
     // which is broadcast into 32-bit lanes.
     const __m128i count_left = _mm_cvtsi32_si128(static_cast<uint32_t>(count));

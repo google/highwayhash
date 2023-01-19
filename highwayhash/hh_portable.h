@@ -233,7 +233,7 @@ class HHStatePortable {
     }
   }
 
-  static HH_INLINE void Rotate32By(uint32_t* halves, const uint64_t count) {
+  static HH_INLINE void Rotate32By(uint32_t* halves, const size_t count) {
     for (int i = 0; i < 2 * kNumLanes; ++i) {
       const uint32_t x = halves[i];
       halves[i] = (x << count) | (x >> (32 - count));
