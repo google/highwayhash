@@ -541,7 +541,7 @@ HH_INLINE V256<T> operator&(const V256<T>& left, const V256<T>& right) {
 }
 
 template <typename T>
-HH_INLINE V256<T> operator|(const V256<T> left, const V256<T>& right) {
+HH_INLINE V256<T> operator|(const V256<T>& left, const V256<T>& right) {
   V256<T> t(left);
   return t |= right;
 }
