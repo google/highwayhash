@@ -64,22 +64,22 @@ class Load3 {
   }
 
   // As above, but preceding bytes are removed and upper byte(s) are zero.
-  HH_INLINE uint64_t operator()(AllowReadBefore, const char* from,
+  HH_INLINE uint32_t operator()(AllowReadBefore, const char* from,
                                 const size_t size_mod4) {
     // Shift 0..3 valid bytes into LSB as if loaded in little-endian order.
     // 64-bit type enables 32-bit shift when size_mod4 == 0.
     uint64_t last3 = operator()(AllowReadBeforeAndReturn(), from, size_mod4);
     last3 >>= 32 - (size_mod4 * 8);
-    return last3;
+    return static_cast<uint32_t>(last3);
   }
 
   // The bytes need not be loaded in little-endian order. This particular order
   // (and the duplication of some bytes depending on "size_mod4") was chosen for
   // computational convenience and can no longer be changed because it is part
   // of the HighwayHash length padding definition.
-  HH_INLINE uint64_t operator()(AllowUnordered, const char* from,
+  HH_INLINE uint32_t operator()(AllowUnordered, const char* from,
                                 const size_t size_mod4) {
-    uint64_t last3 = 0;
+    uint32_t last3 = 0;
     // Not allowed to read any bytes; early-out is faster than reading from a
     // constant array of zeros.
     if (size_mod4 == 0) {
@@ -93,26 +93,26 @@ class Load3 {
     const uint64_t idx1 = size_mod4 >> 1;
     const uint64_t idx2 = size_mod4 - 1;
     // Store into least significant bytes (avoids one shift).
-    last3 = U64FromChar(from[idx0]);
-    last3 += U64FromChar(from[idx1]) << 8;
-    last3 += U64FromChar(from[idx2]) << 16;
+    last3 = U32FromChar(from[idx0]);
+    last3 += U32FromChar(from[idx1]) << 8;
+    last3 += U32FromChar(from[idx2]) << 16;
     return last3;
   }
 
   // Must read exactly [0, size) bytes in little-endian order.
-  HH_INLINE uint64_t operator()(AllowNone, const char* from,
+  HH_INLINE uint32_t operator()(AllowNone, const char* from,
                                 const size_t size_mod4) {
     // We need to load in little-endian order without accessing anything outside
     // [from, from + size_mod4). Unrolling is faster than looping backwards.
-    uint64_t last3 = 0;
+    uint32_t last3 = 0;
     if (size_mod4 >= 1) {
-      last3 += U64FromChar(from[0]);
+      last3 += U32FromChar(from[0]);
     }
     if (size_mod4 >= 2) {
-      last3 += U64FromChar(from[1]) << 8;
+      last3 += U32FromChar(from[1]) << 8;
     }
     if (size_mod4 == 3) {
-      last3 += U64FromChar(from[2]) << 16;
+      last3 += U32FromChar(from[2]) << 16;
     }
     return last3;
   }
@@ -120,10 +120,6 @@ class Load3 {
  private:
   static HH_INLINE uint32_t U32FromChar(const char c) {
     return static_cast<uint32_t>(static_cast<unsigned char>(c));
-  }
-
-  static HH_INLINE uint64_t U64FromChar(const char c) {
-    return static_cast<uint64_t>(static_cast<unsigned char>(c));
   }
 
   static HH_INLINE void Copy(const char* HH_RESTRICT from, const size_t size,
