@@ -78,7 +78,7 @@ def x(a,b,c):
     // size/32. mod32 is sufficient because each Update behaves as if a
     // counter were injected, because the state is large and mixed thoroughly.
     const V8x32U size256(
-        _mm256_broadcastd_epi32(_mm_cvtsi64_si128(size_mod32)));
+        _mm256_broadcastd_epi32(_mm_cvtsi32_si128(static_cast<uint32_t>(size_mod32))));
     // Equivalent to storing size_mod32 in packet.
     v0 += V4x64U(size256);
     // Boosts the avalanche effect of mod32.
