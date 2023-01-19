@@ -127,7 +127,7 @@ void HighwayHashTest<Target>::operator()(const HHKey& key,
 template <TargetBits Target>
 void HighwayHashCatTest<Target>::operator()(const HHKey& key,
                                             const char* HH_RESTRICT bytes,
-                                            const uint64_t size,
+                                            const size_t size,
                                             const HHResult64* expected,
                                             const HHNotify notify) const {
   TestHighwayHashCat(key, bytes, size, expected, notify);
@@ -136,7 +136,7 @@ void HighwayHashCatTest<Target>::operator()(const HHKey& key,
 template <TargetBits Target>
 void HighwayHashCatTest<Target>::operator()(const HHKey& key,
                                             const char* HH_RESTRICT bytes,
-                                            const uint64_t size,
+                                            const size_t size,
                                             const HHResult128* expected,
                                             const HHNotify notify) const {
   TestHighwayHashCat(key, bytes, size, expected, notify);
@@ -145,7 +145,7 @@ void HighwayHashCatTest<Target>::operator()(const HHKey& key,
 template <TargetBits Target>
 void HighwayHashCatTest<Target>::operator()(const HHKey& key,
                                             const char* HH_RESTRICT bytes,
-                                            const uint64_t size,
+                                            const size_t size,
                                             const HHResult256* expected,
                                             const HHNotify notify) const {
   TestHighwayHashCat(key, bytes, size, expected, notify);
