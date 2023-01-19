@@ -54,13 +54,13 @@ struct HighwayHashTest {
 template <TargetBits Target>
 struct HighwayHashCatTest {
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
-                  const uint64_t size, const HHResult64* expected,
+                  const size_t size, const HHResult64* expected,
                   const HHNotify notify) const;
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
-                  const uint64_t size, const HHResult128* expected,
+                  const size_t size, const HHResult128* expected,
                   const HHNotify notify) const;
   void operator()(const HHKey& key, const char* HH_RESTRICT bytes,
-                  const uint64_t size, const HHResult256* expected,
+                  const size_t size, const HHResult256* expected,
                   const HHNotify notify) const;
 };
 
