@@ -105,12 +105,12 @@ def x(a,b,c):
     } else {  // size_mod32 < 16
       const V4x32U int_mask = IntMask<0>()(size);
       const V4x32U packetL = MaskedLoadInt(bytes, int_mask);
-      const uint64_t last3 =
+      const uint32_t last3 =
           Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
-      const V4x32U packetH(_mm_cvtsi64_si128(last3));
+      const V4x32U packetH(_mm_cvtsi32_si128(last3));
       Update(packetH, packetL);
     }
   }
@@ -255,7 +255,7 @@ def x(a,b,c):
   static HH_INLINE V4x32U Load0To16(const char* from, const size_t size_mod32,
                                     const V4x32U& size) {
     const char* remainder = from + (size_mod32 & ~3);
-    const uint64_t last3 = Load3()(Load3Policy(), remainder, size_mod32 & 3);
+    const uint32_t last3 = Load3()(Load3Policy(), remainder, size_mod32 & 3);
     const V4x32U int_mask = IntMask<kSizeOffset>()(size);
     const V4x32U int_lanes = MaskedLoadInt(from, int_mask);
     return Insert4AboveMask(last3, int_mask, int_lanes);

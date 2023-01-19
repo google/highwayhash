@@ -97,12 +97,12 @@ class HHStateSSE41 {
     } else {  // size_mod32 < 16
       const V2x64U packetL = LoadMultipleOfFour(bytes, size_mod32);
 
-      const uint64_t last4 =
+      const uint32_t last4 =
           Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
-      const V2x64U packetH(_mm_cvtsi64_si128(last4));
+      const V2x64U packetH(_mm_cvtsi32_si128(last4));
       Update(packetH, packetL);
     }
   }
