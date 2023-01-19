@@ -89,9 +89,9 @@ class Load3 {
     // These indices are chosen as an easy-to-compute sequence containing the
     // same elements as [0, size), but repeated and/or reordered. This enables
     // unconditional loads, which outperform conditional 8 or 16+8 bit loads.
-    const uint64_t idx0 = 0;
-    const uint64_t idx1 = size_mod4 >> 1;
-    const uint64_t idx2 = size_mod4 - 1;
+    const size_t idx0 = 0;
+    const size_t idx1 = size_mod4 >> 1;
+    const size_t idx2 = size_mod4 - 1;
     // Store into least significant bytes (avoids one shift).
     last3 = U32FromChar(from[idx0]);
     last3 += U32FromChar(from[idx1]) << 8;
