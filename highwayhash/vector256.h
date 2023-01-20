@@ -287,7 +287,14 @@ class V256<uint64_t> {
 
   // Broadcasts i to all lanes.
   HH_INLINE explicit V256(T i)
-      : v_(_mm256_broadcastq_epi64(_mm_cvtsi64_si128(i))) {}
+      : v_(_mm256_broadcastq_epi64(
+#if HH_ARCH_X86
+        // _mm_cvtsi64_si128 is not available on x86
+        _mm_insert_epi32(_mm_cvtsi32_si128(static_cast<uint32_t>(i)), static_cast<uint32_t>(i >> 32), 1)
+#else
+        _mm_cvtsi64_si128(i)
+#endif
+      )) {}
 
   // Copy from other vector.
   HH_INLINE explicit V256(const V256& other) : v_(other.v_) {}
@@ -536,7 +543,7 @@ HH_INLINE V256<T> operator&(const V256<T>& left, const V256<T>& right) {
 }
 
 template <typename T>
-HH_INLINE V256<T> operator|(const V256<T> left, const V256<T>& right) {
+HH_INLINE V256<T> operator|(const V256<T>& left, const V256<T>& right) {
   V256<T> t(left);
   return t |= right;
 }

@@ -79,7 +79,7 @@ TargetBits VerifyImplementations(const Result (&known_good)[kMaxSize + 1]) {
   // For each test input: empty string, 00, 00 01, ...
   char in[kMaxSize + 1] = {0};
   // Fast enough that we don't need a thread pool.
-  for (uint64_t size = 0; size <= kMaxSize; ++size) {
+  for (size_t size = 0; size <= kMaxSize; ++size) {
     in[size] = static_cast<char>(size);
 #if PRINT_RESULTS
     Result actual;

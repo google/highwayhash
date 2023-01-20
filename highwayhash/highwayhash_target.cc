@@ -25,7 +25,7 @@ namespace highwayhash {
 extern "C" {
 uint64_t HH_ADD_TARGET_SUFFIX(HighwayHash64_)(const HHKey key,
                                               const char* bytes,
-                                              const uint64_t size) {
+                                              const size_t size) {
   HHStateT<HH_TARGET> state(key);
   HHResult64 result;
   HighwayHashT(&state, bytes, size, &result);

@@ -97,12 +97,12 @@ class HHStateSSE41 {
     } else {  // size_mod32 < 16
       const V2x64U packetL = LoadMultipleOfFour(bytes, size_mod32);
 
-      const uint64_t last4 =
+      const uint32_t last4 =
           Load3()(Load3::AllowUnordered(), remainder, size_mod4);
 
       // Rather than insert into packetL[3], it is faster to initialize
       // the otherwise empty packetH.
-      const V2x64U packetH(_mm_cvtsi64_si128(last4));
+      const V2x64U packetH(_mm_cvtsi32_si128(last4));
       Update(packetH, packetL);
     }
   }
@@ -192,11 +192,11 @@ class HHStateSSE41 {
   // Rotates 32-bit lanes by "count" bits.
   static HH_INLINE void Rotate32By(V2x64U* HH_RESTRICT vH,
                                    V2x64U* HH_RESTRICT vL,
-                                   const uint64_t count) {
+                                   const size_t count) {
     // WARNING: the shift count is 64 bits, so we can't reuse vsize_mod32,
     // which is broadcast into 32-bit lanes.
-    const __m128i count_left = _mm_cvtsi64_si128(count);
-    const __m128i count_right = _mm_cvtsi64_si128(32 - count);
+    const __m128i count_left = _mm_cvtsi32_si128(static_cast<uint32_t>(count));
+    const __m128i count_right = _mm_cvtsi32_si128(static_cast<uint32_t>(32 - count));
     const V2x64U shifted_leftL(_mm_sll_epi32(*vL, count_left));
     const V2x64U shifted_leftH(_mm_sll_epi32(*vH, count_left));
     const V2x64U shifted_rightL(_mm_srl_epi32(*vL, count_right));
@@ -250,7 +250,7 @@ class HHStateSSE41 {
     const uint32_t* words = reinterpret_cast<const uint32_t*>(bytes);
     // Mask of 1-bits where the final 4 bytes should be inserted (replacement
     // for variable shift/insert using broadcast+blend).
-    V2x64U mask4(_mm_cvtsi64_si128(0xFFFFFFFFULL));  // 'insert' into lane 0
+    V2x64U mask4(_mm_cvtsi32_si128(0xFFFFFFFFU));  // 'insert' into lane 0
     V2x64U ret(0);
     if (size & 8) {
       ret = V2x64U(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(words)));

@@ -16,7 +16,7 @@
 
 #include <stdint.h>
 
-#if HH_ARCH_X64 && !HH_MSC_VERSION
+#if HH_ARCH_X86_X64 && !HH_MSC_VERSION
 #include <cpuid.h>
 #endif
 
@@ -53,7 +53,7 @@ const char* TargetName(const TargetBits target_bit) {
   }
 }
 
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
 
 namespace {
 
@@ -101,12 +101,12 @@ uint32_t ApicId() {
   return abcd[1] >> 24;  // ebx
 }
 
-#endif  // HH_ARCH_X64
+#endif  // HH_ARCH_X86_X64
 
 namespace {
 
 double DetectNominalClockRate() {
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
   const std::string& brand_string = BrandString();
   // Brand strings include the maximum configured frequency. These prefixes are
   // defined by Intel CPUID documentation.

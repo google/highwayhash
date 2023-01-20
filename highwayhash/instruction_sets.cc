@@ -17,7 +17,7 @@
 
 // Currently there are only specialized targets for X64; other architectures
 // only use HH_TARGET_Portable, in which case Supported() just returns that.
-#if HH_ARCH_X64
+#if HH_ARCH_X86_X64
 
 #include <atomic>
 
@@ -138,4 +138,4 @@ TargetBits InstructionSets::Supported() {
 
 }  // namespace highwayhash
 
-#endif  // HH_ARCH_X64
+#endif  // HH_ARCH_X86_X64
