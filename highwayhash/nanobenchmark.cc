@@ -15,14 +15,11 @@
 #include "highwayhash/nanobenchmark.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstdio>
-#include <map>
 #include <random>
 #include <vector>
 
-#include <stddef.h>
-
+#include <map>
 #include "highwayhash/os_specific.h"
 #include "highwayhash/robust_statistics.h"
 #include "highwayhash/tsc_timer.h"

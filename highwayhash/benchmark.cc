@@ -19,11 +19,10 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
-#include <map>
 #include <string>
-#include <utility>
 #include <vector>
 
+#include <map>
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/instruction_sets.h"
@@ -36,6 +35,7 @@
 #define BENCHMARK_HIGHWAY 1
 #define BENCHMARK_HIGHWAY_CAT 1
 #define BENCHMARK_FARM 0
+#define BENCHMARK_INTERNAL 0
 
 #include "highwayhash/highwayhash_test_target.h"
 #if BENCHMARK_SIP
@@ -47,6 +47,10 @@
 #endif
 #if BENCHMARK_FARM
 #include "third_party/farmhash/src/farmhash.h"
+#endif
+
+#if BENCHMARK_INTERNAL
+// Placeholder for include
 #endif
 
 namespace highwayhash {
@@ -141,7 +145,7 @@ class Measurements {
     return sizes;
   }
 
-  using SpeedsForCaption = absl::btree_map<std::string, std::vector<float>>;
+  using SpeedsForCaption = std::map<std::string, std::vector<float>>;
 
   SpeedsForCaption SortByCaption() const {
     SpeedsForCaption cpb_for_caption;
@@ -185,7 +189,7 @@ void AddMeasurements(DurationsForInputs* input_map, const char* caption,
   input_map->num_items = 0;
 }
 
-#if BENCHMARK_SIP || BENCHMARK_FARM || BENCHMARK_FP2011 || \
+#if BENCHMARK_SIP || BENCHMARK_FARM || BENCHMARK_INTERNAL || \
     (BENCHMARK_SIP_TREE && defined(__AVX2__))
 
 void MeasureAndAdd(DurationsForInputs* input_map, const char* caption,
@@ -208,14 +212,14 @@ void AddMeasurementsWithPrefix(const char* prefix, const char* target_name,
 #if BENCHMARK_SIP
 
 uint64_t RunSip(const void*, const size_t size) {
-  const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
+  HH_ALIGNAS(16) const HH_U64 key2[2] = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipHash(key2, in, size);
 }
 
 uint64_t RunSip13(const void*, const size_t size) {
-  const HH_U64 key2[2] HH_ALIGNAS(16) = {0, 1};
+  HH_ALIGNAS(16) const HH_U64 key2[2] = {0, 1};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipHash13(key2, in, size);
@@ -226,14 +230,14 @@ uint64_t RunSip13(const void*, const size_t size) {
 #if BENCHMARK_SIP_TREE
 
 uint64_t RunSipTree(const void*, const size_t size) {
-  const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) const HH_U64 key4[4] = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipTreeHash(key4, in, size);
 }
 
 uint64_t RunSipTree13(const void*, const size_t size) {
-  const HH_U64 key4[4] HH_ALIGNAS(32) = {0, 1, 2, 3};
+  HH_ALIGNAS(32) const HH_U64 key4[4] = {0, 1, 2, 3};
   char in[kMaxBenchmarkInputSize];
   memcpy(in, &size, sizeof(size));
   return SipTreeHash13(key4, in, size);
@@ -251,6 +255,13 @@ uint64_t RunFarm(const void*, const size_t size) {
 
 #endif
 
+#if BENCHMARK_INTERNAL
+uint64_t RunInternal(const void*, const size_t size) {
+  char in[kMaxBenchmarkInputSize];
+  memcpy(in, &size, sizeof(size));
+  return in[rand() % size];
+}
+#endif
 
 void AddMeasurements(const std::vector<size_t>& in_sizes,
                      Measurements* measurements) {
@@ -269,6 +280,9 @@ void AddMeasurements(const std::vector<size_t>& in_sizes,
   MeasureAndAdd(&input_map, "Farm", &RunFarm, measurements);
 #endif
 
+#if BENCHMARK_INTERNAL
+  MeasureAndAdd(&input_map, "Internal", &RunInternal, measurements);
+#endif
 
 #if BENCHMARK_HIGHWAY
   InstructionSets::RunAll<HighwayHashBenchmark>(

@@ -1,9 +1,10 @@
 // Minimal usage example: prints a hash. Tested on x86, ppc, arm.
 
-#include "highwayhash/highwayhash.h"
-
 #include <algorithm>
+#include <cstring>
 #include <iostream>
+
+#include "highwayhash/highwayhash.h"
 
 using namespace highwayhash;
 
@@ -16,7 +17,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Please use a different key to ensure your hashes aren't identical.
-  const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+  HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
 
   // Aligning inputs to 32 bytes may help but is not required.
   const char* in = argv[1];

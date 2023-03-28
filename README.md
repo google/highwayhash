@@ -15,31 +15,37 @@ ensure the implementations return known-good values for a given set of inputs.
 
 64-bit SipHash for any CPU:
 
+```
     #include "highwayhash/sip_hash.h"
     using namespace highwayhash;
-    const HH_U64 key2[2] HH_ALIGNAS(16) = {1234, 5678};
+    HH_ALIGNAS(16) const HH_U64 key2[2] = {1234, 5678};
     char in[8] = {1};
     return SipHash(key2, in, 8);
+```
 
 64, 128 or 256 bit HighwayHash for the CPU determined by compiler flags:
 
+```
     #include "highwayhash/highwayhash.h"
     using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
     HHStateT<HH_TARGET> state(key);
     HighwayHashT(&state, in, 8, &result);
+```
 
 64, 128 or 256 bit HighwayHash for the CPU on which we're currently running:
 
+```
     #include "highwayhash/highwayhash_target.h"
     #include "highwayhash/instruction_sets.h"
     using namespace highwayhash;
-    const HHKey key HH_ALIGNAS(32) = {1, 2, 3, 4};
+    HH_ALIGNAS(32) const HHKey key = {1, 2, 3, 4};
     char in[8] = {1};
     HHResult64 result;  // or HHResult128 or HHResult256
     InstructionSets::Run<HighwayHash>(key, in, 8, &result);
+```
 
 C-callable 64-bit HighwayHash for the CPU on which we're currently running:
 
@@ -391,6 +397,6 @@ Jonathan Beard | C++20 constexpr | https://gist.github.com/jonathan-beard/632017
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2018-10-02
+<jyrki.alakuijala@gmail.com>, updated 2023-03-27
 
 This is not an official Google product.

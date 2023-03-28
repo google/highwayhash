@@ -190,10 +190,10 @@ class HighwayHashCatT {
     // EndIACA();
   }
 
-  // Stores the resulting 64, 128 or 256-bit hash of all data passed to Append.
-  // Must be called exactly once, or after a prior Reset.
+  // Stores the resulting 64, 128 or 256-bit hash of data previously passed to
+  // Append since construction or a prior call to Reset.
   template <typename Result>  // HHResult*
-  HH_INLINE void Finalize(Result* HH_RESTRICT hash) {
+  HH_INLINE void Finalize(Result* HH_RESTRICT hash) const {
     // BeginIACA();
     HHStateT<Target> state_copy = state_;
     const size_t buffer_usage = buffer_usage_;
@@ -205,8 +205,8 @@ class HighwayHashCatT {
   }
 
  private:
-  HHPacket buffer_ HH_ALIGNAS(64);
-  HHStateT<Target> state_ HH_ALIGNAS(32);
+  HH_ALIGNAS(64) HHPacket buffer_;
+  HH_ALIGNAS(32) HHStateT<Target> state_;
   // How many bytes in buffer_ (starting with offset 0) are valid.
   size_t buffer_usage_ = 0;
 };

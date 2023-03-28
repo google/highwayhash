@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HIGHWAYHASH_HIGHWAYHASH_C_BINDINGS_H_
-#define HIGHWAYHASH_HIGHWAYHASH_C_BINDINGS_H_
+#ifndef HIGHWAYHASH_C_BINDINGS_H_
+#define HIGHWAYHASH_C_BINDINGS_H_
 
 // C-callable function prototypes, documented in the other header files.
 
@@ -54,4 +54,4 @@ uint64_t HighwayHash64_TargetVSX(const HHKey key, const char* bytes,
 }
 #endif
 
-#endif  // HIGHWAYHASH_HIGHWAYHASH_C_BINDINGS_H_
+#endif  // HIGHWAYHASH_C_BINDINGS_H_

@@ -1,6 +1,8 @@
+bin
+lib
+obj
+deps.mk
 OWNERS
-README.google
-README.security
 *.a
 *.o
 benchmark

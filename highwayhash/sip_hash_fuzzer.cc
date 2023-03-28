@@ -10,7 +10,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
   // Generate the key.
   const HH_U64 *hhU64s = reinterpret_cast<const HH_U64*>(data);
-  const HH_U64 key[2] HH_ALIGNAS(16) = {hhU64s[0], hhU64s[1]};
+  HH_ALIGNAS(16) const HH_U64 key[2] = {hhU64s[0], hhU64s[1]};
   data += sizeof(HH_U64) * 2;
   size -= sizeof(HH_U64) * 2;
 

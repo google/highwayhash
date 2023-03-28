@@ -114,6 +114,7 @@ TEST(DataParallelTest, Benchmarks) {
   EXPECT_EQ(sum2, sum3);
 }
 
+#if HH_ARCH_X64
 // Ensures multiple hardware threads are used (decided by the OS scheduler).
 TEST(DataParallelTest, TestApicIds) {
   for (int num_threads = 1; num_threads <= std::thread::hardware_concurrency();
@@ -150,6 +151,7 @@ TEST(DataParallelTest, TestApicIds) {
     EXPECT_GT(total, 1E4);
   }
 }
+#endif  // HH_ARCH_X64
 
 }  // namespace
 }  // namespace highwayhash

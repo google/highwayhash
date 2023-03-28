@@ -106,9 +106,6 @@ endif
 lib/libhighwayhash.a: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
 	$(AR) rcs $@ $^
-	# Disabled due to false positives; ideally the test instead ensures
-	# target-specific modules _only_ export symbols starting with a prefix.
-	# ./test_exports.sh $^
 
 lib/libhighwayhash.so: $(SIP_OBJS) $(HIGHWAYHASH_OBJS) obj/c_bindings.o
 	@mkdir -p -- $(dir $@)
