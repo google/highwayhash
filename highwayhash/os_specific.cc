@@ -40,7 +40,7 @@
 #define OS_LINUX 0
 #endif
 
-#if defined(__APPLE__) || \
+#if defined(__APPLE__) && \
     defined(__MACH__)  // __MACH__ also defined for GNU/Hurd
 #define OS_MAC 1
 #include <mach/mach.h>
