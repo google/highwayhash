@@ -397,6 +397,6 @@ Jonathan Beard | C++20 constexpr | https://gist.github.com/jonathan-beard/632017
 *   vector256.h and vector128.h contain wrapper classes for AVX2 and SSE4.1.
 
 By Jan Wassenberg <jan.wassenberg@gmail.com> and Jyrki Alakuijala
-<jyrki.alakuijala@gmail.com>, updated 2023-03-27
+<jyrki.alakuijala@gmail.com>, updated 2023-03-29
 
 This is not an official Google product.
