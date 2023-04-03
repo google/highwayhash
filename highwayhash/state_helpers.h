@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "highwayhash/compiler_specific.h"
+#include "highwayhash/endianess.h"
 
 namespace highwayhash {
 
@@ -60,6 +61,7 @@ HH_INLINE void PaddedUpdate(const HH_U64 size, const char* remaining_bytes,
     packet4 += static_cast<uint32_t>(final_bytes[idx1]) << 8;
     packet4 += static_cast<uint32_t>(final_bytes[idx2]) << 16;
   }
+  packet4 = host_from_le32(packet4);
 
   memcpy(final_packet, remaining_bytes, remaining_size - remainder_mod4);
   memcpy(final_packet + State::kPacketSize - 4, &packet4, sizeof(packet4));

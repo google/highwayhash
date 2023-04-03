@@ -83,9 +83,12 @@ class HHStatePortable {
       // Insert into the upper four bytes of packet, which are zero.
       uint32_t last4 =
           Load3()(Load3::AllowReadBeforeAndReturn(), remainder, size_mod4);
+      last4 = host_from_le32(last4);
+
       CopyPartial(reinterpret_cast<const char*>(&last4), 4, &packet[28]);
     } else {  // size_mod32 < 16
       uint64_t last4 = Load3()(Load3::AllowUnordered(), remainder, size_mod4);
+      last4 = host_from_le64(last4);
 
       // Rather than insert at packet + 28, it is faster to initialize
       // the otherwise empty packet + 16 with up to 64 bits of padding.
