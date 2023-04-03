@@ -88,7 +88,7 @@ void Example64Cat() {
   HighwayHashCatAppend((const uint8_t*)"Hello", 5, &state);
   HighwayHashCatAppend((const uint8_t*)" world!", 7, &state);
 
-  hash = HighwayHashCatFinish64(state);
+  hash = HighwayHashCatFinish64(&state);
   printf("%016"PRIx64"\n", hash);
 }
 */
