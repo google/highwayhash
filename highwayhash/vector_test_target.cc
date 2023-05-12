@@ -150,8 +150,9 @@ void TestShifts(const HHNotify notify) {
   constexpr T sign = ~(max >> 1);
   NotifyIfUnequal(v1 << kSign, sign, __LINE__, notify);
 
-  // Shifting out of left side => zero
-  NotifyIfUnequal(v1 << (kSign + 1), T(0), __LINE__, notify);
+  // Shifting out of left side => zero. Arm cannot shift by the number of
+  // lane bits, so start with 'left-shifting' by one (via adding).
+  NotifyIfUnequal((v1 + v1) << kSign, T(0), __LINE__, notify);
 }
 
 template <class T>
