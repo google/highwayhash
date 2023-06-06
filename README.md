@@ -364,6 +364,7 @@ Simon Abdullah | NPM package | https://www.npmjs.com/package/highwayhash-nodejs
 Lovell Fuller | node.js bindings | https://github.com/lovell/highwayhash
 Andreas Sonnleitner | [WebAssembly](https://github.com/asonnleitner/highwayhash-wasm) and NPM package | https://www.npmjs.com/package/highwayhash-wasm
 Nick Babcock | Rust port | https://github.com/nickbabcock/highway-rs
+Caleb Zulawski | Rust portable SIMD | https://github.com/calebzulawski/autobahn-hash
 Vinzent Steinberg | Rust bindings | https://github.com/vks/highwayhash-rs
 Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/minio/highwayhash
 Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-cffi
