@@ -20,6 +20,8 @@
 // dependencies must not define any function unless it is static inline and/or
 // within namespace HH_TARGET_NAME. See arch_specific.h for details.
 
+#include <string.h>
+
 #include "highwayhash/arch_specific.h"
 #include "highwayhash/compiler_specific.h"
 #include "highwayhash/hh_buffer.h"
@@ -35,6 +37,13 @@ namespace highwayhash {
 // See vector128.h for why this namespace is necessary; matching it here makes
 // it easier use the vector128 symbols, but requires textual inclusion.
 namespace HH_TARGET_NAME {
+
+template <class T>
+HH_INLINE T LoadUnaligned(const T* const from) {
+  T ret;
+  memcpy(&ret, from, sizeof(ret));
+  return ret;
+}
 
 // J-lanes tree hashing: see https://doi.org/10.4236/jis.2014.53010
 // Uses pairs of SSE4.1 instructions to emulate the AVX-2 algorithm.
@@ -260,7 +269,7 @@ class HHStateSSE41 {
     }
     // Final 4 (possibly after the 8 above); 'insert' into lane 0 or 2 of ret.
     if (size & 4) {
-      const __m128i word2 = _mm_cvtsi32_si128(words[0]);
+      const __m128i word2 = _mm_cvtsi32_si128(LoadUnaligned<uint32_t>(words));
       // = 0 word2 0 word2; mask4 will select which lane to keep.
       const V2x64U broadcast(_mm_shuffle_epi32(word2, 0x00));
       // (slightly faster than blendv_epi8)
