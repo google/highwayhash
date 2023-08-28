@@ -269,7 +269,8 @@ class HHStateNEON {
     // Final 4 (possibly after the 8 above); 'insert' into lane 0 or 2 of ret.
     if (size & 4) {
       // = 0 word2 0 word2; mask4 will select which lane to keep.
-      const V2x64U broadcast(vreinterpretq_u64_u32(vdupq_n_u32(words[0])));
+      const V2x64U broadcast(
+          vreinterpretq_u64_u32(vdupq_n_u32(LoadUnaligned(words))));
       // (slightly faster than blendv_epi8)
       ret |= V2x64U(broadcast & mask4);
     }
