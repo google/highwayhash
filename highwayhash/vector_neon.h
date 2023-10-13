@@ -860,11 +860,9 @@ LoadUnaligned<V2x64F>(const V2x64F::T* const HH_RESTRICT from) {
   return V2x64F(vld1q_f64(from));
 }
 #endif
-template <class T>
-HH_INLINE T LoadUnaligned(const T* const from) {
-  T ret;
-  memcpy(&ret, from, sizeof(ret));
-  return ret;
+HH_INLINE uint32_t LoadUnaligned(const uint32_t* const from) {
+  const uint8_t* cfrom = reinterpret_cast<const uint8_t*>(from);
+  return cfrom[0] | (cfrom[1] << 8) | (cfrom[2] << 16) | (cfrom[3] << 24);
 }
 
 // "to" must be vector-aligned.
