@@ -39,7 +39,7 @@ namespace highwayhash {
 namespace HH_TARGET_NAME {
 
 template <class T>
-HH_INLINE T LoadUnaligned(const T* const from) {
+HH_INLINE T LoadUnaligned(const void* from) {
   T ret;
   memcpy(&ret, from, sizeof(ret));
   return ret;
