@@ -164,10 +164,7 @@ public final class HighwayHash {
   }
 
   /**
-   * Computes the hash value after all bytes were processed. Invalidates the
-   * state.
-   *
-   * NOTE: The 256-bit HighwayHash algorithm is not yet frozen and subject to change.
+   * Computes the hash value after all bytes were processed. Invalidates the state.
    *
    * @return array of size 4 containing 256-bit hash
    */
@@ -288,16 +285,13 @@ public final class HighwayHash {
   }
 
   /**
-   * NOTE: The 256-bit HighwayHash algorithm is not yet frozen and subject to change.
-   *
    * @param data array with data bytes
    * @param offset position of first byte of data to read from
    * @param length number of bytes from data to read
    * @param key array of size 4 with the key to initialize the hash with
    * @return array of size 4 containing 256-bit hash for the given data
    */
-  public static long[] hash256(
-      byte[] data, int offset, int length, long[] key) {
+  public static long[] hash256(byte[] data, int offset, int length, long[] key) {
     HighwayHash h = new HighwayHash(key);
     h.processAll(data, offset, length);
     return h.finalize256();
