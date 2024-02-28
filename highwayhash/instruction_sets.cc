@@ -111,22 +111,17 @@ TargetBits InstructionSets::Supported() {
   // preserved across context switches and are not safe to use.
   if (has_xsave && has_osxsave) {
     const uint32_t xcr0 = ReadXCR0();
-    // XMM
-    if ((xcr0 & 2) == 0) {
-      flags &= ~(kBitSSE | kBitSSE2 | kBitSSE3 | kBitSSSE3 | kBitSSE41 |
-                 kBitSSE42 | kBitAVX | kBitAVX2 | kBitFMA);
-    }
-    // YMM
-    if ((xcr0 & 4) == 0) {
+    // XMM/YMM
+    if ((xcr0 & 2) == 0 || (xcr0 & 4) == 0) {
       flags &= ~(kBitAVX | kBitAVX2);
     }
   } else {
-    // Clear the AVX2 bit if the CPU or OS does not support XSAVE.
+    // Clear the AVX/AVX2 bits if the CPU or OS does not support XSAVE.
     //
     // The lower 128 bits of XMM0-XMM15 are guaranteed to be preserved across
     // context switches on x86_64 and any modern 32-bit system, so only AVX2
     // needs to be disabled.
-    flags &= ~kBitAVX2;
+    flags &= ~(kBitAVX | kBitAVX2);
   }
 
   // Also indicates "supported" has been initialized.
