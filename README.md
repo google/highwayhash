@@ -370,6 +370,7 @@ Frank Wessels & Andreas Auernhammer | Go and ARM assembly | https://github.com/m
 Phil Demetriou | Python 3 bindings | https://github.com/kpdemetriou/highwayhash-cffi
 Jonathan Beard | C++20 constexpr | https://gist.github.com/jonathan-beard/632017faa1d9d1936eb5948ac9186657
 James Cook | Ruby bindings | https://github.com/jamescook/highwayhash
+John Platts | C++17 Google Highway port | https://github.com/johnplatts/simdhwyhash
 
 ## Modules
 
